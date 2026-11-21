@@ -1,7 +1,12 @@
 import React, { useMemo, useState } from 'react';
 import {
+  Ban,
+  Check,
   CheckCircle2,
+  Clock,
+  Copy,
   Database,
+  Link2,
   RefreshCw,
   RotateCcw,
   Search,
@@ -21,6 +26,8 @@ import type {
   ResidentPublic,
   ResidentRegistryEntry,
   ResidentStatus,
+  SheetDbInfo,
+  VerificationStatus,
 } from '../types';
 import { FAMILY_STATUS_LABELS } from '../utils/format';
 import {
@@ -69,6 +76,11 @@ interface ResidentRegistryModalProps {
   ) => Promise<void>;
   onResetClaim: (entry: ResidentRegistryEntry) => Promise<void>;
   onDeleteEntry: (entry: ResidentRegistryEntry) => Promise<void>;
+  sheetInfo?: SheetDbInfo | null;
+  onSetVerificationStatus?: (
+    entry: ResidentRegistryEntry,
+    nextStatus: VerificationStatus
+  ) => Promise<void>;
 }
 
 const POSITION_OPTIONS: PengurusPosition[] = [
@@ -93,6 +105,8 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   onUpdateRbac,
   onResetClaim,
   onDeleteEntry,
+  sheetInfo,
+  onSetVerificationStatus,
 }) => {
   const [fullName, setFullName] = useState('');
   const [houseBlock, setHouseBlock] = useState('');
@@ -116,6 +130,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   const [busy, setBusy] = useState(false);
   const [feedback, setFeedback] = useState<string | null>(null);
   const [errorMsg, setErrorMsg] = useState<string | null>(null);
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   const filteredEntries = useMemo(() => {
     const q = searchQuery.trim().toLowerCase();
@@ -138,6 +153,27 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   if (!isOpen) return null;
 
   const claimedCount = registryEntries.filter((e) => Boolean(e.claimedUid)).length;
+  const verifiedCount = registryEntries.filter(
+    (e) => (e.verificationStatus || 'verified') === 'verified'
+  ).length;
+  const pendingCount = registryEntries.filter(
+    (e) => e.verificationStatus === 'pending'
+  ).length;
+  const inviteLink =
+    sheetInfo?.mode === 'webapp' && sheetInfo.webAppUrl && typeof window !== 'undefined'
+      ? `${window.location.origin}/?webapp=${encodeURIComponent(sheetInfo.webAppUrl)}`
+      : null;
+
+  const handleCopyInviteLink = async () => {
+    if (!inviteLink) return;
+    try {
+      await navigator.clipboard.writeText(inviteLink);
+      setCopiedInvite(true);
+      window.setTimeout(() => setCopiedInvite(false), 3000);
+    } catch {
+      setErrorMsg('Browser menolak salin otomatis. Salin URL langsung dari kotak tautan.');
+    }
+  };
 
   const handlePositionChange = (nextPos: PengurusPosition) => {
     setPengurusPosition(nextPos);
@@ -357,26 +393,63 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
 
         <div className="flex-1 overflow-y-auto p-6 space-y-5">
           {/* Stats */}
-          <div className="grid grid-cols-3 gap-3">
-            <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-3.5">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
+            <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-3">
               <p className="text-[11px] font-semibold text-slate-500 dark:text-slate-400">Total Database</p>
               <p className="font-mono-num text-xl font-extrabold text-slate-900 dark:text-slate-100 mt-0.5">
                 {registryEntries.length}
               </p>
             </div>
-            <div className="rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-3.5">
-              <p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">Sudah Daftar Akun</p>
+            <div className="rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-3">
+              <p className="text-[11px] font-semibold text-emerald-800 dark:text-emerald-300">Terverifikasi</p>
               <p className="font-mono-num text-xl font-extrabold text-emerald-700 dark:text-emerald-400 mt-0.5">
+                {verifiedCount}
+              </p>
+            </div>
+            <div className="rounded-2xl bg-sky-50/70 dark:bg-sky-950/30 border border-sky-200 dark:border-sky-900 p-3">
+              <p className="text-[11px] font-semibold text-sky-800 dark:text-sky-300">Sudah Daftar Akun</p>
+              <p className="font-mono-num text-xl font-extrabold text-sky-700 dark:text-sky-400 mt-0.5">
                 {claimedCount}
               </p>
             </div>
-            <div className="rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3.5">
-              <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Belum Daftar</p>
+            <div className="rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900 p-3">
+              <p className="text-[11px] font-semibold text-amber-800 dark:text-amber-300">Menunggu / Belum</p>
               <p className="font-mono-num text-xl font-extrabold text-amber-700 dark:text-amber-400 mt-0.5">
-                {Math.max(0, registryEntries.length - claimedCount)}
+                {pendingCount > 0 ? pendingCount : Math.max(0, registryEntries.length - claimedCount)}
               </p>
             </div>
           </div>
+
+          {inviteLink && (
+            <div className="rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-xs font-bold text-emerald-900 dark:text-emerald-200 flex items-center gap-1.5">
+                  <Link2 className="w-3.5 h-3.5 shrink-0" />
+                  <span>Tautan Koneksi Otomatis Spreadsheet Warga</span>
+                </p>
+                <p className="text-[11px] text-emerald-800/80 dark:text-emerald-300/80 mt-0.5 leading-relaxed">
+                  Bagikan tautan ini ke grup RT agar seluruh pengguna terverifikasi langsung terhubung otomatis ke Google Spreadsheet tanpa tempel URL manual.
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => void handleCopyInviteLink()}
+                className="min-h-[38px] px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 shrink-0 cursor-pointer"
+              >
+                {copiedInvite ? (
+                  <>
+                    <Check className="w-3.5 h-3.5" />
+                    <span>Tautan Disalin!</span>
+                  </>
+                ) : (
+                  <>
+                    <Copy className="w-3.5 h-3.5" />
+                    <span>Salin Link Otomatis</span>
+                  </>
+                )}
+              </button>
+            </div>
+          )}
 
           {feedback && (
             <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
@@ -481,7 +554,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                   <option value="tetap">Warga Tetap</option>
                   <option value="kontrak">Warga Kontrak</option>
                   {canManageRbac && role === 'pengurus' && (
-                    <option value="pengurus"></option>
+                    <option value="pengurus">Pengurus</option>
                   )}
                 </select>
               </div>
@@ -659,6 +732,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                   const canEditEntryRow =
                     canManageRbac || entry.role === 'warga';
                   const isSelf = Boolean(currentUserUid && entry.claimedUid === currentUserUid);
+                  const verStatus: VerificationStatus = entry.verificationStatus || 'verified';
 
                   return (
                     <div
@@ -685,6 +759,30 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                               )}
                               <span>
                                 {isPengurus ? PENGURUS_POSITION_LABELS[pos] : 'Warga'}
+                              </span>
+                            </span>
+                            <span
+                              className={`px-2 py-0.5 rounded-md text-[11px] font-bold inline-flex items-center gap-1 ${
+                                verStatus === 'verified'
+                                  ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-300 border border-emerald-200 dark:border-emerald-800'
+                                  : verStatus === 'pending'
+                                  ? 'bg-amber-50 dark:bg-amber-950/60 text-amber-800 dark:text-amber-300 border border-amber-200 dark:border-amber-800'
+                                  : 'bg-red-50 dark:bg-red-950/60 text-red-700 dark:text-red-300 border border-red-200 dark:border-red-800'
+                              }`}
+                            >
+                              {verStatus === 'verified' ? (
+                                <CheckCircle2 className="w-3 h-3" />
+                              ) : verStatus === 'pending' ? (
+                                <Clock className="w-3 h-3" />
+                              ) : (
+                                <Ban className="w-3 h-3" />
+                              )}
+                              <span>
+                                {verStatus === 'verified'
+                                  ? 'Terverifikasi'
+                                  : verStatus === 'pending'
+                                  ? 'Menunggu Verifikasi'
+                                  : 'Ditolak / Nonaktif'}
                               </span>
                             </span>
                           </div>
@@ -715,7 +813,83 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                           )}
                         </div>
 
-                        <div className="flex items-center gap-1.5 shrink-0 self-end sm:self-center">
+                        <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0 self-end sm:self-center">
+                          {canEditEntryRow && !isSelf && onSetVerificationStatus && (
+                            <>
+                              {verStatus !== 'verified' ? (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={async () => {
+                                    setBusy(true);
+                                    setErrorMsg(null);
+                                    try {
+                                      await onSetVerificationStatus(entry, 'verified');
+                                    } catch (err) {
+                                      setErrorMsg(
+                                        err instanceof Error ? err.message : 'Gagal memverifikasi pengguna.'
+                                      );
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  }}
+                                  className="min-h-[36px] px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                >
+                                  <CheckCircle2 className="w-3.5 h-3.5" />
+                                  <span>Verifikasi</span>
+                                </button>
+                              ) : (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={async () => {
+                                    setBusy(true);
+                                    setErrorMsg(null);
+                                    try {
+                                      await onSetVerificationStatus(entry, 'pending');
+                                    } catch (err) {
+                                      setErrorMsg(
+                                        err instanceof Error ? err.message : 'Gagal mengubah status verifikasi.'
+                                      );
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  }}
+                                  title="Tangguhkan verifikasi pengguna"
+                                  className="min-h-[36px] px-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                >
+                                  <Clock className="w-3.5 h-3.5" />
+                                  <span>Tangguhkan</span>
+                                </button>
+                              )}
+
+                              {verStatus !== 'rejected' && (
+                                <button
+                                  type="button"
+                                  disabled={busy}
+                                  onClick={async () => {
+                                    setBusy(true);
+                                    setErrorMsg(null);
+                                    try {
+                                      await onSetVerificationStatus(entry, 'rejected');
+                                    } catch (err) {
+                                      setErrorMsg(
+                                        err instanceof Error ? err.message : 'Gagal menonaktifkan pengguna.'
+                                      );
+                                    } finally {
+                                      setBusy(false);
+                                    }
+                                  }}
+                                  title="Tolak / nonaktifkan verifikasi pengguna"
+                                  aria-label={`Nonaktifkan ${entry.fullName}`}
+                                  className="min-h-[36px] min-w-[36px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer disabled:opacity-50"
+                                >
+                                  <Ban className="w-3.5 h-3.5" />
+                                </button>
+                              )}
+                            </>
+                          )}
+
                           {canManageRbac && (
                             <button
                               type="button"

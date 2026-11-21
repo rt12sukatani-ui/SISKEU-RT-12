@@ -25,12 +25,16 @@ import type {
   TransactionType,
   UserAccountLookup,
   UserNotification,
+  VerificationStatus,
 } from '../types';
 
 export const DEFAULT_SPREADSHEET_TITLE = 'DATABASE_SISKEU_RT12_RW20';
+export const BUILTIN_SHEETS_WEBAPP_URL =
+  'https://script.google.com/macros/s/AKfycbz6JnE9qNRo65i0Zn-Zt9YYE_ZdTE7j9wwxJweXgftxd3z58Qe-pXKHAk1ktToKQ_Z1/exec';
 const LEGACY_SPREADSHEET_TITLE = 'SISKEU_RT12_RW20_DATABASE';
 const SAVED_SPREADSHEET_ID_KEY = 'siskeu_rt12_spreadsheet_id_v1';
 const SAVED_WEBAPP_URL_KEY = 'siskeu_rt12_webapp_url_v1';
+const SAVED_VERIFIED_SESSION_KEY = 'siskeu_rt12_verified_session_v1';
 const CHUNK_SIZE = 45000;
 
 export const SHEET_TABS = {
@@ -94,6 +98,7 @@ export const SHEET_HEADERS: Record<SheetTabName, string[]> = {
     'dibuat_oleh',
     'dibuat_pada',
     'diperbarui_pada',
+    'status_verifikasi',
   ],
   akun_pengguna: [
     'username',
@@ -120,6 +125,7 @@ export const SHEET_HEADERS: Record<SheetTabName, string[]> = {
     'id_komunitas',
     'dibuat_pada',
     'diperbarui_pada',
+    'status_verifikasi',
   ],
   pengurus_admin: [
     'uid',
@@ -294,37 +300,94 @@ export function clearSavedWebAppUrl(): void {
 }
 
 export function getDefaultWebAppUrl(): string {
-  if (typeof window !== 'undefined') {
-    try {
-      const url = new URL(window.location.href);
-      const paramRaw = url.searchParams.get('webapp') || url.searchParams.get('sheet');
-      if (paramRaw) {
-        const valid = extractWebAppUrl(paramRaw);
-        if (valid) {
-          saveWebAppUrl(valid);
-          url.searchParams.delete('webapp');
-          url.searchParams.delete('sheet');
-          const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
-          window.history.replaceState({}, document.title, cleanUrl);
-          return valid;
-        }
-      }
-    } catch {
-      // Ignore malformed URL
-    }
-  }
   const envUrl = (import.meta.env.VITE_SHEETS_WEBAPP_URL || '').trim();
   if (envUrl) return envUrl;
-  return (getSavedWebAppUrl() || '').trim();
+  const savedUrl = (getSavedWebAppUrl() || '').trim();
+  if (savedUrl) return savedUrl;
+  return BUILTIN_SHEETS_WEBAPP_URL;
 }
 
-export function buildCitizenInviteLink(webAppUrl: string): string {
-  if (typeof window === 'undefined') return '';
-  const valid = extractWebAppUrl(webAppUrl);
-  if (!valid) return window.location.origin;
-  const invite = new URL(window.location.origin + window.location.pathname);
-  invite.searchParams.set('webapp', valid);
-  return invite.toString();
+export interface PersistedVerifiedSession {
+  uid: string;
+  username: string;
+  role: LoginRole;
+  registryId: string;
+  displayName: string;
+  webAppUrl?: string;
+  spreadsheetId?: string;
+  verifiedAtIso: string;
+}
+
+export function getSavedVerifiedSession(): PersistedVerifiedSession | null {
+  try {
+    const raw = localStorage.getItem(SAVED_VERIFIED_SESSION_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<PersistedVerifiedSession>;
+    if (!parsed || !parsed.uid || !parsed.username || !parsed.role) return null;
+    return {
+      uid: parsed.uid,
+      username: parsed.username,
+      role: parsed.role === 'pengurus' ? 'pengurus' : 'warga',
+      registryId: parsed.registryId || '',
+      displayName: parsed.displayName || parsed.username,
+      webAppUrl: parsed.webAppUrl,
+      spreadsheetId: parsed.spreadsheetId,
+      verifiedAtIso: parsed.verifiedAtIso || new Date().toISOString(),
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveVerifiedSession(session: PersistedVerifiedSession): void {
+  try {
+    localStorage.setItem(SAVED_VERIFIED_SESSION_KEY, JSON.stringify(session));
+    if (session.webAppUrl) {
+      saveWebAppUrl(session.webAppUrl);
+    }
+    if (session.spreadsheetId) {
+      saveSpreadsheetId(session.spreadsheetId);
+    }
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function clearVerifiedSession(): void {
+  try {
+    localStorage.removeItem(SAVED_VERIFIED_SESSION_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function extractAndSaveWebAppUrlFromLocation(): string | null {
+  if (typeof window === 'undefined') return null;
+  try {
+    const currentUrl = new URL(window.location.href);
+    const paramCandidate =
+      currentUrl.searchParams.get('webapp') ||
+      currentUrl.searchParams.get('sheet_url') ||
+      '';
+    let validUrl = paramCandidate ? extractWebAppUrl(paramCandidate) : null;
+
+    if (!validUrl && currentUrl.hash.includes('webapp=')) {
+      const hashParams = new URLSearchParams(currentUrl.hash.replace(/^#/, ''));
+      const hashCandidate = hashParams.get('webapp') || '';
+      validUrl = hashCandidate ? extractWebAppUrl(hashCandidate) : null;
+    }
+
+    if (validUrl) {
+      saveWebAppUrl(validUrl);
+      currentUrl.searchParams.delete('webapp');
+      currentUrl.searchParams.delete('sheet_url');
+      window.history.replaceState({}, document.title, currentUrl.toString());
+      return validUrl;
+    }
+    return null;
+  } catch {
+    return null;
+  }
 }
 
 export function extractWebAppUrl(input: string): string | null {
@@ -460,6 +523,19 @@ function parseAnnouncementPriority(val: string): 'normal' | 'urgent' {
 
 function serializeAnnouncementPriority(p: 'normal' | 'urgent'): string {
   return p === 'urgent' ? 'mendesak' : 'normal';
+}
+
+function parseVerificationStatus(val: string): VerificationStatus {
+  const v = val.trim().toLowerCase();
+  if (v === 'menunggu' || v === 'pending' || v === 'belum') return 'pending';
+  if (v === 'ditolak' || v === 'rejected' || v === 'nonaktif') return 'rejected';
+  return 'verified';
+}
+
+function serializeVerificationStatus(s?: VerificationStatus): string {
+  if (s === 'pending') return 'menunggu';
+  if (s === 'rejected') return 'ditolak';
+  return 'terverifikasi';
 }
 
 async function googleFetch<T>(
@@ -873,16 +949,27 @@ export async function fetchAllSheetTables(
   const registryEntries: ResidentRegistryEntry[] = (
     byTab.get(SHEET_TABS.RESIDENT_REGISTRY) || []
   )
-    .map((r) => {
-      const registryId = pick(r, 'id_database', 'registryId');
+    .map((r, rowIdx) => {
+      const fullName = pick(r, 'nama_lengkap', 'fullName');
+      const houseBlock = pick(r, 'blok_rumah', 'houseBlock');
+      const rawId = pick(r, 'id_database', 'registryId');
+      const registryId =
+        rawId ||
+        (fullName && houseBlock
+          ? `manual_${fullName.trim().toLowerCase().replace(/[^a-z0-9]/g, '')}_${houseBlock
+              .trim()
+              .toLowerCase()
+              .replace(/[^a-z0-9]/g, '')}_${rowIdx}`
+          : '');
       const roleRaw = pick(r, 'peran', 'role');
       const posRaw = pick(r, 'jabatan_pengurus', 'pengurusPosition');
       const permsRaw = pick(r, 'daftar_kewenangan', 'permissionsJson');
       const famRaw = pick(r, 'status_keluarga', 'familyStatus');
+      const verRaw = pick(r, 'status_verifikasi', 'verificationStatus');
       return {
         registryId,
-        fullName: pick(r, 'nama_lengkap', 'fullName'),
-        houseBlock: pick(r, 'blok_rumah', 'houseBlock'),
+        fullName,
+        houseBlock,
         role: (roleRaw === 'pengurus' ? 'pengurus' : 'warga') as LoginRole,
         ...(posRaw ? { pengurusPosition: posRaw as PengurusPosition } : {}),
         ...(permsRaw
@@ -891,6 +978,7 @@ export async function fetchAllSheetTables(
         residentStatus: (pick(r, 'status_hunian', 'residentStatus') ||
           'tetap') as ResidentStatus,
         familyStatus: (famRaw === 'khusus' ? 'khusus' : 'umum') as FamilyStatus,
+        verificationStatus: parseVerificationStatus(verRaw),
         claimedUid: pick(r, 'uid_terklaim', 'claimedUid'),
         claimedUsername: pick(r, 'username_terklaim', 'claimedUsername'),
         communityId: pick(r, 'id_komunitas', 'communityId') || 'rt_warga',
@@ -899,7 +987,7 @@ export async function fetchAllSheetTables(
         updatedAt: pick(r, 'diperbarui_pada', 'updatedAt'),
       };
     })
-    .filter((e) => Boolean(e.registryId));
+    .filter((e) => Boolean(e.registryId && (e.fullName || e.houseBlock)));
 
   // 3. Akun Pengguna (User Accounts)
   const userAccounts: UserAccountLookup[] = (
@@ -927,6 +1015,7 @@ export async function fetchAllSheetTables(
       const famRaw = pick(r, 'status_keluarga', 'familyStatus');
       const famLogRaw = pick(r, 'riwayat_status_keluarga', 'familyStatusLogJson');
       const lastPaid = pick(r, 'bulan_bayar_terakhir', 'lastPaidMonth');
+      const verRaw = pick(r, 'status_verifikasi', 'verificationStatus');
       return {
         uid,
         ...(username ? { username } : {}),
@@ -945,6 +1034,7 @@ export async function fetchAllSheetTables(
         familyStatus: (famRaw === 'khusus' ? 'khusus' : 'umum') as FamilyStatus,
         familyStatusLog: safeJsonParse<string[]>(famLogRaw, []),
         ...(lastPaid ? { lastPaidMonth: lastPaid } : {}),
+        verificationStatus: parseVerificationStatus(verRaw),
         elderlyMode: parseBoolId(pick(r, 'mode_lansia', 'elderlyMode')),
         communityId: pick(r, 'id_komunitas', 'communityId') || 'rt_warga',
         createdAt: pick(r, 'dibuat_pada', 'createdAt'),
@@ -1162,6 +1252,7 @@ export function registryEntryToRow(e: ResidentRegistryEntry): string[] {
     e.createdBy || '',
     typeof e.createdAt === 'string' && e.createdAt ? e.createdAt : nowIso,
     typeof e.updatedAt === 'string' && e.updatedAt ? e.updatedAt : nowIso,
+    serializeVerificationStatus(e.verificationStatus),
   ];
 }
 
@@ -1196,6 +1287,7 @@ export function userProfileToRow(u: ResidentPublic): string[] {
     u.communityId || 'rt_warga',
     typeof u.createdAt === 'string' && u.createdAt ? u.createdAt : nowIso,
     typeof u.updatedAt === 'string' && u.updatedAt ? u.updatedAt : nowIso,
+    serializeVerificationStatus(u.verificationStatus),
   ];
 }
 

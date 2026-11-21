@@ -25,7 +25,6 @@ import {
   X,
 } from 'lucide-react';
 import { compressBannerSlideImage } from '../lib/crypto';
-import { buildCitizenInviteLink } from '../lib/sheetsDb';
 import type {
   BannerSlide,
   FamilyStatus,
@@ -163,7 +162,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const [editTitle, setEditTitle] = useState('');
   const [editSubtitle, setEditSubtitle] = useState('');
   const [sheetIdInput, setSheetIdInput] = useState('');
-  const [copiedInviteLink, setCopiedInviteLink] = useState(false);
+  const [copiedInvite, setCopiedInvite] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -1114,24 +1113,31 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                   {sheetInfo?.mode === 'webapp' && sheetInfo.webAppUrl && (
                     <button
                       type="button"
-                      onClick={() => {
-                        const link = buildCitizenInviteLink(sheetInfo.webAppUrl!);
-                        void navigator.clipboard?.writeText(link);
-                        setCopiedInviteLink(true);
-                        window.setTimeout(() => setCopiedInviteLink(false), 3000);
+                      onClick={async () => {
+                        try {
+                          const inviteUrl = `${window.location.origin}/?webapp=${encodeURIComponent(
+                            sheetInfo.webAppUrl || ''
+                          )}`;
+                          await navigator.clipboard.writeText(inviteUrl);
+                          setCopiedInvite(true);
+                          window.setTimeout(() => setCopiedInvite(false), 3000);
+                        } catch {
+                          setFeedback('Browser menolak salin otomatis.');
+                        }
                       }}
-                      className="min-h-[38px] px-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-xs font-semibold text-emerald-800 dark:text-emerald-200 inline-flex items-center gap-1.5 cursor-pointer"
+                      className="min-h-[38px] px-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
                     >
-                      {copiedInviteLink ? (
-                        <Check className="w-3.5 h-3.5" />
+                      {copiedInvite ? (
+                        <>
+                          <Check className="w-3.5 h-3.5" />
+                          <span>Link Terhubung Disalin!</span>
+                        </>
                       ) : (
-                        <Copy className="w-3.5 h-3.5" />
+                        <>
+                          <Copy className="w-3.5 h-3.5" />
+                          <span>Salin Link Otomatis Terhubung</span>
+                        </>
                       )}
-                      <span>
-                        {copiedInviteLink
-                          ? 'Link Portal Warga Tersalin!'
-                          : 'Salin Link Portal Warga (Auto-Spreadsheet)'}
-                      </span>
                     </button>
                   )}
                   {onDisconnectGoogle && (

@@ -44,3 +44,26 @@ export async function computeResidentRegistryId(
   }
   return `reg_${(h1 >>> 0).toString(16).padStart(8, '0')}${(h2 >>> 0).toString(16).padStart(8, '0')}`;
 }
+
+export function findMatchingRegistryEntry<
+  T extends { registryId: string; fullName: string; houseBlock: string },
+>(
+  entries: T[],
+  fullName: string,
+  houseBlock: string,
+  computedRegistryId?: string
+): T | undefined {
+  if (computedRegistryId) {
+    const byId = entries.find((e) => e.registryId === computedRegistryId);
+    if (byId) return byId;
+  }
+  const targetName = normalizeResidentName(fullName);
+  const targetBlock = normalizeHouseBlock(houseBlock);
+  if (!targetName || !targetBlock) return undefined;
+  return entries.find(
+    (e) =>
+      normalizeResidentName(e.fullName) === targetName &&
+      normalizeHouseBlock(e.houseBlock) === targetBlock
+  );
+}
+

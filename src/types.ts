@@ -1,5 +1,6 @@
 export type ResidentStatus = 'tetap' | 'kontrak' | 'pengurus';
 export type LoginRole = 'warga' | 'pengurus';
+export type VerificationStatus = 'verified' | 'pending' | 'rejected';
 export type PengurusPosition = 'ketua_rt' | 'sekretaris' | 'bendahara' | 'pengurus_lain';
 export type RbacPermission =
   | 'manage_residents'
@@ -69,6 +70,7 @@ export interface ResidentPublic {
   familyStatus?: FamilyStatus;
   familyStatusLog?: string[];
   lastPaidMonth?: string;
+  verificationStatus?: VerificationStatus;
   elderlyMode: boolean;
   communityId: string;
   createdAt?: unknown;
@@ -84,12 +86,26 @@ export interface ResidentRegistryEntry {
   permissions?: RbacPermission[];
   residentStatus: ResidentStatus;
   familyStatus: FamilyStatus;
+  verificationStatus?: VerificationStatus;
   claimedUid: string;
   claimedUsername?: string;
   communityId: string;
   createdBy: string;
   createdAt?: unknown;
   updatedAt?: unknown;
+}
+
+export interface VerifiedDatabaseCheckResult {
+  found: boolean;
+  verified: boolean;
+  verificationStatus?: VerificationStatus;
+  role?: LoginRole;
+  pengurusPosition?: PengurusPosition;
+  fullName?: string;
+  houseBlock?: string;
+  claimed?: boolean;
+  claimedUsername?: string;
+  message: string;
 }
 
 export interface UserAccountLookup {
