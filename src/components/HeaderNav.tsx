@@ -4,6 +4,7 @@ import {
   CheckCheck,
   RefreshCw,
   Settings,
+  Trash2,
   X,
 } from 'lucide-react';
 import type { AppTab, UserNotification } from '../types';
@@ -15,6 +16,7 @@ interface HeaderNavProps {
   notifications: UserNotification[];
   onMarkNotificationRead: (id: string) => Promise<void>;
   onMarkAllRead: () => Promise<void>;
+  onDeleteNotification?: (id: string) => Promise<void>;
   onOpenSettings: () => void;
   activeEmergencyCount: number;
   onSyncSheets?: () => void;
@@ -35,6 +37,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   notifications,
   onMarkNotificationRead,
   onMarkAllRead,
+  onDeleteNotification,
   onOpenSettings,
   activeEmergencyCount,
   onSyncSheets,
@@ -174,36 +177,51 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                 </div>
               ) : (
                 notifications.map((notif) => (
-                  <button
+                  <div
                     key={notif.id}
-                    type="button"
-                    onClick={() => void onMarkNotificationRead(notif.id)}
-                    className={`w-full text-left px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 cursor-pointer ${
+                    className={`px-5 py-4 transition-colors hover:bg-slate-50 dark:hover:bg-slate-800/60 flex items-start gap-2 ${
                       !notif.isRead ? 'bg-emerald-50/50 dark:bg-emerald-950/20' : ''
                     }`}
                   >
-                    <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span className="font-semibold text-slate-700 dark:text-slate-200">
-                        {notif.type === 'payment_approved'
-                          ? 'Pembayaran Disetujui'
-                          : notif.type === 'payment_rejected'
-                          ? 'Pembayaran Ditolak'
-                          : notif.type === 'payment_reminder'
-                          ? 'Pengingat Iuran'
-                          : notif.type === 'emergency'
-                          ? 'Sinyal Darurat'
-                          : 'Pengumuman RT'}
-                        {!notif.isRead ? ' · Baru' : ''}
-                      </span>
-                      <span className="tabular-nums">{formatTimestamp(notif.createdAt)}</span>
-                    </div>
-                    <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {notif.title}
-                    </p>
-                    <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
-                      {notif.message}
-                    </p>
-                  </button>
+                    <button
+                      type="button"
+                      onClick={() => void onMarkNotificationRead(notif.id)}
+                      className="flex-1 min-w-0 text-left cursor-pointer"
+                    >
+                      <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+                        <span className="font-semibold text-slate-700 dark:text-slate-200">
+                          {notif.type === 'payment_approved'
+                            ? 'Pembayaran Disetujui'
+                            : notif.type === 'payment_rejected'
+                            ? 'Pembayaran Ditolak'
+                            : notif.type === 'payment_reminder'
+                            ? 'Pengingat Iuran'
+                            : notif.type === 'emergency'
+                            ? 'Sinyal Darurat'
+                            : 'Pengumuman RT'}
+                          {!notif.isRead ? ' · Baru' : ''}
+                        </span>
+                        <span className="tabular-nums">{formatTimestamp(notif.createdAt)}</span>
+                      </div>
+                      <p className="mt-1 text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {notif.title}
+                      </p>
+                      <p className="mt-1 text-sm text-slate-600 dark:text-slate-300 leading-relaxed">
+                        {notif.message}
+                      </p>
+                    </button>
+                    {onDeleteNotification && (
+                      <button
+                        type="button"
+                        onClick={() => void onDeleteNotification(notif.id)}
+                        aria-label={`Hapus notifikasi ${notif.title}`}
+                        title="Hapus notifikasi"
+                        className="min-h-[36px] min-w-[36px] rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center shrink-0 cursor-pointer"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    )}
+                  </div>
                 ))
               )}
             </div>

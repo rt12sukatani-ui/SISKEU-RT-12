@@ -5,9 +5,11 @@ import {
   HeartPulse,
   Lock,
   MapPin,
+  Pencil,
   PhoneCall,
   ShieldAlert,
   Siren,
+  Trash2,
   Waves,
 } from 'lucide-react';
 import type {
@@ -37,6 +39,15 @@ interface EmergencyAndHealthViewProps {
     alert: EmergencyAlert,
     status: 'responding' | 'resolved'
   ) => Promise<void>;
+  onUpdateEmergencyDetails: (
+    alert: EmergencyAlert,
+    data: {
+      emergencyType: EmergencyType;
+      description: string;
+      locationText: string;
+    }
+  ) => Promise<void>;
+  onDeleteEmergency: (alert: EmergencyAlert) => Promise<void>;
   onSaveEncryptedHealthAndProfile: (
     nextProfile: PrivateProfileData,
     nextHealth: PrivateHealthData
@@ -64,6 +75,8 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
   healthProfile,
   onTriggerSOS,
   onUpdateEmergencyStatus,
+  onUpdateEmergencyDetails,
+  onDeleteEmergency,
   onSaveEncryptedHealthAndProfile,
 }) => {
   const [emergencyType, setEmergencyType] = useState<EmergencyType>('medis');
@@ -71,6 +84,12 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
   const [locationText, setLocationText] = useState(`${profile.houseBlock}`);
   const [sendingSos, setSendingSos] = useState(false);
   const [sosFeedback, setSosFeedback] = useState<string | null>(null);
+
+  const [editingAlertId, setEditingAlertId] = useState<string | null>(null);
+  const [editAlertType, setEditAlertType] = useState<EmergencyType>('medis');
+  const [editAlertLocation, setEditAlertLocation] = useState('');
+  const [editAlertDescription, setEditAlertDescription] = useState('');
+  const [savingAlertEdit, setSavingAlertEdit] = useState(false);
 
   // Encrypted profile & health form state
   const [phone, setPhone] = useState(privateProfile.phone);
@@ -313,73 +332,194 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                   Tidak ada laporan darurat aktif saat ini. Lingkungan terpantau aman.
                 </p>
               ) : (
-                emergencies.map((alert) => (
-                  <div key={alert.id} className="p-5 space-y-2">
-                    <div className="flex items-center justify-between gap-2 text-xs">
-                      <span
-                        className={`font-bold capitalize ${
-                          alert.status === 'resolved'
-                            ? 'text-emerald-700 dark:text-emerald-400'
-                            : 'text-red-600 dark:text-red-400'
-                        }`}
-                      >
-                        {alert.emergencyType} ·{' '}
-                        {alert.status === 'active'
-                          ? 'Darurat Aktif'
-                          : alert.status === 'responding'
-                          ? 'Sedang Ditangani'
-                          : 'Selesai'}
-                      </span>
-                      <span className="text-slate-500 dark:text-slate-400 tabular-nums">
-                        {formatTimestamp(alert.createdAt)}
-                      </span>
-                    </div>
+                emergencies.map((alert) => {
+                  const canEditOrDelete =
+                    !alert.isOfflinePending &&
+                    isOnline &&
+                    (canManageEmergencies || alert.reporterUid === profile.uid);
+                  const isEditingThisAlert = editingAlertId === alert.id;
 
-                    <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {alert.reporterName} ({alert.houseBlock})
-                    </p>
-                    <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
-                      {alert.description} · Lokasi: {alert.locationText || alert.houseBlock}
-                    </p>
-
-                    {alert.medicalSummary && (
-                      <div className="rounded-xl bg-slate-50 dark:bg-slate-800/70 p-3 text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
-                        <span className="font-bold">Info Medis Siaga:</span> {alert.medicalSummary}
-                        {alert.emergencyContact ? ` · Kontak Keluarga: ${alert.emergencyContact}` : ''}
+                  return (
+                    <div key={alert.id} className="p-5 space-y-2.5">
+                      <div className="flex items-center justify-between gap-2 text-xs">
+                        <span
+                          className={`font-bold capitalize ${
+                            alert.status === 'resolved'
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400'
+                          }`}
+                        >
+                          {alert.emergencyType} ·{' '}
+                          {alert.status === 'active'
+                            ? 'Darurat Aktif'
+                            : alert.status === 'responding'
+                            ? 'Sedang Ditangani'
+                            : 'Selesai'}
+                        </span>
+                        <div className="flex items-center gap-1.5">
+                          <span className="text-slate-500 dark:text-slate-400 tabular-nums">
+                            {formatTimestamp(alert.createdAt)}
+                          </span>
+                          {canEditOrDelete && alert.status !== 'resolved' && (
+                            <button
+                              type="button"
+                              onClick={() => {
+                                if (isEditingThisAlert) {
+                                  setEditingAlertId(null);
+                                } else {
+                                  setEditingAlertId(alert.id);
+                                  setEditAlertType(alert.emergencyType);
+                                  setEditAlertLocation(alert.locationText || alert.houseBlock);
+                                  setEditAlertDescription(alert.description || '');
+                                }
+                              }}
+                              aria-label="Edit detail laporan darurat"
+                              title="Edit detail laporan"
+                              className="min-h-[32px] min-w-[32px] rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                          {canEditOrDelete && (
+                            <button
+                              type="button"
+                              onClick={() => void onDeleteEmergency(alert)}
+                              aria-label="Hapus laporan darurat"
+                              title="Hapus laporan darurat"
+                              className="min-h-[32px] min-w-[32px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
                       </div>
-                    )}
 
-                    {alert.isOfflinePending && (
-                      <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
-                        Menunggu sinyal internet untuk kirim otomatis ke RT
+                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                        {alert.reporterName} ({alert.houseBlock})
                       </p>
-                    )}
 
-                    {alert.status !== 'resolved' && !alert.isOfflinePending && (
-                      <div className="pt-2 flex flex-wrap gap-2">
-                        {canManageEmergencies && alert.status === 'active' && (
-                          <button
-                            type="button"
-                            onClick={() => void onUpdateEmergencyStatus(alert, 'responding')}
-                            className="min-h-[40px] px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold cursor-pointer"
-                          >
-                            Tandai Sedang Ditangani
-                          </button>
-                        )}
-                        {(canManageEmergencies || alert.reporterUid === profile.uid) && (
-                          <button
-                            type="button"
-                            onClick={() => void onUpdateEmergencyStatus(alert, 'resolved')}
-                            className="min-h-[40px] px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
-                          >
-                            <CheckCircle2 className="w-3.5 h-3.5" />
-                            <span>Tandai Selesai</span>
-                          </button>
-                        )}
-                      </div>
-                    )}
-                  </div>
-                ))
+                      {isEditingThisAlert ? (
+                        <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 p-3.5 space-y-2.5">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                            <div>
+                              <label className="block text-[11px] font-semibold mb-1">
+                                Jenis Darurat
+                              </label>
+                              <select
+                                value={editAlertType}
+                                onChange={(e) =>
+                                  setEditAlertType(e.target.value as EmergencyType)
+                                }
+                                className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold"
+                              >
+                                {EMERGENCY_TYPES.map((t) => (
+                                  <option key={t.id} value={t.id}>
+                                    {t.label}
+                                  </option>
+                                ))}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold mb-1">
+                                Lokasi Kejadian
+                              </label>
+                              <input
+                                type="text"
+                                maxLength={150}
+                                value={editAlertLocation}
+                                onChange={(e) => setEditAlertLocation(e.target.value)}
+                                className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div>
+                            <label className="block text-[11px] font-semibold mb-1">
+                              Keterangan Darurat
+                            </label>
+                            <input
+                              type="text"
+                              maxLength={350}
+                              value={editAlertDescription}
+                              onChange={(e) => setEditAlertDescription(e.target.value)}
+                              className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                            />
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingAlertId(null)}
+                              className="min-h-[34px] px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              type="button"
+                              disabled={savingAlertEdit}
+                              onClick={async () => {
+                                setSavingAlertEdit(true);
+                                try {
+                                  await onUpdateEmergencyDetails(alert, {
+                                    emergencyType: editAlertType,
+                                    locationText: editAlertLocation.trim() || alert.houseBlock,
+                                    description:
+                                      editAlertDescription.trim() || alert.description || '',
+                                  });
+                                  setEditingAlertId(null);
+                                } finally {
+                                  setSavingAlertEdit(false);
+                                }
+                              }}
+                              className="min-h-[34px] px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+                            >
+                              {savingAlertEdit ? 'Menyimpan...' : 'Simpan'}
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                          {alert.description} · Lokasi: {alert.locationText || alert.houseBlock}
+                        </p>
+                      )}
+
+                      {alert.medicalSummary && (
+                        <div className="rounded-xl bg-slate-50 dark:bg-slate-800/70 p-3 text-xs text-slate-700 dark:text-slate-200 leading-relaxed">
+                          <span className="font-bold">Info Medis Siaga:</span> {alert.medicalSummary}
+                          {alert.emergencyContact ? ` · Kontak Keluarga: ${alert.emergencyContact}` : ''}
+                        </div>
+                      )}
+
+                      {alert.isOfflinePending && (
+                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400">
+                          Menunggu sinyal internet untuk kirim otomatis ke RT
+                        </p>
+                      )}
+
+                      {alert.status !== 'resolved' && !alert.isOfflinePending && (
+                        <div className="pt-2 flex flex-wrap gap-2">
+                          {canManageEmergencies && alert.status === 'active' && (
+                            <button
+                              type="button"
+                              onClick={() => void onUpdateEmergencyStatus(alert, 'responding')}
+                              className="min-h-[40px] px-3.5 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs font-semibold cursor-pointer"
+                            >
+                              Tandai Sedang Ditangani
+                            </button>
+                          )}
+                          {(canManageEmergencies || alert.reporterUid === profile.uid) && (
+                            <button
+                              type="button"
+                              onClick={() => void onUpdateEmergencyStatus(alert, 'resolved')}
+                              className="min-h-[40px] px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
+                            >
+                              <CheckCircle2 className="w-3.5 h-3.5" />
+                              <span>Tandai Selesai</span>
+                            </button>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  );
+                })
               )}
             </div>
           </div>

@@ -7,6 +7,7 @@ import {
   Copy,
   Database,
   Link2,
+  Pencil,
   RefreshCw,
   RotateCcw,
   Search,
@@ -66,6 +67,15 @@ interface ResidentRegistryModalProps {
     }>
   ) => Promise<number>;
   onSyncExistingResidents: () => Promise<number>;
+  onUpdateEntryDetails?: (
+    entry: ResidentRegistryEntry,
+    next: {
+      fullName: string;
+      houseBlock: string;
+      residentStatus: ResidentStatus;
+      familyStatus: FamilyStatus;
+    }
+  ) => Promise<void>;
   onUpdateRbac: (
     entry: ResidentRegistryEntry,
     next: {
@@ -102,6 +112,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   onAddEntry,
   onBulkImport,
   onSyncExistingResidents,
+  onUpdateEntryDetails,
   onUpdateRbac,
   onResetClaim,
   onDeleteEntry,
@@ -123,6 +134,13 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   const [editRole, setEditRole] = useState<LoginRole>('warga');
   const [editPosition, setEditPosition] = useState<PengurusPosition>('pengurus_lain');
   const [editPermissions, setEditPermissions] = useState<RbacPermission[]>([]);
+
+  // Inline Resident Details Editor state per row
+  const [editingDetailsId, setEditingDetailsId] = useState<string | null>(null);
+  const [editFullName, setEditFullName] = useState('');
+  const [editHouseBlock, setEditHouseBlock] = useState('');
+  const [editResidentStatus, setEditResidentStatus] = useState<ResidentStatus>('tetap');
+  const [editFamilyStatus, setEditFamilyStatus] = useState<FamilyStatus>('umum');
 
   const [showBulkImport, setShowBulkImport] = useState(false);
   const [bulkText, setBulkText] = useState('');
@@ -307,6 +325,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   };
 
   const startEditRbac = (entry: ResidentRegistryEntry) => {
+    setEditingDetailsId(null);
     if (editingEntryId === entry.registryId) {
       setEditingEntryId(null);
       return;
@@ -320,6 +339,42 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
         ? normalizePengurusPermissions(pos, entry.permissions)
         : [...DEFAULT_PERMISSIONS_BY_POSITION.pengurus_lain]
     );
+  };
+
+  const startEditDetails = (entry: ResidentRegistryEntry) => {
+    setEditingEntryId(null);
+    if (editingDetailsId === entry.registryId) {
+      setEditingDetailsId(null);
+      return;
+    }
+    setEditingDetailsId(entry.registryId);
+    setEditFullName(entry.fullName);
+    setEditHouseBlock(entry.houseBlock);
+    setEditResidentStatus(entry.residentStatus);
+    setEditFamilyStatus(entry.familyStatus);
+  };
+
+  const handleSaveInlineDetails = async (entry: ResidentRegistryEntry) => {
+    if (!onUpdateEntryDetails || !editFullName.trim() || !editHouseBlock.trim()) return;
+    setBusy(true);
+    setFeedback(null);
+    setErrorMsg(null);
+    try {
+      await onUpdateEntryDetails(entry, {
+        fullName: editFullName.trim(),
+        houseBlock: editHouseBlock.trim(),
+        residentStatus: entry.role === 'pengurus' ? 'pengurus' : editResidentStatus,
+        familyStatus: editFamilyStatus,
+      });
+      setEditingDetailsId(null);
+      setFeedback(
+        `Data "${editFullName.trim()}" (${editHouseBlock.trim()}) berhasil diperbarui di Database Warga.`
+      );
+    } catch (err) {
+      setErrorMsg(err instanceof Error ? err.message : 'Gagal memperbarui data warga.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleSaveInlineRbac = async (entry: ResidentRegistryEntry) => {
@@ -729,6 +784,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                     ? normalizePengurusPermissions(pos, entry.permissions)
                     : [];
                   const isEditingThis = editingEntryId === entry.registryId;
+                  const isEditingDetailsThis = editingDetailsId === entry.registryId;
                   const canEditEntryRow =
                     canManageRbac || entry.role === 'warga';
                   const isSelf = Boolean(currentUserUid && entry.claimedUid === currentUserUid);
@@ -890,6 +946,23 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                             </>
                           )}
 
+                          {canEditEntryRow && onUpdateEntryDetails && (
+                            <button
+                              type="button"
+                              disabled={busy}
+                              onClick={() => startEditDetails(entry)}
+                              aria-label={`Edit data ${entry.fullName}`}
+                              className={`min-h-[36px] px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 cursor-pointer ${
+                                isEditingDetailsThis
+                                  ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
+                                  : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+                              }`}
+                            >
+                              <Pencil className="w-3.5 h-3.5" />
+                              <span>Edit</span>
+                            </button>
+                          )}
+
                           {canManageRbac && (
                             <button
                               type="button"
@@ -932,6 +1005,91 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                           )}
                         </div>
                       </div>
+
+                      {/* Inline Resident Details Editor */}
+                      {canEditEntryRow && isEditingDetailsThis && onUpdateEntryDetails && (
+                        <div className="rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 p-3.5 space-y-3">
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold mb-1">
+                                Nama Lengkap
+                              </label>
+                              <input
+                                type="text"
+                                maxLength={75}
+                                value={editFullName}
+                                onChange={(e) => setEditFullName(e.target.value)}
+                                className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                              />
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold mb-1">
+                                Blok Rumah
+                              </label>
+                              <input
+                                type="text"
+                                maxLength={25}
+                                value={editHouseBlock}
+                                onChange={(e) => setEditHouseBlock(e.target.value)}
+                                className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                              />
+                            </div>
+                          </div>
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                            <div>
+                              <label className="block text-[11px] font-semibold mb-1">
+                                Status Hunian
+                              </label>
+                              <select
+                                value={entry.role === 'pengurus' ? 'pengurus' : editResidentStatus}
+                                disabled={entry.role === 'pengurus'}
+                                onChange={(e) =>
+                                  setEditResidentStatus(e.target.value as ResidentStatus)
+                                }
+                                className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
+                              >
+                                <option value="tetap">Warga Tetap</option>
+                                <option value="kontrak">Warga Kontrak</option>
+                                {entry.role === 'pengurus' && (
+                                  <option value="pengurus">Pengurus</option>
+                                )}
+                              </select>
+                            </div>
+                            <div>
+                              <label className="block text-[11px] font-semibold mb-1">
+                                Status Keluarga (Tarif)
+                              </label>
+                              <select
+                                value={editFamilyStatus}
+                                onChange={(e) =>
+                                  setEditFamilyStatus(e.target.value as FamilyStatus)
+                                }
+                                className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                              >
+                                <option value="umum">Umum (Suami Istri)</option>
+                                <option value="khusus">Khusus (Ortu Tunggal)</option>
+                              </select>
+                            </div>
+                          </div>
+                          <div className="flex justify-end gap-2">
+                            <button
+                              type="button"
+                              onClick={() => setEditingDetailsId(null)}
+                              className="min-h-[34px] px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                            >
+                              Batal
+                            </button>
+                            <button
+                              type="button"
+                              disabled={busy || !editFullName.trim() || !editHouseBlock.trim()}
+                              onClick={() => void handleSaveInlineDetails(entry)}
+                              className="min-h-[34px] px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+                            >
+                              {busy ? 'Menyimpan...' : 'Simpan Data'}
+                            </button>
+                          </div>
+                        </div>
+                      )}
 
                       {/* Inline RBAC Editor (Ketua RT / Full Admin only) */}
                       {canManageRbac && isEditingThis && (

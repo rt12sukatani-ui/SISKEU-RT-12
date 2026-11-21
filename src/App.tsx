@@ -104,6 +104,8 @@ import type {
   SheetConnection,
   SheetDbInfo,
   TransactionCategory,
+  TransactionStatus,
+  TransactionType,
   UserAccountLookup,
   UserNotification,
   VerificationStatus,
@@ -2464,6 +2466,124 @@ export default function App() {
     }
   };
 
+  const handleUpdateTransaction = async (
+    tx: KasTransaction,
+    data: {
+      type?: TransactionType;
+      category?: TransactionCategory;
+      title: string;
+      amount: number;
+      billingMonth: string;
+      paymentMethod: PaymentMethod;
+      proofImageData?: string;
+      status?: TransactionStatus;
+      rejectionReason?: string;
+      notes: string;
+    }
+  ) => {
+    if (!currentUser) return;
+    const isAdminEditor = rbac.canManageKas;
+    const isOwnerEditable =
+      tx.residentUid === currentUser.uid &&
+      (tx.status === 'pending' || tx.status === 'rejected');
+    if (!isAdminEditor && !isOwnerEditable) return;
+
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
+
+    const nextType: TransactionType = isAdminEditor && data.type ? data.type : tx.type;
+    const nextCategory: TransactionCategory =
+      isAdminEditor && data.category ? data.category : tx.category;
+    const nextStatus: TransactionStatus = isAdminEditor
+      ? data.status || tx.status
+      : 'pending';
+    const nextRejectionReason =
+      nextStatus === 'rejected' ? (data.rejectionReason || '').slice(0, 200) : '';
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Perbarui Transaksi Kas di Google Spreadsheet',
+      description: `Simpan perubahan pada transaksi "${data.title}" (${formatRupiah(
+        data.amount
+      )}) di Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
+      details: [
+        `Tab: ${SHEET_TABS.TRANSACTIONS}`,
+        `Bulan: ${data.billingMonth} · Status: ${nextStatus}`,
+      ],
+      confirmLabel: 'Simpan Perubahan',
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      const nowIso = new Date().toISOString();
+      const updatedTx: KasTransaction = {
+        ...tx,
+        type: nextType,
+        category: nextCategory,
+        title: data.title.trim().slice(0, 120),
+        amount: data.amount,
+        billingMonth: data.billingMonth,
+        paymentMethod: data.paymentMethod,
+        proofImageData:
+          data.proofImageData !== undefined ? data.proofImageData : tx.proofImageData || '',
+        status: nextStatus,
+        rejectionReason: nextRejectionReason,
+        verifiedBy: isAdminEditor
+          ? nextStatus === 'pending'
+            ? ''
+            : tx.verifiedBy || currentUser.uid
+          : '',
+        notes: data.notes.trim().slice(0, 300),
+        updatedAt: nowIso,
+      };
+      await upsertSheetRowsByKey(conn, SHEET_TABS.TRANSACTIONS, [
+        transactionToRow(updatedTx),
+      ]);
+      await refreshSpreadsheetData(conn, true);
+      showToast('Transaksi Diperbarui', `Data "${updatedTx.title}" berhasil diperbarui.`);
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+      else throw err;
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
+  const handleDeleteTransaction = async (tx: KasTransaction) => {
+    if (!currentUser) return;
+    const isAdminEditor = rbac.canManageKas;
+    const isOwnerDeletable =
+      tx.residentUid === currentUser.uid &&
+      (tx.status === 'pending' || tx.status === 'rejected');
+    if (!isAdminEditor && !isOwnerDeletable) return;
+
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Hapus Transaksi Kas dari Google Spreadsheet',
+      description: `Anda yakin ingin menghapus transaksi "${tx.title}" (${tx.residentName} · ${formatRupiah(
+        tx.amount
+      )}) secara permanen dari Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
+      details: [`Tab: ${SHEET_TABS.TRANSACTIONS}`, `ID: ${tx.id}`],
+      confirmLabel: 'Ya, Hapus Transaksi',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      await deleteSheetRowsByKey(conn, SHEET_TABS.TRANSACTIONS, [tx.id]);
+      await refreshSpreadsheetData(conn, true);
+      showToast('Transaksi Dihapus', `Transaksi "${tx.title}" telah dihapus.`);
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+      else throw err;
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
   const handleSendPaymentReminders = async (
     unpaidResidents: ResidentPublic[],
     yearMonth: string
@@ -2556,6 +2676,50 @@ export default function App() {
       };
       await appendSheetRows(conn, SHEET_TABS.ANNOUNCEMENTS, [announcementToRow(ann)]);
       await refreshSpreadsheetData(conn, true);
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+      else throw err;
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
+  const handleUpdateAnnouncement = async (
+    ann: Announcement,
+    data: {
+      title: string;
+      body: string;
+      category: AnnouncementCategory;
+      priority: 'normal' | 'urgent';
+    }
+  ) => {
+    if (!currentUser || !rbac.canManageAnnouncements) return;
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Perbarui Pengumuman di Google Spreadsheet',
+      description: `Simpan perubahan pengumuman "${data.title}" (${data.priority.toUpperCase()}) di Google Spreadsheet "${
+        sheetInfo.spreadsheetTitle
+      }"?`,
+      details: [`Tab: ${SHEET_TABS.ANNOUNCEMENTS}`],
+      confirmLabel: 'Simpan Perubahan',
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      const updated: Announcement = {
+        ...ann,
+        title: data.title.trim().slice(0, 120),
+        body: data.body.trim().slice(0, 1000),
+        category: data.category,
+        priority: data.priority,
+        updatedAt: new Date().toISOString(),
+      };
+      await upsertSheetRowsByKey(conn, SHEET_TABS.ANNOUNCEMENTS, [announcementToRow(updated)]);
+      await refreshSpreadsheetData(conn, true);
+      showToast('Pengumuman Diperbarui', `"${updated.title}" berhasil diperbarui.`);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2700,6 +2864,77 @@ export default function App() {
       };
       await upsertSheetRowsByKey(conn, SHEET_TABS.EMERGENCIES, [emergencyToRow(updated)]);
       await refreshSpreadsheetData(conn, true);
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+      else throw err;
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
+  const handleUpdateEmergencyDetails = async (
+    alert: EmergencyAlert,
+    data: {
+      emergencyType: EmergencyType;
+      description: string;
+      locationText: string;
+    }
+  ) => {
+    if (!currentUser) return;
+    if (!rbac.canManageEmergencies && alert.reporterUid !== currentUser.uid) return;
+    const conn = requireActiveSheet();
+    if (!conn) return;
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Perbarui Detail Laporan Darurat di Spreadsheet',
+      description: `Simpan perubahan laporan darurat (${data.emergencyType.toUpperCase()}) dari ${
+        alert.reporterName
+      } (${alert.houseBlock}) ke Google Spreadsheet?`,
+      details: [`Tab: ${SHEET_TABS.EMERGENCIES}`],
+      confirmLabel: 'Simpan Perubahan',
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      const updated: EmergencyAlert = {
+        ...alert,
+        emergencyType: data.emergencyType,
+        description: data.description.trim().slice(0, 400),
+        locationText: data.locationText.trim().slice(0, 160),
+        updatedAt: new Date().toISOString(),
+      };
+      await upsertSheetRowsByKey(conn, SHEET_TABS.EMERGENCIES, [emergencyToRow(updated)]);
+      await refreshSpreadsheetData(conn, true);
+      showToast('Laporan Darurat Diperbarui', 'Detail laporan darurat berhasil diperbarui.');
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+      else throw err;
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
+  const handleDeleteEmergency = async (alert: EmergencyAlert) => {
+    if (!currentUser) return;
+    if (!rbac.canManageEmergencies && alert.reporterUid !== currentUser.uid) return;
+    const conn = requireActiveSheet();
+    if (!conn) return;
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Hapus Laporan Darurat dari Google Spreadsheet',
+      description: `Anda yakin ingin menghapus laporan darurat "${alert.reporterName} (${alert.houseBlock})" secara permanen dari Google Spreadsheet?`,
+      details: [`Tab: ${SHEET_TABS.EMERGENCIES}`],
+      confirmLabel: 'Ya, Hapus Laporan',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      await deleteSheetRowsByKey(conn, SHEET_TABS.EMERGENCIES, [alert.id]);
+      await refreshSpreadsheetData(conn, true);
+      showToast('Laporan Darurat Dihapus', 'Riwayat laporan darurat telah dihapus.');
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -3379,6 +3614,110 @@ export default function App() {
     }
   };
 
+  const handleUpdateRegistryDetails = async (
+    entry: ResidentRegistryEntry,
+    next: {
+      fullName: string;
+      houseBlock: string;
+      residentStatus: ResidentStatus;
+      familyStatus: FamilyStatus;
+    }
+  ) => {
+    if (!rbac.canManageResidents) return;
+    if (!rbac.isFullAdmin && entry.role === 'pengurus') return;
+    const conn = requireActiveSheet();
+    if (!conn) return;
+
+    const trimmedName = next.fullName.trim().slice(0, 80);
+    const trimmedBlock = next.houseBlock.trim().slice(0, 30);
+    if (!trimmedName || !trimmedBlock) return;
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Perbarui Data Warga di Google Spreadsheet',
+      description: `Simpan perubahan data "${trimmedName}" (${trimmedBlock}) ke Database Warga di Google Spreadsheet?`,
+      details: [
+        `Tab: ${SHEET_TABS.RESIDENT_REGISTRY}${
+          entry.claimedUid
+            ? `, ${SHEET_TABS.USERS}${entry.role === 'pengurus' ? `, ${SHEET_TABS.ADMINS}` : ''}`
+            : ''
+        }`,
+      ],
+      confirmLabel: 'Simpan Perubahan',
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      const nowIso = new Date().toISOString();
+      const updatedReg: ResidentRegistryEntry = {
+        ...entry,
+        fullName: trimmedName,
+        houseBlock: trimmedBlock,
+        residentStatus: entry.role === 'pengurus' ? 'pengurus' : next.residentStatus,
+        familyStatus: next.familyStatus,
+        updatedAt: nowIso,
+      };
+      await upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
+        registryEntryToRow(updatedReg),
+      ]);
+
+      if (entry.claimedUid) {
+        const claimedProfile = residents.find((r) => r.uid === entry.claimedUid);
+        if (claimedProfile) {
+          const prevFam: FamilyStatus = claimedProfile.familyStatus || 'umum';
+          let nextFamLog = claimedProfile.familyStatusLog;
+          if (next.familyStatus !== prevFam) {
+            const effMonth = getEffectiveFamilyStatusChangeMonth(
+              transactions,
+              claimedProfile.uid
+            );
+            nextFamLog = buildUpdatedFamilyStatusLog(
+              claimedProfile,
+              next.familyStatus,
+              effMonth
+            );
+          }
+          const updatedProf: ResidentPublic = {
+            ...claimedProfile,
+            displayName: trimmedName,
+            houseBlock: trimmedBlock,
+            residentStatus: entry.role === 'pengurus' ? 'pengurus' : next.residentStatus,
+            familyStatus: next.familyStatus,
+            familyStatusLog: nextFamLog,
+            updatedAt: nowIso,
+          };
+          await upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [
+            userProfileToRow(updatedProf),
+          ]);
+          if (claimedProfile.uid === currentUser?.uid) {
+            setProfile(updatedProf);
+          }
+        }
+
+        if (entry.role === 'pengurus') {
+          const existingAdm = adminRecords.find((a) => a.uid === entry.claimedUid);
+          if (existingAdm) {
+            const nextAdm: AdminRoleRecord = {
+              ...existingAdm,
+              name: trimmedName,
+            };
+            await upsertSheetRowsByKey(conn, SHEET_TABS.ADMINS, [adminRecordToRow(nextAdm)]);
+            if (existingAdm.uid === currentUser?.uid) {
+              setAdminRecord(nextAdm);
+            }
+          }
+        }
+      }
+
+      await refreshSpreadsheetData(conn, true);
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+      else throw err;
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
   const handleResetRegistryClaim = async (entry: ResidentRegistryEntry) => {
     const conn = requireActiveSheet();
     if (!conn) return;
@@ -3563,6 +3902,32 @@ export default function App() {
     }
   };
 
+  const handleDeleteNotification = async (id: string) => {
+    const conn = requireActiveSheet();
+    if (!conn) return;
+    const target = allNotifications.find((n) => n.id === id);
+    if (!target || (currentUser && target.targetUid !== currentUser.uid)) return;
+
+    const confirmed = await requestSheetConfirmation({
+      title: 'Hapus Notifikasi dari Google Spreadsheet',
+      description: `Hapus notifikasi "${target.title}" secara permanen dari Google Spreadsheet?`,
+      details: [`Tab: ${SHEET_TABS.NOTIFICATIONS}`],
+      confirmLabel: 'Hapus Notifikasi',
+      destructive: true,
+    });
+    if (!confirmed) return;
+
+    isMutatingRef.current = true;
+    try {
+      await deleteSheetRowsByKey(conn, SHEET_TABS.NOTIFICATIONS, [id]);
+      await refreshSpreadsheetData(conn, true);
+    } catch (err) {
+      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
+    } finally {
+      isMutatingRef.current = false;
+    }
+  };
+
   if (!authReady) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 p-6">
@@ -3659,6 +4024,7 @@ export default function App() {
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
                 onMarkAllRead={handleMarkAllRead}
+                onDeleteNotification={handleDeleteNotification}
                 onOpenSettings={() => setSettingsOpen(true)}
                 activeEmergencyCount={activeEmergencyCount}
                 onSyncSheets={() => void refreshSpreadsheetData(undefined, false)}
@@ -3861,6 +4227,8 @@ export default function App() {
                       onSubmitDues={handleSubmitDues}
                       onAdminCreateTransaction={handleAdminCreateTransaction}
                       onAdminVerifyTransaction={handleAdminVerifyTransaction}
+                      onUpdateTransaction={handleUpdateTransaction}
+                      onDeleteTransaction={handleDeleteTransaction}
                     />
                   )}
 
@@ -3881,6 +4249,7 @@ export default function App() {
                       canManageAnnouncements={rbac.canManageAnnouncements}
                       announcements={announcements}
                       onPublishAnnouncement={handlePublishAnnouncement}
+                      onUpdateAnnouncement={handleUpdateAnnouncement}
                       onDeleteAnnouncement={handleDeleteAnnouncement}
                     />
                   )}
@@ -3896,6 +4265,8 @@ export default function App() {
                       healthProfile={healthProfile}
                       onTriggerSOS={handleTriggerSOS}
                       onUpdateEmergencyStatus={handleUpdateEmergencyStatus}
+                      onUpdateEmergencyDetails={handleUpdateEmergencyDetails}
+                      onDeleteEmergency={handleDeleteEmergency}
                       onSaveEncryptedHealthAndProfile={handleSaveEncryptedHealthAndProfile}
                     />
                   )}
@@ -3969,6 +4340,7 @@ export default function App() {
                   onAddEntry={handleAddRegistryEntry}
                   onBulkImport={handleBulkImportRegistry}
                   onSyncExistingResidents={handleSyncExistingResidentsToRegistry}
+                  onUpdateEntryDetails={handleUpdateRegistryDetails}
                   onUpdateRbac={handleUpdateRegistryRbac}
                   onSetVerificationStatus={handleSetRegistryVerification}
                   onResetClaim={handleResetRegistryClaim}
