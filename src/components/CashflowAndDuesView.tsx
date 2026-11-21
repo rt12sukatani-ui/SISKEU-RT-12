@@ -7,10 +7,8 @@ import {
   Clock,
   Copy,
   Eye,
-  Pencil,
   Plus,
   Search,
-  Trash2,
   Wallet,
   X,
   XCircle,
@@ -22,8 +20,6 @@ import type {
   ResidentPublic,
   RtSettings,
   TransactionCategory,
-  TransactionStatus,
-  TransactionType,
 } from '../types';
 import {
   calculateResidentLedger,
@@ -68,22 +64,6 @@ interface CashflowAndDuesViewProps {
     decision: 'approved' | 'rejected',
     rejectionReason?: string
   ) => Promise<void>;
-  onUpdateTransaction: (
-    tx: KasTransaction,
-    data: {
-      type?: TransactionType;
-      category?: TransactionCategory;
-      title: string;
-      amount: number;
-      billingMonth: string;
-      paymentMethod: PaymentMethod;
-      proofImageData?: string;
-      status?: TransactionStatus;
-      rejectionReason?: string;
-      notes: string;
-    }
-  ) => Promise<void>;
-  onDeleteTransaction: (tx: KasTransaction) => Promise<void>;
 }
 
 export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
@@ -98,8 +78,6 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   onSubmitDues,
   onAdminCreateTransaction,
   onAdminVerifyTransaction,
-  onUpdateTransaction,
-  onDeleteTransaction,
 }) => {
   const currentMonth = getCurrentYearMonth();
   const myDuesSummary = getResidentMonthDuesSummary(profile, transactions, currentMonth);
@@ -147,20 +125,6 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   const [adminMonth, setAdminMonth] = useState(getCurrentYearMonth());
   const [adminMethod, setAdminMethod] = useState<PaymentMethod>('tunai');
   const [adminNotes, setAdminNotes] = useState('');
-
-  // Edit transaction modal state
-  const [editingTx, setEditingTx] = useState<KasTransaction | null>(null);
-  const [editType, setEditType] = useState<TransactionType>('income');
-  const [editCategory, setEditCategory] = useState<TransactionCategory>('iuran_bulanan');
-  const [editTitle, setEditTitle] = useState('');
-  const [editAmount, setEditAmount] = useState('');
-  const [editBillingMonth, setEditBillingMonth] = useState(currentMonth);
-  const [editPaymentMethod, setEditPaymentMethod] = useState<PaymentMethod>('transfer');
-  const [editProofImageData, setEditProofImageData] = useState('');
-  const [editStatus, setEditStatus] = useState<TransactionStatus>('pending');
-  const [editRejectReason, setEditRejectReason] = useState('');
-  const [editNotes, setEditNotes] = useState('');
-  const [editError, setEditError] = useState<string | null>(null);
 
   const pendingList = transactions.filter((t) => t.status === 'pending');
 
@@ -285,71 +249,6 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       setAdminAmount('');
       setAdminNotes('');
       setShowAdminEntryForm(false);
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const openEditModal = (tx: KasTransaction) => {
-    setEditingTx(tx);
-    setEditType(tx.type);
-    setEditCategory(tx.category);
-    setEditTitle(tx.title);
-    setEditAmount(String(tx.amount));
-    setEditBillingMonth(tx.billingMonth || currentMonth);
-    setEditPaymentMethod(tx.paymentMethod);
-    setEditProofImageData(tx.proofImageData || '');
-    setEditStatus(tx.status);
-    setEditRejectReason(tx.rejectionReason || '');
-    setEditNotes(tx.notes || '');
-    setEditError(null);
-  };
-
-  const handleEditProofFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-    setEditError(null);
-    try {
-      const compressed = await compressProofImage(file);
-      setEditProofImageData(compressed);
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Gagal memproses foto bukti.');
-    }
-  };
-
-  const handleEditSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!editingTx) return;
-    setEditError(null);
-    const numAmount = Number(editAmount);
-    if (!editTitle.trim() || !numAmount || numAmount <= 0) {
-      setEditError('Judul transaksi dan nominal yang valid wajib diisi.');
-      return;
-    }
-    if (
-      !canManageKas &&
-      editPaymentMethod !== 'tunai' &&
-      !editProofImageData
-    ) {
-      setEditError('Bukti transfer/QRIS wajib dilampirkan.');
-      return;
-    }
-
-    setSubmitting(true);
-    try {
-      await onUpdateTransaction(editingTx, {
-        ...(canManageKas ? { type: editType, category: editCategory, status: editStatus } : {}),
-        title: editTitle.trim(),
-        amount: numAmount,
-        billingMonth: editBillingMonth,
-        paymentMethod: editPaymentMethod,
-        proofImageData: editProofImageData,
-        rejectionReason: editRejectReason.trim(),
-        notes: editNotes.trim(),
-      });
-      setEditingTx(null);
-    } catch (err) {
-      setEditError(err instanceof Error ? err.message : 'Gagal memperbarui transaksi.');
     } finally {
       setSubmitting(false);
     }
@@ -1091,33 +990,6 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                           : 'Disetujui'}
                       </p>
                     </div>
-
-                    {!tx.isOfflinePending &&
-                      isOnline &&
-                      (canManageKas ||
-                        (tx.residentUid === profile.uid &&
-                          (tx.status === 'pending' || tx.status === 'rejected'))) && (
-                        <div className="flex items-center gap-1.5 shrink-0">
-                          <button
-                            type="button"
-                            onClick={() => openEditModal(tx)}
-                            aria-label={`Edit ${tx.title}`}
-                            title="Edit transaksi"
-                            className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
-                          >
-                            <Pencil className="w-4 h-4" />
-                          </button>
-                          <button
-                            type="button"
-                            onClick={() => void onDeleteTransaction(tx)}
-                            aria-label={`Hapus ${tx.title}`}
-                            title="Hapus transaksi"
-                            className="min-h-[44px] min-w-[44px] rounded-xl border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      )}
                   </div>
                 </div>
               );
@@ -1204,217 +1076,6 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               </button>
             </div>
           </div>
-        </div>
-      )}
-
-      {/* Edit Transaction Modal */}
-      {editingTx && (
-        <div
-          role="dialog"
-          aria-modal="true"
-          aria-label="Edit Transaksi Kas"
-          onClick={() => {
-            if (!submitting) setEditingTx(null);
-          }}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
-        >
-          <form
-            onClick={(e) => e.stopPropagation()}
-            onSubmit={(e) => void handleEditSubmit(e)}
-            className="max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 pb-safe space-y-4 shadow-2xl"
-          >
-            <div className="flex items-center justify-between gap-3">
-              <div>
-                <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                  Edit Transaksi Kas
-                </h3>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                  {editingTx.residentName} · {editingTx.houseBlock}
-                </p>
-              </div>
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => setEditingTx(null)}
-                className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-
-            {editError && (
-              <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3 text-xs font-medium text-red-700 dark:text-red-300">
-                {editError}
-              </div>
-            )}
-
-            {canManageKas && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Jenis</label>
-                  <select
-                    value={editType}
-                    onChange={(e) => setEditType(e.target.value as TransactionType)}
-                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                  >
-                    <option value="income">Pemasukan</option>
-                    <option value="expense">Pengeluaran</option>
-                  </select>
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Kategori</label>
-                  <select
-                    value={editCategory}
-                    onChange={(e) => setEditCategory(e.target.value as TransactionCategory)}
-                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                  >
-                    {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
-                      <option key={k} value={k}>
-                        {label}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold mb-1">Judul / Keterangan</label>
-              <input
-                type="text"
-                required
-                maxLength={110}
-                value={editTitle}
-                onChange={(e) => setEditTitle(e.target.value)}
-                className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <div>
-                <label className="block text-xs font-semibold mb-1">Nominal (Rp)</label>
-                <input
-                  type="number"
-                  required
-                  min={1000}
-                  step={1000}
-                  value={editAmount}
-                  onChange={(e) => setEditAmount(e.target.value)}
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-mono-num"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1">Bulan Buku/Tagihan</label>
-                <input
-                  type="month"
-                  required
-                  value={editBillingMonth}
-                  onChange={(e) => setEditBillingMonth(e.target.value)}
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-semibold mb-1">Metode</label>
-                <select
-                  value={editPaymentMethod}
-                  onChange={(e) => setEditPaymentMethod(e.target.value as PaymentMethod)}
-                  className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                >
-                  <option value="transfer">Transfer Bank</option>
-                  <option value="qris">QRIS</option>
-                  <option value="tunai">Tunai</option>
-                </select>
-              </div>
-            </div>
-
-            {canManageKas && (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                <div>
-                  <label className="block text-xs font-semibold mb-1">Status Verifikasi</label>
-                  <select
-                    value={editStatus}
-                    onChange={(e) => setEditStatus(e.target.value as TransactionStatus)}
-                    className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                  >
-                    <option value="approved">Disetujui</option>
-                    <option value="pending">Menunggu Verifikasi</option>
-                    <option value="kurang_bayar">Kurang Bayar</option>
-                    <option value="rejected">Ditolak</option>
-                  </select>
-                </div>
-                {editStatus === 'rejected' && (
-                  <div>
-                    <label className="block text-xs font-semibold mb-1">Alasan Penolakan</label>
-                    <input
-                      type="text"
-                      maxLength={180}
-                      value={editRejectReason}
-                      onChange={(e) => setEditRejectReason(e.target.value)}
-                      placeholder="Alasan penolakan..."
-                      className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-
-            {!canManageKas && (
-              <div>
-                <label className="block text-xs font-semibold mb-1">
-                  Foto Bukti Pembayaran
-                </label>
-                <div className="flex items-center gap-3">
-                  <label className="min-h-[42px] px-3.5 rounded-xl border border-dashed border-emerald-600 text-emerald-700 dark:text-emerald-300 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer">
-                    <Camera className="w-4 h-4" />
-                    <span>{editProofImageData ? 'Ganti Foto Bukti' : 'Unggah Foto Bukti'}</span>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => void handleEditProofFileChange(e)}
-                      className="hidden"
-                    />
-                  </label>
-                  {editProofImageData && (
-                    <img
-                      src={editProofImageData}
-                      alt="Pratinjau bukti edit"
-                      className="w-12 h-12 rounded-xl object-cover border border-slate-200 dark:border-slate-700"
-                    />
-                  )}
-                </div>
-              </div>
-            )}
-
-            <div>
-              <label className="block text-xs font-semibold mb-1">Catatan (Opsional)</label>
-              <input
-                type="text"
-                maxLength={250}
-                value={editNotes}
-                onChange={(e) => setEditNotes(e.target.value)}
-                placeholder="Catatan tambahan..."
-                className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              />
-            </div>
-
-            <div className="flex justify-end gap-2.5 pt-2">
-              <button
-                type="button"
-                disabled={submitting}
-                onClick={() => setEditingTx(null)}
-                className="min-h-[44px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold cursor-pointer"
-              >
-                Batal
-              </button>
-              <button
-                type="submit"
-                disabled={submitting}
-                className="min-h-[44px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-sm font-bold cursor-pointer"
-              >
-                {submitting ? 'Menyimpan...' : 'Simpan Perubahan'}
-              </button>
-            </div>
-          </form>
         </div>
       )}
     </div>

@@ -2466,124 +2466,6 @@ export default function App() {
     }
   };
 
-  const handleUpdateTransaction = async (
-    tx: KasTransaction,
-    data: {
-      type?: TransactionType;
-      category?: TransactionCategory;
-      title: string;
-      amount: number;
-      billingMonth: string;
-      paymentMethod: PaymentMethod;
-      proofImageData?: string;
-      status?: TransactionStatus;
-      rejectionReason?: string;
-      notes: string;
-    }
-  ) => {
-    if (!currentUser) return;
-    const isAdminEditor = rbac.canManageKas;
-    const isOwnerEditable =
-      tx.residentUid === currentUser.uid &&
-      (tx.status === 'pending' || tx.status === 'rejected');
-    if (!isAdminEditor && !isOwnerEditable) return;
-
-    const conn = requireActiveSheet();
-    if (!conn || !sheetInfo) return;
-
-    const nextType: TransactionType = isAdminEditor && data.type ? data.type : tx.type;
-    const nextCategory: TransactionCategory =
-      isAdminEditor && data.category ? data.category : tx.category;
-    const nextStatus: TransactionStatus = isAdminEditor
-      ? data.status || tx.status
-      : 'pending';
-    const nextRejectionReason =
-      nextStatus === 'rejected' ? (data.rejectionReason || '').slice(0, 200) : '';
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Transaksi Kas di Google Spreadsheet',
-      description: `Simpan perubahan pada transaksi "${data.title}" (${formatRupiah(
-        data.amount
-      )}) di Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [
-        `Tab: ${SHEET_TABS.TRANSACTIONS}`,
-        `Bulan: ${data.billingMonth} · Status: ${nextStatus}`,
-      ],
-      confirmLabel: 'Simpan Perubahan',
-    });
-    if (!confirmed) return;
-
-    isMutatingRef.current = true;
-    try {
-      const nowIso = new Date().toISOString();
-      const updatedTx: KasTransaction = {
-        ...tx,
-        type: nextType,
-        category: nextCategory,
-        title: data.title.trim().slice(0, 120),
-        amount: data.amount,
-        billingMonth: data.billingMonth,
-        paymentMethod: data.paymentMethod,
-        proofImageData:
-          data.proofImageData !== undefined ? data.proofImageData : tx.proofImageData || '',
-        status: nextStatus,
-        rejectionReason: nextRejectionReason,
-        verifiedBy: isAdminEditor
-          ? nextStatus === 'pending'
-            ? ''
-            : tx.verifiedBy || currentUser.uid
-          : '',
-        notes: data.notes.trim().slice(0, 300),
-        updatedAt: nowIso,
-      };
-      await upsertSheetRowsByKey(conn, SHEET_TABS.TRANSACTIONS, [
-        transactionToRow(updatedTx),
-      ]);
-      await refreshSpreadsheetData(conn, true);
-      showToast('Transaksi Diperbarui', `Data "${updatedTx.title}" berhasil diperbarui.`);
-    } catch (err) {
-      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
-      else throw err;
-    } finally {
-      isMutatingRef.current = false;
-    }
-  };
-
-  const handleDeleteTransaction = async (tx: KasTransaction) => {
-    if (!currentUser) return;
-    const isAdminEditor = rbac.canManageKas;
-    const isOwnerDeletable =
-      tx.residentUid === currentUser.uid &&
-      (tx.status === 'pending' || tx.status === 'rejected');
-    if (!isAdminEditor && !isOwnerDeletable) return;
-
-    const conn = requireActiveSheet();
-    if (!conn || !sheetInfo) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Hapus Transaksi Kas dari Google Spreadsheet',
-      description: `Anda yakin ingin menghapus transaksi "${tx.title}" (${tx.residentName} · ${formatRupiah(
-        tx.amount
-      )}) secara permanen dari Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.TRANSACTIONS}`, `ID: ${tx.id}`],
-      confirmLabel: 'Ya, Hapus Transaksi',
-      destructive: true,
-    });
-    if (!confirmed) return;
-
-    isMutatingRef.current = true;
-    try {
-      await deleteSheetRowsByKey(conn, SHEET_TABS.TRANSACTIONS, [tx.id]);
-      await refreshSpreadsheetData(conn, true);
-      showToast('Transaksi Dihapus', `Transaksi "${tx.title}" telah dihapus.`);
-    } catch (err) {
-      if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
-      else throw err;
-    } finally {
-      isMutatingRef.current = false;
-    }
-  };
-
   const handleSendPaymentReminders = async (
     unpaidResidents: ResidentPublic[],
     yearMonth: string
@@ -4227,8 +4109,6 @@ export default function App() {
                       onSubmitDues={handleSubmitDues}
                       onAdminCreateTransaction={handleAdminCreateTransaction}
                       onAdminVerifyTransaction={handleAdminVerifyTransaction}
-                      onUpdateTransaction={handleUpdateTransaction}
-                      onDeleteTransaction={handleDeleteTransaction}
                     />
                   )}
 
