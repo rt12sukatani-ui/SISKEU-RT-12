@@ -1,0 +1,10 @@
+{
+  "name": "SISKEU RT 12",
+  "description": "Aplikasi keuangan RT transparan untuk pengelolaan kas warga, iuran bulanan, verifikasi bukti transfer real-time, pengumuman warga, profil kesehatan terenkripsi, dan tombol darurat SOS dengan dukungan offline.",
+  "requestFramePermissions": [
+    "geolocation"
+  ],
+  "majorCapabilities": [
+    "MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"
+  ]
+}
