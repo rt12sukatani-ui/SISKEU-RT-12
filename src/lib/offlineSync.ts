@@ -86,3 +86,54 @@ export function getCachedBannerSlides(): BannerSlide[] {
     return [];
   }
 }
+
+const PENDING_REGISTRATIONS_KEY = 'kaswarga_pending_registrations_v1';
+
+export interface PendingAccountRegistration {
+  uid: string;
+  username: string;
+  fullName: string;
+  houseBlock: string;
+  role: 'warga';
+  registryId: string;
+  passwordHash: string;
+  createdAt: string;
+  syncedToSheet?: boolean;
+}
+
+export function getPendingRegistrations(): PendingAccountRegistration[] {
+  try {
+    const raw = localStorage.getItem(PENDING_REGISTRATIONS_KEY);
+    if (!raw) return [];
+    const parsed = JSON.parse(raw);
+    return Array.isArray(parsed) ? (parsed as PendingAccountRegistration[]) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function savePendingRegistration(entry: PendingAccountRegistration): void {
+  try {
+    const existing = getPendingRegistrations().filter(
+      (item) => item.username !== entry.username && item.uid !== entry.uid
+    );
+    existing.push(entry);
+    localStorage.setItem(PENDING_REGISTRATIONS_KEY, JSON.stringify(existing));
+  } catch {
+    // Ignore storage quota errors
+  }
+}
+
+export function markPendingRegistrationSynced(uidOrUsername: string): void {
+  try {
+    const next = getPendingRegistrations().filter(
+      (item) =>
+        item.uid !== uidOrUsername &&
+        item.username.toLowerCase() !== uidOrUsername.toLowerCase()
+    );
+    localStorage.setItem(PENDING_REGISTRATIONS_KEY, JSON.stringify(next));
+  } catch {
+    // Ignore storage errors
+  }
+}
+

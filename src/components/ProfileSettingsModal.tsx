@@ -6,6 +6,7 @@ import {
   Bell,
   BookOpen,
   Check,
+  Copy,
   Database,
   ExternalLink,
   FileSpreadsheet,
@@ -24,6 +25,7 @@ import {
   X,
 } from 'lucide-react';
 import { compressBannerSlideImage } from '../lib/crypto';
+import { buildCitizenInviteLink } from '../lib/sheetsDb';
 import type {
   BannerSlide,
   FamilyStatus,
@@ -161,6 +163,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const [editTitle, setEditTitle] = useState('');
   const [editSubtitle, setEditSubtitle] = useState('');
   const [sheetIdInput, setSheetIdInput] = useState('');
+  const [copiedInviteLink, setCopiedInviteLink] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
@@ -1106,6 +1109,29 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
                       <span>{isSyncing ? 'Menyinkronkan...' : 'Sinkronkan Spreadsheet'}</span>
+                    </button>
+                  )}
+                  {sheetInfo?.mode === 'webapp' && sheetInfo.webAppUrl && (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const link = buildCitizenInviteLink(sheetInfo.webAppUrl!);
+                        void navigator.clipboard?.writeText(link);
+                        setCopiedInviteLink(true);
+                        window.setTimeout(() => setCopiedInviteLink(false), 3000);
+                      }}
+                      className="min-h-[38px] px-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 text-xs font-semibold text-emerald-800 dark:text-emerald-200 inline-flex items-center gap-1.5 cursor-pointer"
+                    >
+                      {copiedInviteLink ? (
+                        <Check className="w-3.5 h-3.5" />
+                      ) : (
+                        <Copy className="w-3.5 h-3.5" />
+                      )}
+                      <span>
+                        {copiedInviteLink
+                          ? 'Link Portal Warga Tersalin!'
+                          : 'Salin Link Portal Warga (Auto-Spreadsheet)'}
+                      </span>
                     </button>
                   )}
                   {onDisconnectGoogle && (

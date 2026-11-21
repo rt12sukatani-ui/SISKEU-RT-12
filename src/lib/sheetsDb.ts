@@ -294,9 +294,37 @@ export function clearSavedWebAppUrl(): void {
 }
 
 export function getDefaultWebAppUrl(): string {
+  if (typeof window !== 'undefined') {
+    try {
+      const url = new URL(window.location.href);
+      const paramRaw = url.searchParams.get('webapp') || url.searchParams.get('sheet');
+      if (paramRaw) {
+        const valid = extractWebAppUrl(paramRaw);
+        if (valid) {
+          saveWebAppUrl(valid);
+          url.searchParams.delete('webapp');
+          url.searchParams.delete('sheet');
+          const cleanUrl = `${url.pathname}${url.search}${url.hash}`;
+          window.history.replaceState({}, document.title, cleanUrl);
+          return valid;
+        }
+      }
+    } catch {
+      // Ignore malformed URL
+    }
+  }
   const envUrl = (import.meta.env.VITE_SHEETS_WEBAPP_URL || '').trim();
   if (envUrl) return envUrl;
   return (getSavedWebAppUrl() || '').trim();
+}
+
+export function buildCitizenInviteLink(webAppUrl: string): string {
+  if (typeof window === 'undefined') return '';
+  const valid = extractWebAppUrl(webAppUrl);
+  if (!valid) return window.location.origin;
+  const invite = new URL(window.location.origin + window.location.pathname);
+  invite.searchParams.set('webapp', valid);
+  return invite.toString();
 }
 
 export function extractWebAppUrl(input: string): string | null {

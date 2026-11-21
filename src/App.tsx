@@ -40,9 +40,12 @@ import {
   enqueueOfflineAction,
   getCachedBannerSlides,
   getOfflineQueue,
+  getPendingRegistrations,
+  markPendingRegistrationSynced,
   removeOfflineAction,
   saveCachedBannerSlides,
   saveOfflineSnapshot,
+  savePendingRegistration,
 } from './lib/offlineSync';
 import {
   adminRecordToRow,
@@ -67,6 +70,7 @@ import {
   settingsToRow,
   SheetsAuthExpiredError,
   SHEET_TABS,
+  type SheetSnapshotData,
   slideToRow,
   transactionToRow,
   upsertSheetRowsByKey,
@@ -543,6 +547,114 @@ export default function App() {
     };
   }, [currentUser, privateDataRecords]);
 
+  const syncPendingRegistrations = useCallback(
+    async (conn: SheetConnection, snap?: SheetSnapshotData | null): Promise<number> => {
+      const pendingList = getPendingRegistrations();
+      if (pendingList.length === 0) return 0;
+
+      const activeSnap = snap || (await refreshSpreadsheetData(conn, true));
+      if (!activeSnap) return 0;
+
+      let synced = 0;
+      const accountRows: string[][] = [];
+      const userRows: string[][] = [];
+      const registryRows: string[][] = [];
+
+      for (const item of pendingList) {
+        const alreadyUsername = activeSnap.userAccounts.some(
+          (a) => normalizeUsername(a.username) === normalizeUsername(item.username)
+        );
+        if (alreadyUsername) {
+          markPendingRegistrationSynced(item.uid);
+          continue;
+        }
+
+        const matchedReg = activeSnap.registryEntries.find(
+          (r) => r.registryId === item.registryId
+        );
+        if (matchedReg && (matchedReg.claimedUid || matchedReg.role !== 'warga')) {
+          markPendingRegistrationSynced(item.uid);
+          continue;
+        }
+
+        const famStatus: FamilyStatus = matchedReg?.familyStatus || 'umum';
+        const resStatus: ResidentStatus = matchedReg?.residentStatus || 'tetap';
+        const nowIso = new Date().toISOString();
+
+        const accRow = userAccountToRow({
+          uid: item.uid,
+          username: item.username,
+          role: 'warga',
+          registryId: item.registryId,
+          passwordHash: item.passwordHash,
+          createdAt: item.createdAt || nowIso,
+        });
+
+        const profRow = userProfileToRow({
+          uid: item.uid,
+          username: item.username,
+          accountRole: 'warga',
+          registryId: item.registryId,
+          displayName: matchedReg?.fullName || item.fullName,
+          houseBlock: matchedReg?.houseBlock || item.houseBlock,
+          residentStatus: resStatus,
+          familyStatus: famStatus,
+          familyStatusLog: [`${getCurrentYearMonth()}:${famStatus}`],
+          elderlyMode: false,
+          communityId: 'rt_warga',
+          createdAt: item.createdAt || nowIso,
+          updatedAt: nowIso,
+        });
+
+        const regEntry: ResidentRegistryEntry = matchedReg
+          ? {
+              ...matchedReg,
+              claimedUid: item.uid,
+              claimedUsername: item.username,
+              updatedAt: nowIso,
+            }
+          : {
+              registryId: item.registryId,
+              fullName: item.fullName,
+              houseBlock: item.houseBlock,
+              role: 'warga',
+              residentStatus: 'tetap',
+              familyStatus: 'umum',
+              claimedUid: item.uid,
+              claimedUsername: item.username,
+              communityId: 'rt_warga',
+              createdBy: item.uid,
+              createdAt: item.createdAt || nowIso,
+              updatedAt: nowIso,
+            };
+
+        accountRows.push(accRow);
+        userRows.push(profRow);
+        registryRows.push(registryEntryToRow(regEntry));
+        synced++;
+      }
+
+      if (synced > 0) {
+        await Promise.all([
+          upsertSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, accountRows),
+          upsertSheetRowsByKey(conn, SHEET_TABS.USERS, userRows),
+          upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, registryRows),
+        ]);
+        for (const item of pendingList) {
+          markPendingRegistrationSynced(item.uid);
+        }
+        await refreshSpreadsheetData(conn, true);
+        showToast(
+          'Pendaftaran Otomatis Tersinkronisasi',
+          `${synced} akun warga baru otomatis disinkronkan ke Google Spreadsheet.`
+        );
+      }
+
+      return synced;
+    },
+    [refreshSpreadsheetData, showToast]
+  );
+
   // Auto-connect saved Google Apps Script Web App URL on startup (zero Firebase, zero OAuth block)
   useEffect(() => {
     const defaultWebAppUrl = getDefaultWebAppUrl();
@@ -560,16 +672,17 @@ export default function App() {
         setSheetInfo(info);
         setGoogleConnected(true);
         setGoogleUserEmail('Google Spreadsheet (Apps Script)');
-        await refreshSpreadsheetData(
-          {
-            mode: 'webapp',
-            spreadsheetId: info.spreadsheetId,
-            webAppUrl: info.webAppUrl,
-          },
-          true
-        );
+        const conn: SheetConnection = {
+          mode: 'webapp',
+          spreadsheetId: info.spreadsheetId,
+          webAppUrl: info.webAppUrl,
+        };
+        const snap = await refreshSpreadsheetData(conn, true);
+        if (!cancelled) {
+          await syncPendingRegistrations(conn, snap);
+        }
       } catch {
-        // User can reconnect manually from LoginScreen
+        // User can reconnect manually from Pengurus tab if needed
       } finally {
         if (!cancelled) {
           setIsConnectingSheet(false);
@@ -606,14 +719,13 @@ export default function App() {
         setSheetInfo(info);
         setGoogleConnected(true);
         setGoogleUserEmail('Google Spreadsheet (Apps Script)');
-        await refreshSpreadsheetData(
-          {
-            mode: 'webapp',
-            spreadsheetId: info.spreadsheetId,
-            webAppUrl: info.webAppUrl,
-          },
-          true
-        );
+        const conn: SheetConnection = {
+          mode: 'webapp',
+          spreadsheetId: info.spreadsheetId,
+          webAppUrl: info.webAppUrl,
+        };
+        const snap = await refreshSpreadsheetData(conn, true);
+        await syncPendingRegistrations(conn, snap);
         showToast(
           'Google Spreadsheet Terhubung',
           `Berhasil terhubung ke "${info.spreadsheetTitle}" via Apps Script.`
@@ -628,7 +740,7 @@ export default function App() {
         setIsConnectingSheet(false);
       }
     },
-    [refreshSpreadsheetData, showToast]
+    [refreshSpreadsheetData, syncPendingRegistrations, showToast]
   );
 
   // Optional direct GIS Google OAuth connection (requires VITE_GOOGLE_OAUTH_CLIENT_ID)
@@ -647,10 +759,13 @@ export default function App() {
         try {
           const info = await connectAndEnsureSchema(accessToken, savedId, DEFAULT_RT_SETTINGS);
           setSheetInfo(info);
-          await refreshSpreadsheetData(
-            { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken },
-            true
-          );
+          const conn: SheetConnection = {
+            mode: 'oauth',
+            spreadsheetId: info.spreadsheetId,
+            accessToken,
+          };
+          const snap = await refreshSpreadsheetData(conn, true);
+          await syncPendingRegistrations(conn, snap);
           return;
         } catch {
           clearSavedSpreadsheetId();
@@ -665,10 +780,13 @@ export default function App() {
           DEFAULT_RT_SETTINGS
         );
         setSheetInfo(info);
-        await refreshSpreadsheetData(
-          { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken },
-          true
-        );
+        const conn: SheetConnection = {
+          mode: 'oauth',
+          spreadsheetId: info.spreadsheetId,
+          accessToken,
+        };
+        const snap = await refreshSpreadsheetData(conn, true);
+        await syncPendingRegistrations(conn, snap);
       } else {
         setSheetInfo(null);
       }
@@ -677,7 +795,7 @@ export default function App() {
     } finally {
       setIsConnectingSheet(false);
     }
-  }, [refreshSpreadsheetData]);
+  }, [refreshSpreadsheetData, syncPendingRegistrations]);
 
   const handleGoogleDisconnect = useCallback(async () => {
     setSettingsOpen(false);
@@ -827,10 +945,13 @@ export default function App() {
       try {
         const info = await connectAndEnsureSchema(token, spreadsheetId, DEFAULT_RT_SETTINGS);
         setSheetInfo(info);
-        await refreshSpreadsheetData(
-          { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken: token },
-          true
-        );
+        const conn: SheetConnection = {
+          mode: 'oauth',
+          spreadsheetId: info.spreadsheetId,
+          accessToken: token,
+        };
+        const snap = await refreshSpreadsheetData(conn, true);
+        await syncPendingRegistrations(conn, snap);
         showToast(
           'Spreadsheet Terhubung',
           `Berhasil terhubung ke "${info.spreadsheetTitle}".`
@@ -850,7 +971,13 @@ export default function App() {
         setIsConnectingSheet(false);
       }
     },
-    [requestSheetConfirmation, refreshSpreadsheetData, showToast, handleExpiredToken]
+    [
+      requestSheetConfirmation,
+      refreshSpreadsheetData,
+      syncPendingRegistrations,
+      showToast,
+      handleExpiredToken,
+    ]
   );
 
   // Offline emergency snapshot
@@ -961,14 +1088,6 @@ export default function App() {
     const normalizedUsername = normalizeUsername(data.username);
 
     try {
-      const conn = getActiveSheetConnection();
-      if (!conn) {
-        setLoginError(
-          'Hubungkan Google Spreadsheet RT terlebih dahulu pada panel di atas.'
-        );
-        return;
-      }
-
       if (!isValidUsername(normalizedUsername)) {
         setLoginError(
           'Format username tidak valid. Gunakan 3–30 karakter huruf, angka, _ atau -.'
@@ -976,7 +1095,64 @@ export default function App() {
         return;
       }
 
-      const freshSnap = await refreshSpreadsheetData(conn, true);
+      const conn = isOnline ? getActiveSheetConnection() : null;
+      const pendingLocal = getPendingRegistrations().find(
+        (p) => normalizeUsername(p.username) === normalizedUsername
+      );
+
+      if (!conn) {
+        if (pendingLocal && data.role === 'warga') {
+          const passwordValid = await verifyPassword(data.password, pendingLocal.passwordHash);
+          if (!passwordValid) {
+            setLoginError('Username atau sandi salah. Silakan periksa kembali.');
+            return;
+          }
+          const localProfile: ResidentPublic = {
+            uid: pendingLocal.uid,
+            username: normalizedUsername,
+            accountRole: 'warga',
+            registryId: pendingLocal.registryId,
+            displayName: pendingLocal.fullName,
+            houseBlock: pendingLocal.houseBlock,
+            residentStatus: 'tetap',
+            familyStatus: 'umum',
+            familyStatusLog: [`${getCurrentYearMonth()}:umum`],
+            elderlyMode: false,
+            communityId: 'rt_warga',
+            createdAt: pendingLocal.createdAt,
+            updatedAt: pendingLocal.createdAt,
+          };
+          setIsBootstrappedAdminUser(false);
+          setAdminRecord(null);
+          setProfile(localProfile);
+          setResidents((prev) =>
+            prev.some((r) => r.uid === localProfile.uid) ? prev : [...prev, localProfile]
+          );
+          setCurrentUser({
+            uid: localProfile.uid,
+            email: usernameToAuthEmail(normalizedUsername),
+            displayName: localProfile.displayName,
+            username: normalizedUsername,
+            role: 'warga',
+          });
+          initialNotificationIdsRef.current = null;
+          return;
+        }
+
+        setLoginError(
+          data.role === 'pengurus'
+            ? 'Hubungkan Google Spreadsheet RT terlebih dahulu pada panel Pengurus di atas.'
+            : 'Username belum terdaftar di perangkat ini. Silakan daftar akun terlebih dahulu pada tab Daftar Akun.'
+        );
+        return;
+      }
+
+      let freshSnap = await refreshSpreadsheetData(conn, true);
+      if (getPendingRegistrations().length > 0) {
+        await syncPendingRegistrations(conn, freshSnap);
+        freshSnap = await refreshSpreadsheetData(conn, true);
+      }
+
       const activeAccounts = freshSnap?.userAccounts || userAccounts;
       const activeUsers = freshSnap?.users || residents;
       const activeAdmins = freshSnap?.admins || adminRecords;
@@ -986,7 +1162,7 @@ export default function App() {
       );
       if (!accData) {
         setLoginError(
-          `Username "${normalizedUsername}" belum terdaftar di Google Spreadsheet. Wajib mendaftarkan akun terlebih dahulu pada tab Daftar Akun.`
+          `Username "${normalizedUsername}" belum terdaftar di Google Spreadsheet. Silakan daftar akun terlebih dahulu pada tab Daftar Akun.`
         );
         return;
       }
@@ -1229,6 +1405,7 @@ export default function App() {
     username: string;
     fullName: string;
     pengurusPosition?: PengurusPosition;
+    syncedToSheet: boolean;
   } | null> => {
     setIsLoggingIn(true);
     setLoginError(null);
@@ -1241,45 +1418,90 @@ export default function App() {
     }
 
     try {
-      const conn = getActiveSheetConnection();
-      if (!conn || !sheetInfo) {
-        setLoginError(
-          'Hubungkan Google Spreadsheet terlebih dahulu sebelum mendaftarkan akun.'
-        );
-        return null;
+      let conn = isOnline ? getActiveSheetConnection() : null;
+      // If a default/configured Web App URL exists and isn't initialized yet, connect silently
+      if (!conn && isOnline) {
+        const defaultWebAppUrl = getDefaultWebAppUrl();
+        if (defaultWebAppUrl) {
+          try {
+            const info = await connectWebAppAndEnsureSchema(
+              defaultWebAppUrl,
+              DEFAULT_RT_SETTINGS
+            );
+            setSheetInfo(info);
+            setGoogleConnected(true);
+            setGoogleUserEmail('Google Spreadsheet (Apps Script)');
+            conn = {
+              mode: 'webapp',
+              spreadsheetId: info.spreadsheetId,
+              webAppUrl: info.webAppUrl,
+            };
+          } catch {
+            // Fall back smoothly to local queue if Spreadsheet cannot be reached
+          }
+        }
       }
 
+      const registryId = await computeResidentRegistryId(data.fullName, data.houseBlock);
+
+      if (!conn) {
+        if (data.role === 'pengurus') {
+          setLoginError(
+            'Pendaftaran akun Pengurus memerlukan verifikasi Google Spreadsheet. Hubungkan Spreadsheet pada panel Pengurus di atas terlebih dahulu.'
+          );
+          return null;
+        }
+
+        const localPending = getPendingRegistrations();
+        if (
+          localPending.some((p) => normalizeUsername(p.username) === normalizedUsername)
+        ) {
+          setLoginError(
+            `Username "${normalizedUsername}" sudah terdaftar. Silakan gunakan username lain atau langsung masuk.`
+          );
+          return null;
+        }
+
+        const newUid = generateRecordId('usr');
+        const nowIso = new Date().toISOString();
+        const passwordHash = await hashPassword(data.password);
+        const cleanName = data.fullName.trim().slice(0, 80);
+        const cleanBlock = data.houseBlock.trim().slice(0, 30);
+
+        savePendingRegistration({
+          uid: newUid,
+          username: normalizedUsername,
+          fullName: cleanName,
+          houseBlock: cleanBlock,
+          role: 'warga',
+          registryId,
+          passwordHash,
+          createdAt: nowIso,
+          syncedToSheet: false,
+        });
+
+        setIsBootstrappedAdminUser(false);
+        setAdminRecord(null);
+        setProfile(null);
+        setCurrentUser(null);
+
+        showToast(
+          'Akun Warga Terdaftar',
+          `Akun @${normalizedUsername} berhasil dibuat dan siap disinkronkan ke Google Spreadsheet.`
+        );
+
+        return {
+          role: 'warga',
+          username: normalizedUsername,
+          fullName: cleanName,
+          syncedToSheet: false,
+        };
+      }
+
+      // Spreadsheet is connected: automatically synchronize registration data without confirmation modal
       const freshSnap = await refreshSpreadsheetData(conn, true);
       const activeRegistry = freshSnap?.registryEntries || registryEntries;
       const activeAccounts = freshSnap?.userAccounts || userAccounts;
-
-      const registryId = await computeResidentRegistryId(data.fullName, data.houseBlock);
-      const reg = activeRegistry.find((e) => e.registryId === registryId);
-
-      if (!reg) {
-        setLoginError(
-          'Pendaftaran ditolak: Nama Lengkap atau Blok Rumah tidak sesuai dengan database warga di Google Spreadsheet. Hubungi Pengurus RT untuk memastikan data warga Anda terdaftar.'
-        );
-        return null;
-      }
-
-      if (reg.role !== data.role) {
-        setLoginError(
-          `Pendaftaran ditolak: Data warga Anda terdaftar sebagai ${
-            reg.role === 'pengurus' ? 'Pengurus' : 'Warga'
-          }, bukan ${data.role === 'pengurus' ? 'Pengurus' : 'Warga'}.`
-        );
-        return null;
-      }
-
-      if (reg.claimedUid) {
-        setLoginError(
-          `Akun untuk warga ${reg.fullName} (${reg.houseBlock}) sudah terdaftar dengan username "${
-            reg.claimedUsername || '-'
-          }". Silakan langsung masuk.`
-        );
-        return null;
-      }
 
       const existingAccount = activeAccounts.find(
         (a) => normalizeUsername(a.username) === normalizedUsername
@@ -1291,34 +1513,50 @@ export default function App() {
         return null;
       }
 
-      const confirmed = await requestSheetConfirmation({
-        title: 'Konfirmasi Pendaftaran Akun ke Google Spreadsheet',
-        description: `Simpan pendaftaran akun ${
-          reg.role === 'pengurus' ? 'Pengurus' : 'Warga'
-        } atas nama "${reg.fullName}" (${reg.houseBlock}) ke Google Spreadsheet "${
-          sheetInfo.spreadsheetTitle
-        }"?`,
-        details: [
-          `Username: @${normalizedUsername}`,
-          `Tab diperbarui: ${SHEET_TABS.USER_ACCOUNTS}, ${SHEET_TABS.USERS}, ${SHEET_TABS.RESIDENT_REGISTRY}${
-            reg.role === 'pengurus' ? `, ${SHEET_TABS.ADMINS}` : ''
-          }`,
-        ],
-        confirmLabel: 'Konfirmasi & Daftar',
-      });
-      if (!confirmed) return null;
+      const existingReg = activeRegistry.find((e) => e.registryId === registryId);
+
+      if (existingReg) {
+        if (existingReg.role !== data.role) {
+          setLoginError(
+            `Pendaftaran ditolak: Data warga Anda terdaftar sebagai ${
+              existingReg.role === 'pengurus' ? 'Pengurus' : 'Warga'
+            }, bukan ${data.role === 'pengurus' ? 'Pengurus' : 'Warga'}.`
+          );
+          return null;
+        }
+        if (existingReg.claimedUid) {
+          setLoginError(
+            `Akun untuk warga ${existingReg.fullName} (${existingReg.houseBlock}) sudah terdaftar dengan username "${
+              existingReg.claimedUsername || '-'
+            }". Silakan langsung masuk.`
+          );
+          return null;
+        }
+      } else if (data.role === 'pengurus') {
+        setLoginError(
+          'Pendaftaran Pengurus ditolak: Nama Lengkap atau Blok Rumah Anda belum didaftarkan sebagai Pengurus di Database Warga oleh Ketua RT.'
+        );
+        return null;
+      }
 
       isMutatingRef.current = true;
       const newUid = generateRecordId('usr');
       const nowIso = new Date().toISOString();
       const passwordHash = await hashPassword(data.password);
-      const regPosition: PengurusPosition = reg.pengurusPosition || 'pengurus_lain';
-      const hasExplicitRegPerms = Array.isArray(reg.permissions);
+
+      const cleanName = existingReg?.fullName || data.fullName.trim().slice(0, 80);
+      const cleanBlock = existingReg?.houseBlock || data.houseBlock.trim().slice(0, 30);
+      const effectiveRole: LoginRole = existingReg ? existingReg.role : 'warga';
+      const regPosition: PengurusPosition = existingReg?.pengurusPosition || 'pengurus_lain';
+      const hasExplicitRegPerms = Array.isArray(existingReg?.permissions);
+      const effectiveFamilyStatus: FamilyStatus = existingReg?.familyStatus || 'umum';
+      const effectiveResidentStatus: ResidentStatus =
+        existingReg?.residentStatus || (effectiveRole === 'pengurus' ? 'pengurus' : 'tetap');
 
       const accountLookup: UserAccountLookup = {
         uid: newUid,
         username: normalizedUsername,
-        role: reg.role,
+        role: effectiveRole,
         registryId,
         passwordHash,
         createdAt: nowIso,
@@ -1327,31 +1565,46 @@ export default function App() {
       const newProfile: ResidentPublic = {
         uid: newUid,
         username: normalizedUsername,
-        accountRole: reg.role,
-        ...(reg.role === 'pengurus'
+        accountRole: effectiveRole,
+        ...(effectiveRole === 'pengurus'
           ? {
               pengurusPosition: regPosition,
-              ...(hasExplicitRegPerms ? { permissions: reg.permissions } : {}),
+              ...(hasExplicitRegPerms ? { permissions: existingReg?.permissions } : {}),
             }
           : {}),
         registryId,
-        displayName: reg.fullName,
-        houseBlock: reg.houseBlock,
-        residentStatus: reg.residentStatus || (reg.role === 'pengurus' ? 'pengurus' : 'tetap'),
-        familyStatus: reg.familyStatus || 'umum',
-        familyStatusLog: [`${getCurrentYearMonth()}:${reg.familyStatus || 'umum'}`],
+        displayName: cleanName,
+        houseBlock: cleanBlock,
+        residentStatus: effectiveResidentStatus,
+        familyStatus: effectiveFamilyStatus,
+        familyStatusLog: [`${getCurrentYearMonth()}:${effectiveFamilyStatus}`],
         elderlyMode: false,
         communityId: 'rt_warga',
         createdAt: nowIso,
         updatedAt: nowIso,
       };
 
-      const updatedRegistry: ResidentRegistryEntry = {
-        ...reg,
-        claimedUid: newUid,
-        claimedUsername: normalizedUsername,
-        updatedAt: nowIso,
-      };
+      const updatedRegistry: ResidentRegistryEntry = existingReg
+        ? {
+            ...existingReg,
+            claimedUid: newUid,
+            claimedUsername: normalizedUsername,
+            updatedAt: nowIso,
+          }
+        : {
+            registryId,
+            fullName: cleanName,
+            houseBlock: cleanBlock,
+            role: 'warga',
+            residentStatus: 'tetap',
+            familyStatus: 'umum',
+            claimedUid: newUid,
+            claimedUsername: normalizedUsername,
+            communityId: 'rt_warga',
+            createdBy: newUid,
+            createdAt: nowIso,
+            updatedAt: nowIso,
+          };
 
       await Promise.all([
         upsertSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, [userAccountToRow(accountLookup)]),
@@ -1359,15 +1612,15 @@ export default function App() {
         upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
           registryEntryToRow(updatedRegistry),
         ]),
-        ...(reg.role === 'pengurus'
+        ...(effectiveRole === 'pengurus'
           ? [
               upsertSheetRowsByKey(conn, SHEET_TABS.ADMINS, [
                 adminRecordToRow({
                   uid: newUid,
                   email: usernameToAuthEmail(normalizedUsername),
-                  name: reg.fullName,
+                  name: cleanName,
                   role: regPosition,
-                  ...(hasExplicitRegPerms ? { permissions: reg.permissions } : {}),
+                  ...(hasExplicitRegPerms ? { permissions: existingReg?.permissions } : {}),
                   registryId,
                   createdAt: nowIso,
                 }),
@@ -1383,11 +1636,17 @@ export default function App() {
       setProfile(null);
       setCurrentUser(null);
 
+      showToast(
+        'Pendaftaran Tersinkronisasi',
+        `Akun ${cleanName} (@${normalizedUsername}) otomatis tersimpan ke Google Spreadsheet.`
+      );
+
       return {
-        role: reg.role,
+        role: effectiveRole,
         username: normalizedUsername,
-        fullName: reg.fullName,
-        pengurusPosition: reg.role === 'pengurus' ? regPosition : undefined,
+        fullName: cleanName,
+        pengurusPosition: effectiveRole === 'pengurus' ? regPosition : undefined,
+        syncedToSheet: true,
       };
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) {
@@ -3157,8 +3416,8 @@ export default function App() {
                       </div>
                     </div>
                   ) : (
-                    <div className="rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-4 py-3 text-xs sm:text-sm text-amber-900 dark:text-amber-200">
-                      Database Google Spreadsheet belum terhubung. Silakan hubungi Ketua RT untuk membuat atau membagikan Spreadsheet RT.
+                    <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 px-4 py-3 text-xs sm:text-sm text-emerald-900 dark:text-emerald-200">
+                      Akun warga aktif — Data Anda tersimpan aman dan akan otomatis tersinkronisasi saat terhubung ke Google Spreadsheet RT.
                     </div>
                   )}
                 </div>
