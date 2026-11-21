@@ -123,7 +123,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           <button
             type="button"
             onClick={openCreateComposer}
-            className="min-h-[48px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm inline-flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
+            className="w-full sm:w-auto min-h-[48px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 shrink-0" />
             <span>Buat Pengumuman</span>
@@ -134,7 +134,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       {canManageAnnouncements && showComposer && (
         <form
           onSubmit={(e) => void handleSubmit(e)}
-          className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4"
+          className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 space-y-4"
         >
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
@@ -241,13 +241,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
 
       {/* Filter tabs & search */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
           {CATEGORY_OPTIONS.map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => setFilterCat(cat.id)}
-              className={`min-h-[40px] px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              className={`shrink-0 min-h-[42px] px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 filterCat === cat.id
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -282,7 +282,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           visibleList.map((item) => (
             <article
               key={item.id}
-              className={`rounded-3xl bg-white dark:bg-slate-900 border p-6 transition-colors ${
+              className={`rounded-3xl bg-white dark:bg-slate-900 border p-4 sm:p-6 transition-colors ${
                 item.priority === 'urgent'
                   ? 'border-red-200 dark:border-red-900/80'
                   : 'border-slate-200 dark:border-slate-800'
@@ -319,7 +319,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                       onClick={() => openEditComposer(item)}
                       aria-label="Edit pengumuman"
                       title="Edit pengumuman"
-                      className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
                     >
                       <Pencil className="w-4 h-4" />
                     </button>
@@ -328,7 +328,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                       onClick={() => void onDeleteAnnouncement(item.id)}
                       aria-label="Hapus pengumuman"
                       title="Hapus pengumuman"
-                      className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                     >
                       <Trash2 className="w-4 h-4" />
                     </button>

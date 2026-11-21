@@ -63,11 +63,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                 />
               )}
               <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[11px] font-semibold tracking-tight mt-1 whitespace-nowrap">
+              <span className="text-[10px] sm:text-[11px] font-semibold tracking-tight mt-1 whitespace-nowrap truncate max-w-full">
                 {tab.label}
               </span>
               {isEmergency && activeEmergencyCount > 0 && (
-                <span className="absolute top-1.5 right-3 min-w-[16px] h-[16px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+                <span className="absolute top-1.5 right-1/2 translate-x-4 min-w-[16px] h-[16px] px-1 rounded-full bg-red-600 text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
                   {activeEmergencyCount}
                 </span>
               )}

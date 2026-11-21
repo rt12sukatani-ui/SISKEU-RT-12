@@ -225,6 +225,10 @@ export const SHEET_HEADERS: Record<SheetTabName, string[]> = {
     'foto_4',
     'foto_5',
     'foto_6',
+    'foto_7',
+    'foto_8',
+    'foto_9',
+    'foto_10',
   ],
 };
 
@@ -1281,7 +1285,7 @@ export async function fetchAllSheetTables(
       id: pick(r, 'id'),
       title: pick(r, 'judul', 'title'),
       subtitle: pick(r, 'subjudul', 'subtitle'),
-      imageData: joinChunks(r, ['foto_', 'imgChunk'], 6),
+      imageData: joinChunks(r, ['foto_', 'imgChunk'], 10),
       sortOrder: Number(pick(r, 'urutan', 'sortOrder')) || 0,
       uploadedBy: pick(r, 'diunggah_oleh', 'uploadedBy'),
       communityId: pick(r, 'id_komunitas', 'communityId') || 'rt_warga',
@@ -1499,7 +1503,7 @@ export function notificationToRow(n: UserNotification): string[] {
 
 export function slideToRow(s: BannerSlide): string[] {
   const nowIso = new Date().toISOString();
-  const chunks = splitChunks(s.imageData || '', 6);
+  const chunks = splitChunks(s.imageData || '', 10);
   return [
     s.id,
     s.title,

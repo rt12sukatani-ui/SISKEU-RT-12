@@ -7,12 +7,13 @@ import {
   Play,
 } from 'lucide-react';
 import type { BannerSlide } from '../types';
+import rtCommunityBannerImg from '../assets/images/rt_community_banner_1795010550301.jpg';
 
 const DEFAULT_FALLBACK_SLIDE: BannerSlide = {
   id: 'default-rt-banner',
   title: 'Sistem Terpadu Warga',
   subtitle: 'Transparansi Kas · Verifikasi Bukti Foto · Siaga Medis Darurat',
-  imageData: '/src/assets/images/rt_community_banner_1795010550301.jpg',
+  imageData: rtCommunityBannerImg,
   sortOrder: 0,
   uploadedBy: 'system',
   communityId: 'rt_warga',
@@ -28,7 +29,7 @@ interface CommunityPhotoSliderProps {
 
 export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
   slides,
-  className = 'min-h-[260px]',
+  className = 'aspect-[16/10] sm:aspect-[21/9] min-h-[210px] sm:min-h-[260px]',
   autoPlayIntervalMs = 5000,
   isAdmin = false,
   onManageSlides,
@@ -109,25 +110,26 @@ export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
               <img
                 src={slide.imageData}
                 alt={slide.subtitle || slide.title || 'Foto lingkungan warga RT'}
+                decoding="async"
                 referrerPolicy="no-referrer"
                 onError={() => setFailedIds((prev) => ({ ...prev, [slide.id]: true }))}
-                className="w-full h-full object-cover"
+                className="w-full h-full object-cover object-center"
               />
             ) : (
-              <div className="w-full h-full bg-gradient-to-br from-emerald-800 to-slate-900 flex items-center justify-center p-8 text-white">
-                <p className="text-lg font-bold">Balai Warga & Kas Transparan RT</p>
+              <div className="w-full h-full bg-gradient-to-br from-emerald-800 to-slate-900 flex items-center justify-center p-6 text-white">
+                <p className="text-base sm:text-lg font-bold">Balai Warga & Kas Transparan RT</p>
               </div>
             )}
           </div>
         );
       })}
 
-      {/* Dark Gradient & Caption Overlay */}
-      <div className="relative z-20 h-full min-h-[inherit] bg-gradient-to-t from-black/80 via-black/30 to-black/15 flex flex-col justify-between p-4 sm:p-6">
+      {/* Overlay Controls & Bottom Caption Scrim (top/center photo stays un-dimmed) */}
+      <div className="relative z-20 h-full min-h-[inherit] flex flex-col justify-between">
         {/* Top Controls Row */}
-        <div className="flex items-center justify-between gap-2">
+        <div className="flex items-center justify-between gap-2 p-3 sm:p-5">
           {totalSlides > 1 ? (
-            <div className="inline-flex items-center gap-1.5 rounded-xl bg-black/50 backdrop-blur-xs border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white">
+            <div className="inline-flex items-center gap-1.5 rounded-xl bg-black/55 border border-white/15 px-2.5 py-1.5 text-xs font-semibold text-white">
               <span className="font-mono-num tabular-nums">
                 {safeIndex + 1} / {totalSlides}
               </span>
@@ -158,12 +160,12 @@ export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
 
         {/* Middle Prev / Next Buttons */}
         {totalSlides > 1 && (
-          <div className="flex items-center justify-between gap-2 my-auto py-2">
+          <div className="flex items-center justify-between gap-2 px-3 sm:px-5 my-auto">
             <button
               type="button"
               onClick={goPrev}
               aria-label="Foto sebelumnya"
-              className="min-h-[44px] min-w-[44px] rounded-full bg-black/45 hover:bg-black/75 text-white border border-white/20 flex items-center justify-center backdrop-blur-xs transition-all opacity-85 sm:opacity-75 sm:group-hover:opacity-100"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-black/55 hover:bg-black/80 text-white border border-white/25 flex items-center justify-center shadow-md transition-all opacity-90 lg:opacity-75 lg:group-hover:opacity-100 cursor-pointer"
             >
               <ChevronLeft className="w-5 h-5" />
             </button>
@@ -171,7 +173,7 @@ export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
               type="button"
               onClick={goNext}
               aria-label="Foto berikutnya"
-              className="min-h-[44px] min-w-[44px] rounded-full bg-black/45 hover:bg-black/75 text-white border border-white/20 flex items-center justify-center backdrop-blur-xs transition-all opacity-85 sm:opacity-75 sm:group-hover:opacity-100"
+              className="min-h-[44px] min-w-[44px] rounded-full bg-black/55 hover:bg-black/80 text-white border border-white/25 flex items-center justify-center shadow-md transition-all opacity-90 lg:opacity-75 lg:group-hover:opacity-100 cursor-pointer"
             >
               <ChevronRight className="w-5 h-5" />
             </button>
@@ -179,7 +181,7 @@ export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
         )}
 
         {/* Bottom Caption & Slide Dots */}
-        <div className="flex flex-col sm:flex-row sm:items-end justify-between gap-3">
+        <div className="bg-gradient-to-t from-black/85 via-black/45 to-transparent px-4 pt-8 pb-4 sm:px-6 sm:pb-6 flex flex-col sm:flex-row sm:items-end justify-between gap-2.5">
           <div className="min-w-0">
             {activeSlide.title && (
               <p className="text-xs font-medium text-emerald-200 truncate">
@@ -187,7 +189,7 @@ export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
               </p>
             )}
             {activeSlide.subtitle && (
-              <p className="text-base sm:text-lg font-bold text-white mt-0.5 leading-snug line-clamp-2">
+              <p className="text-sm sm:text-lg font-bold text-white mt-0.5 leading-snug line-clamp-2">
                 {activeSlide.subtitle}
               </p>
             )}
@@ -205,7 +207,7 @@ export const CommunityPhotoSlider: React.FC<CommunityPhotoSliderProps> = ({
                     aria-selected={isSelected}
                     aria-label={`Tampilkan foto ${idx + 1}`}
                     onClick={() => setActiveIndex(idx)}
-                    className={`h-2.5 rounded-full transition-all ${
+                    className={`h-2.5 rounded-full transition-all cursor-pointer ${
                       isSelected
                         ? 'w-7 bg-emerald-400'
                         : 'w-2.5 bg-white/50 hover:bg-white/80'

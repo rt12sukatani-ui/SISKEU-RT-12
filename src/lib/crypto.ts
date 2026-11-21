@@ -193,10 +193,48 @@ export function compressProofImage(file: File, maxDimension = 840, quality = 0.6
   });
 }
 
+function canvasSupportsWebp(): boolean {
+  try {
+    const test = document.createElement('canvas');
+    return test.toDataURL('image/webp').startsWith('data:image/webp');
+  } catch {
+    return false;
+  }
+}
+
+function renderResizedToDataUrl(
+  img: HTMLImageElement,
+  maxDimension: number,
+  mimeType: string,
+  quality: number
+): string {
+  let { width, height } = img;
+  if (width > maxDimension || height > maxDimension) {
+    if (width > height) {
+      height = Math.round((height * maxDimension) / width);
+      width = maxDimension;
+    } else {
+      width = Math.round((width * maxDimension) / height);
+      height = maxDimension;
+    }
+  }
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, width);
+  canvas.height = Math.max(1, height);
+  const ctx = canvas.getContext('2d');
+  if (!ctx) {
+    throw new Error('Canvas tidak tersedia di browser ini.');
+  }
+  ctx.imageSmoothingEnabled = true;
+  ctx.imageSmoothingQuality = 'high';
+  ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+  return canvas.toDataURL(mimeType, quality);
+}
+
 export function compressBannerSlideImage(
   file: File,
-  maxDimension = 1080,
-  initialQuality = 0.72
+  maxDimension = 1920,
+  initialQuality = 0.92
 ): Promise<string> {
   return new Promise((resolve, reject) => {
     if (!file.type.startsWith('image/')) {
@@ -209,44 +247,32 @@ export function compressBannerSlideImage(
       const img = new Image();
       img.onerror = () => reject(new Error(`Format gambar "${file.name}" tidak dapat diproses.`));
       img.onload = () => {
-        let { width, height } = img;
-        if (width > maxDimension || height > maxDimension) {
-          if (width > height) {
-            height = Math.round((height * maxDimension) / width);
-            width = maxDimension;
-          } else {
-            width = Math.round((width * maxDimension) / height);
-            height = maxDimension;
-          }
-        }
-        const canvas = document.createElement('canvas');
-        canvas.width = width;
-        canvas.height = height;
-        const ctx = canvas.getContext('2d');
-        if (!ctx) {
-          reject(new Error('Canvas tidak tersedia di browser ini.'));
-          return;
-        }
-        ctx.drawImage(img, 0, 0, width, height);
+        try {
+          const mimeType = canvasSupportsWebp() ? 'image/webp' : 'image/jpeg';
+          const maxPayloadChars = 430000;
+          const dimensions = [maxDimension, Math.min(maxDimension, 1600), Math.min(maxDimension, 1440)];
+          const qualities = [initialQuality, 0.86, 0.8, 0.72];
 
-        const qualities = [initialQuality, 0.58, 0.45, 0.35];
-        let result = canvas.toDataURL('image/jpeg', qualities[0]);
-        for (let i = 1; i < qualities.length && result.length > 250000; i++) {
-          result = canvas.toDataURL('image/jpeg', qualities[i]);
-        }
-
-        if (result.length > 260000) {
-          const fallbackCanvas = document.createElement('canvas');
-          const scale = 0.68;
-          fallbackCanvas.width = Math.max(320, Math.round(width * scale));
-          fallbackCanvas.height = Math.max(200, Math.round(height * scale));
-          const fctx = fallbackCanvas.getContext('2d');
-          if (fctx) {
-            fctx.drawImage(canvas, 0, 0, fallbackCanvas.width, fallbackCanvas.height);
-            result = fallbackCanvas.toDataURL('image/jpeg', 0.48);
+          let result = renderResizedToDataUrl(img, dimensions[0], mimeType, qualities[0]);
+          if (result.length <= maxPayloadChars) {
+            resolve(result);
+            return;
           }
+
+          for (const dim of dimensions) {
+            for (const q of qualities) {
+              result = renderResizedToDataUrl(img, dim, mimeType, q);
+              if (result.length <= maxPayloadChars) {
+                resolve(result);
+                return;
+              }
+            }
+          }
+
+          resolve(renderResizedToDataUrl(img, 1280, mimeType, 0.68));
+        } catch (err) {
+          reject(err instanceof Error ? err : new Error('Gagal memproses gambar slide.'));
         }
-        resolve(result);
       };
       img.src = String(reader.result);
     };

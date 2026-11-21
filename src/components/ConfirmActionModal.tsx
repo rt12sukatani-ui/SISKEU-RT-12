@@ -46,7 +46,7 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
           <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
         </div>
 
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -71,13 +71,13 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
             disabled={busy}
             onClick={onCancel}
             aria-label="Tutup konfirmasi"
-            className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer disabled:opacity-50"
           >
             <X className="w-4 h-4" />
           </button>
         </div>
 
-        <div className="p-6 space-y-4">
+        <div className="p-4 sm:p-6 pb-safe space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
             {description}
           </p>

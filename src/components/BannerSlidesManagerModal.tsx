@@ -157,15 +157,15 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-xs sm:p-4"
     >
       <div className="w-full sm:max-w-2xl max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
-        <div className="px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-2.5">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <ImagePlus className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0" />
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
                 Kelola Slide Foto Warga (Admin)
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
-                Unggah foto dari komputer/HP untuk ditampilkan sebagai slide di Beranda & Halaman Masuk
+                Unggah foto Full HD dari komputer/HP untuk ditampilkan di slideshow
               </p>
             </div>
           </div>
@@ -173,13 +173,13 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
             type="button"
             onClick={onClose}
             aria-label="Tutup pengelola slide"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-6">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
           {errorMsg && (
             <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-xs font-semibold text-red-700 dark:text-red-300">
               {errorMsg}
@@ -222,7 +222,7 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
                   : 'Pilih Foto dari Perangkat atau Seret ke Sini'}
               </p>
               <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
-                Bisa pilih beberapa foto sekaligus (JPG, PNG, WebP). Otomatis dikompres agar cepat dimuat.
+                Bisa pilih beberapa foto sekaligus (JPG, PNG, WebP). Disimpan resolusi Full HD hingga 1920px agar tetap tajam dan jernih.
               </p>
               <input
                 type="file"

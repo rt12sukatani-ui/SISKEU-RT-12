@@ -368,14 +368,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3">
           <button
             type="button"
             onClick={() => {
               setShowDuesForm((v) => !v);
               setShowAdminEntryForm(false);
             }}
-            className="min-h-[48px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm inline-flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
+            className="min-h-[48px] px-4 sm:px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
           >
             <Wallet className="w-4 h-4 shrink-0" />
             <span>Bayar Iuran</span>
@@ -388,7 +388,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 setShowAdminEntryForm((v) => !v);
                 setShowDuesForm(false);
               }}
-              className="min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-sm inline-flex items-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
+              className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
             >
               <Plus className="w-4 h-4 shrink-0" />
               <span>Catat Kas (Admin)</span>
@@ -906,7 +906,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
       {/* Search + Segmented Filter Bar */}
       <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="flex flex-wrap items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-fit">
+        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
           {(
             [
               { id: 'all', label: 'Semua Transaksi' },
@@ -920,7 +920,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setFilterTab(tab.id)}
-              className={`min-h-[40px] px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              className={`min-h-[42px] px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 filterTab === tab.id
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -1044,19 +1044,19 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                     </div>
                   </div>
 
-                  <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0">
+                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
                     {tx.proofImageData && (
                       <button
                         type="button"
                         onClick={() => setPreviewImage(tx.proofImageData || null)}
-                        className="min-h-[40px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer"
+                        className="min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Lihat Bukti</span>
                       </button>
                     )}
 
-                    <div className="text-right">
+                    <div className="sm:text-right mr-auto sm:mr-0">
                       <p
                         className={`font-mono-num text-sm sm:text-base font-bold tabular-nums ${
                           isIncome
@@ -1097,24 +1097,24 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                       (canManageKas ||
                         (tx.residentUid === profile.uid &&
                           (tx.status === 'pending' || tx.status === 'rejected'))) && (
-                        <div className="flex items-center gap-1 shrink-0">
+                        <div className="flex items-center gap-1.5 shrink-0">
                           <button
                             type="button"
                             onClick={() => openEditModal(tx)}
                             aria-label={`Edit ${tx.title}`}
                             title="Edit transaksi"
-                            className="min-h-[38px] min-w-[38px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
+                            className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
                           >
-                            <Pencil className="w-3.5 h-3.5" />
+                            <Pencil className="w-4 h-4" />
                           </button>
                           <button
                             type="button"
                             onClick={() => void onDeleteTransaction(tx)}
                             aria-label={`Hapus ${tx.title}`}
                             title="Hapus transaksi"
-                            className="min-h-[38px] min-w-[38px] rounded-xl border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
+                            className="min-h-[44px] min-w-[44px] rounded-xl border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
                           >
-                            <Trash2 className="w-3.5 h-3.5" />
+                            <Trash2 className="w-4 h-4" />
                           </button>
                         </div>
                       )}
@@ -1221,7 +1221,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           <form
             onClick={(e) => e.stopPropagation()}
             onSubmit={(e) => void handleEditSubmit(e)}
-            className="max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl"
+            className="max-w-lg w-full max-h-[90vh] overflow-y-auto rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 pb-safe space-y-4 shadow-2xl"
           >
             <div className="flex items-center justify-between gap-3">
               <div>

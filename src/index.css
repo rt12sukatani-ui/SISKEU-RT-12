@@ -56,6 +56,19 @@
   padding-bottom: max(0.5rem, env(safe-area-inset-bottom));
 }
 
+body {
+  overflow-x: clip;
+}
+
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
 @media print {
   body {
     background: #ffffff !important;

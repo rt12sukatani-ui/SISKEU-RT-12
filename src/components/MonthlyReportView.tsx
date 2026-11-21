@@ -139,18 +139,18 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 print:hidden">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 print:hidden">
           <input
             type="month"
             aria-label="Pilih bulan laporan"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="min-h-[44px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-slate-100"
+            className="col-span-2 sm:w-auto min-h-[44px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-slate-100"
           />
           <button
             type="button"
             onClick={() => downloadMonthlyReportCSV(selectedMonth, monthTransactions, rtSettings.rtName)}
-            className="min-h-[44px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
+            className="min-h-[44px] px-3.5 sm:px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
           >
             <Download className="w-4 h-4 shrink-0" />
             <span>Unduh CSV</span>
@@ -158,7 +158,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="min-h-[44px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
+            className="min-h-[44px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
           >
             <Printer className="w-4 h-4 shrink-0" />
             <span>Cetak / PDF</span>
@@ -209,7 +209,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Expense Breakdown */}
-        <section className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
+        <section className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6">
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
             Rincian Pengeluaran per Pos
           </h2>
@@ -250,7 +250,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
         {/* Resident Dues Transparency List & Auto Reminder */}
         <section className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
                 <Users className="w-4 h-4" />
@@ -291,8 +291,8 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             </div>
           </div>
 
-          <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
-            <div className="flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 w-fit">
+          <div className="px-4 sm:px-6 py-3 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3 print:hidden">
+            <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 w-full sm:w-fit">
               {(
                 [
                   { id: 'all', label: 'Semua' },
@@ -304,7 +304,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                   key={tab.id}
                   type="button"
                   onClick={() => setResidentFilter(tab.id)}
-                  className={`min-h-[34px] px-3 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                  className={`min-h-[38px] px-2.5 sm:px-3 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
                     residentFilter === tab.id
                       ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
                       : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -329,7 +329,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           </div>
 
           {reminderFeedback && (
-            <div className="px-6 py-3 bg-emerald-50 dark:bg-emerald-950/40 text-xs font-semibold text-emerald-800 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-800">
+            <div className="px-4 sm:px-6 py-3 bg-emerald-50 dark:bg-emerald-950/40 text-xs font-semibold text-emerald-800 dark:text-emerald-200 border-b border-emerald-200 dark:border-emerald-800">
               {reminderFeedback}
             </div>
           )}
@@ -343,9 +343,9 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               visibleResidents.map(({ resident: res, summary }) => (
                 <div
                   key={res.uid}
-                  className="px-6 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+                  className="px-4 sm:px-6 py-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
                 >
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-bold text-slate-900 dark:text-slate-100 truncate">
                       {res.displayName}
                     </p>

@@ -49,14 +49,14 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   return (
     <>
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 print:hidden">
-        <div className="max-w-6xl mx-auto px-4 sm:px-6 h-14 lg:h-16 flex items-center justify-between gap-8">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 lg:h-16 flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
           {/* Zone 1: Single-line Brand Wordmark */}
           <button
             type="button"
             onClick={() => onNavigate('beranda')}
-            className="font-display text-base sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 whitespace-nowrap shrink-0 text-left cursor-pointer hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+            className="font-display text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 min-w-0 truncate text-left cursor-pointer hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
           >
-            SISKEU RT12/RW20 SUKATANI
+            SISKEU RT 12/RW 20 SUKATANI
           </button>
 
           {/* Zone 2: Clean Typography Nav Links (Desktop) */}
@@ -84,7 +84,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           </nav>
 
           {/* Zone 3: Single Action Cluster (Sync + Notifications + Account/Mode) */}
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             {onSyncSheets && (
               <button
                 type="button"
@@ -114,10 +114,10 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               type="button"
               onClick={onOpenSettings}
               aria-label="Pengaturan & Profil Warga"
-              className="min-h-[44px] px-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white font-semibold text-xs sm:text-sm inline-flex items-center gap-2 whitespace-nowrap shrink-0 transition-colors cursor-pointer"
+              className="min-h-[44px] min-w-[44px] sm:px-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors cursor-pointer"
             >
               <Settings className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Akun & Mode</span>
+              <span className="hidden sm:inline">Pengaturan</span>
             </button>
           </div>
         </div>
@@ -139,21 +139,21 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
             </div>
 
-            <div className="px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
-              <div>
+            <div className="px-4 sm:px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div className="min-w-0">
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
                   Notifikasi Warga
                 </h2>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  {unreadCount} belum dibaca Pembaruan real-time
+                  {unreadCount} belum dibaca · Pembaruan real-time
                 </p>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 {unreadCount > 0 && (
                   <button
                     type="button"
                     onClick={() => void onMarkAllRead()}
-                    className="min-h-[44px] px-3 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+                    className="min-h-[44px] px-2.5 sm:px-3 rounded-xl text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
                   >
                     <CheckCheck className="w-4 h-4" />
                     <span>Tandai Dibaca</span>
@@ -170,7 +170,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="flex-1 overflow-y-auto pb-safe divide-y divide-slate-100 dark:divide-slate-800">
               {notifications.length === 0 ? (
                 <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
                   Belum ada notifikasi baru saat ini.
@@ -216,7 +216,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                         onClick={() => void onDeleteNotification(notif.id)}
                         aria-label={`Hapus notifikasi ${notif.title}`}
                         title="Hapus notifikasi"
-                        className="min-h-[36px] min-w-[36px] rounded-lg text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center shrink-0 cursor-pointer"
+                        className="min-h-[44px] min-w-[44px] rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center shrink-0 cursor-pointer"
                       >
                         <Trash2 className="w-4 h-4" />
                       </button>

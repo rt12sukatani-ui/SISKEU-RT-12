@@ -191,20 +191,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   return (
     <div className="space-y-6">
       {/* Top Account Role + Today Date & Live Clock Strip */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
         <div className="flex flex-wrap items-center gap-2.5">
-
-          <span className="text-sm font-semibold text-slate-900 dark:text-slate-100">
+          <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
             {rtSettings.rtName}/{rtSettings.rwName} · {rtSettings.kelurahan}
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 text-xs sm:text-sm">
           <div className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
             <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
             <span className="capitalize">{formattedTodayDate}</span>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono-num text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums">
+          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono-num text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
             <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
             <span>{formattedTodayTime}</span>
           </div>
@@ -213,16 +212,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Active Emergency Banner if any */}
       {activeEmergencies.length > 0 && (
-        <div className="rounded-2xl bg-red-600 text-white p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shadow-sm">
-          <div className="flex items-start gap-3.5">
+        <div className="rounded-2xl bg-red-600 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 shadow-sm">
+          <div className="flex items-start gap-3">
             <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
               <AlertTriangle className="w-5 h-5" />
             </div>
-            <div>
-              <h2 className="text-base font-bold">
+            <div className="min-w-0">
+              <h2 className="text-sm sm:text-base font-bold">
                 {activeEmergencies.length} Sinyal Darurat Aktif di Lingkungan
               </h2>
-              <p className="text-sm text-red-100 mt-0.5 leading-relaxed">
+              <p className="text-xs sm:text-sm text-red-100 mt-0.5 leading-relaxed">
                 {activeEmergencies[0].reporterName} ({activeEmergencies[0].houseBlock}) ·{' '}
                 {activeEmergencies[0].emergencyType.toUpperCase()} —{' '}
                 {activeEmergencies[0].description || 'Membutuhkan bantuan segera'}
@@ -240,12 +239,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Dominant Visual Anchor: Architectural Emerald Treasury + Resident Dues Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-        <section className="lg:col-span-7 relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 dark:from-emerald-950 dark:via-emerald-900 dark:to-slate-900 text-white p-6 sm:p-7 flex flex-col justify-between border border-emerald-700/70 dark:border-emerald-800">
-          <div className="flex items-start justify-between gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch">
+        <section className="lg:col-span-7 relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 dark:from-emerald-950 dark:via-emerald-900 dark:to-slate-900 text-white p-5 sm:p-7 flex flex-col justify-between border border-emerald-700/70 dark:border-emerald-800">
+          <div className="flex items-start justify-between gap-3 sm:gap-4">
             <div className="min-w-0">
-              <p className="mt-4 text-sm font-medium text-emerald-100">Total Saldo Kas RT</p>
-              <p className="mt-1 font-mono-num text-3xl sm:text-[2.5rem] font-extrabold tracking-tight leading-none tabular-nums">
+              <p className="mt-1 sm:mt-4 text-xs sm:text-sm font-medium text-emerald-100">Total Saldo Kas RT</p>
+              <p className="mt-1 font-mono-num text-2xl sm:text-[2.4rem] font-extrabold tracking-tight leading-none tabular-nums break-words">
                 {formatRupiah(netBalance)}
               </p>
             </div>
@@ -326,7 +325,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </section>
 
         {/* Resident Monthly Dues Reminder & Quick Action */}
-        <section className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 flex flex-col justify-between">
+        <section className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="font-semibold">
@@ -554,16 +553,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Two-Column Recent Activity & Announcements */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
         <section className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
             <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
               Mutasi Kas Terbaru
             </h2>
             <button
               type="button"
               onClick={() => onNavigate('kas')}
-              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[36px] inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[44px] inline-flex items-center gap-1 cursor-pointer"
             >
               <span>Lihat Semua</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -602,7 +601,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 return (
                   <div
                     key={tx.id}
-                    className="px-6 py-3.5 flex items-center justify-between gap-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                    className="px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                   >
                     <div className="flex items-center gap-3.5 min-w-0">
                       <div
@@ -661,22 +660,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             aria-label="Kalender dan Waktu Hari Ini"
             className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden"
           >
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-              <div>
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+              <div className="min-w-0">
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                   <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                   <span>Kalender & Waktu</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 capitalize">
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 capitalize truncate">
                   {formattedTodayDate} · <span className="font-mono-num font-semibold">{formattedTodayTime}</span>
                 </p>
               </div>
-              <div className="flex items-center gap-1">
+              <div className="flex items-center gap-1 shrink-0">
                 {!isViewingCurrentMonth && (
                   <button
                     type="button"
                     onClick={handleResetCalendarToday}
-                    className="min-h-[32px] px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
+                    className="min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
                   >
                     Hari Ini
                   </button>
@@ -685,7 +684,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   onClick={handlePrevCalendarMonth}
                   aria-label="Bulan sebelumnya"
-                  className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -693,14 +692,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   onClick={handleNextCalendarMonth}
                   aria-label="Bulan berikutnya"
-                  className="min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="p-5">
+            <div className="p-4 sm:p-5">
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize mb-3">
                 {calendarMonthLabel}
               </p>
@@ -757,7 +756,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </section>
 
           <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
               <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
                 <Megaphone className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                 <span>Pengumuman Lingkungan</span>
@@ -765,7 +764,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <button
                 type="button"
                 onClick={() => onNavigate('pengumuman')}
-                className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[36px] inline-flex items-center gap-1 cursor-pointer"
+                className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[44px] inline-flex items-center gap-1 cursor-pointer"
               >
                 <span>Semua Kabar</span>
                 <ChevronRight className="w-3.5 h-3.5" />
@@ -782,7 +781,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     key={item.id}
                     type="button"
                     onClick={() => onNavigate('pengumuman')}
-                    className="w-full text-left px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
+                    className="w-full text-left px-4 sm:px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
                   >
                     <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
                       <span

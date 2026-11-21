@@ -203,7 +203,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
         {/* Left Column: One-Tap SOS + Direct Calls + Emergency History */}
         <section className="lg:col-span-5 space-y-5">
-          <div className="rounded-3xl bg-red-50/90 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-6 space-y-5">
+          <div className="rounded-3xl bg-red-50/90 dark:bg-red-950/30 border border-red-200 dark:border-red-900 p-4 sm:p-6 space-y-5">
             <div className="flex items-start gap-3.5">
               <div className="w-12 h-12 rounded-2xl bg-red-600 text-white flex items-center justify-center shrink-0">
                 <Siren className="w-6 h-6" />
@@ -256,7 +256,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                     maxLength={150}
                     value={locationText}
                     onChange={(e) => setLocationText(e.target.value)}
-                    className="flex-1 min-h-[44px] px-3 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 text-sm"
+                    className="min-w-0 flex-1 min-h-[44px] px-3 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 text-sm"
                   />
                   <button
                     type="button"
@@ -304,24 +304,24 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
             <div className="pt-3 border-t border-red-200 dark:border-red-800 grid grid-cols-2 gap-2.5">
               <a
                 href={`tel:${rtSettings.emergencyPhoneMedical || '118'}`}
-                className="min-h-[46px] px-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors"
+                className="min-h-[46px] px-2.5 sm:px-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors text-center"
               >
                 <PhoneCall className="w-4 h-4 shrink-0" />
-                <span>Medis ({rtSettings.emergencyPhoneMedical || '118'})</span>
+                <span className="truncate">Medis ({rtSettings.emergencyPhoneMedical || '118'})</span>
               </a>
               <a
                 href={`tel:${rtSettings.emergencyPhoneRT || '112'}`}
-                className="min-h-[46px] px-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors"
+                className="min-h-[46px] px-2.5 sm:px-3 rounded-xl bg-white dark:bg-slate-900 border border-red-200 dark:border-red-800 text-red-700 dark:text-red-300 font-bold text-xs flex items-center justify-center gap-1.5 hover:bg-red-50 dark:hover:bg-red-950/60 transition-colors text-center"
               >
                 <PhoneCall className="w-4 h-4 shrink-0" />
-                <span>Pos RT ({rtSettings.emergencyPhoneRT || '112'})</span>
+                <span className="truncate">Pos RT ({rtSettings.emergencyPhoneRT || '112'})</span>
               </a>
             </div>
           </div>
 
           {/* Active Emergency Reports */}
           <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800">
+            <div className="px-4 sm:px-5 py-4 border-b border-slate-100 dark:border-slate-800">
               <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
                 Riwayat & Status Laporan Darurat
               </h3>
@@ -340,8 +340,8 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                   const isEditingThisAlert = editingAlertId === alert.id;
 
                   return (
-                    <div key={alert.id} className="p-5 space-y-2.5">
-                      <div className="flex items-center justify-between gap-2 text-xs">
+                    <div key={alert.id} className="p-4 sm:p-5 space-y-2.5">
+                      <div className="flex flex-wrap items-center justify-between gap-2 text-xs">
                         <span
                           className={`font-bold capitalize ${
                             alert.status === 'resolved'
@@ -375,9 +375,9 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                               }}
                               aria-label="Edit detail laporan darurat"
                               title="Edit detail laporan"
-                              className="min-h-[32px] min-w-[32px] rounded-lg border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
                             >
-                              <Pencil className="w-3.5 h-3.5" />
+                              <Pencil className="w-4 h-4" />
                             </button>
                           )}
                           {canEditOrDelete && (
@@ -386,9 +386,9 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                               onClick={() => void onDeleteEmergency(alert)}
                               aria-label="Hapus laporan darurat"
                               title="Hapus laporan darurat"
-                              className="min-h-[32px] min-w-[32px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
+                              className="min-h-[44px] min-w-[44px] rounded-xl border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
                             >
-                              <Trash2 className="w-3.5 h-3.5" />
+                              <Trash2 className="w-4 h-4" />
                             </button>
                           )}
                         </div>
@@ -448,7 +448,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                             <button
                               type="button"
                               onClick={() => setEditingAlertId(null)}
-                              className="min-h-[34px] px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                              className="min-h-[40px] px-3.5 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
                             >
                               Batal
                             </button>
@@ -469,7 +469,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                                   setSavingAlertEdit(false);
                                 }
                               }}
-                              className="min-h-[34px] px-3.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
+                              className="min-h-[40px] px-4 rounded-lg bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-semibold cursor-pointer"
                             >
                               {savingAlertEdit ? 'Menyimpan...' : 'Simpan'}
                             </button>
@@ -528,7 +528,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
         {/* Right Column: Live Medical Card Summary + Encrypted Health Profile Form */}
         <section className="lg:col-span-7 space-y-5">
           {/* Live Emergency Medical Card Preview */}
-          <div className="rounded-3xl bg-slate-900 dark:bg-slate-900 text-white p-6 border border-slate-800">
+          <div className="rounded-3xl bg-slate-900 dark:bg-slate-900 text-white p-4 sm:p-6 border border-slate-800">
             <div className="flex items-start justify-between gap-4">
               <div>
                 <p className="text-xs font-semibold text-emerald-300">
@@ -565,7 +565,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
             </div>
           </div>
 
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6">
+          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6">
             <div className="flex items-start justify-between gap-4 pb-4 border-b border-slate-100 dark:border-slate-800">
               <div className="flex items-start gap-3">
                 <div className="w-11 h-11 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -725,7 +725,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                 <button
                   type="submit"
                   disabled={savingHealth}
-                  className="min-h-[48px] px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-sm transition-colors cursor-pointer"
+                  className="w-full sm:w-auto min-h-[48px] px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-sm transition-colors cursor-pointer"
                 >
                   {savingHealth ? 'Mengenkripsi & Menyimpan...' : 'Simpan Profil Terenkripsi'}
                 </button>

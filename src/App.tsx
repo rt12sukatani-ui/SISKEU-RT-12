@@ -3936,7 +3936,7 @@ export default function App() {
             RT
           </div>
           <p className="font-display text-lg font-extrabold text-slate-900 dark:text-slate-100">
-            SISKEU RT12/RW20 SUKATANI
+            SISKEU RT 12/RW 20 SUKATANI
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
             Menyiapkan Database...

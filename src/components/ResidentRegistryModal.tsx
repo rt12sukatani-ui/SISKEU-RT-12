@@ -420,13 +420,13 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
           <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
         </div>
 
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
-          <div className="flex items-center gap-2.5">
+        <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2.5 min-w-0">
             <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
               <Database className="w-4 h-4" />
             </div>
-            <div>
-              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
                 Database Warga &amp; RBAC RT 12 / RW 20
               </h2>
               <p className="text-xs text-slate-500 dark:text-slate-400">
@@ -440,13 +440,13 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
             type="button"
             onClick={onClose}
             aria-label="Tutup database warga"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-6 space-y-5">
+        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5">
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-3">
@@ -701,7 +701,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
             <button
               type="submit"
               disabled={busy}
-              className="min-h-[42px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold cursor-pointer"
+              className="w-full sm:w-auto min-h-[44px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs sm:text-sm font-semibold cursor-pointer"
             >
               {busy ? 'Menyimpan...' : 'Simpan ke Database Warga'}
             </button>
@@ -869,7 +869,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                           )}
                         </div>
 
-                        <div className="flex flex-wrap items-center justify-end gap-1.5 shrink-0 self-end sm:self-center">
+                        <div className="flex flex-wrap items-center justify-start sm:justify-end gap-1.5 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t border-slate-100 dark:border-slate-800 sm:border-t-0">
                           {canEditEntryRow && !isSelf && onSetVerificationStatus && (
                             <>
                               {verStatus !== 'verified' ? (
@@ -889,7 +889,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                                       setBusy(false);
                                     }
                                   }}
-                                  className="min-h-[36px] px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  className="min-h-[40px] px-2.5 rounded-lg bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                 >
                                   <CheckCircle2 className="w-3.5 h-3.5" />
                                   <span>Verifikasi</span>
@@ -912,7 +912,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                                     }
                                   }}
                                   title="Tangguhkan verifikasi pengguna"
-                                  className="min-h-[36px] px-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
+                                  className="min-h-[40px] px-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer disabled:opacity-50"
                                 >
                                   <Clock className="w-3.5 h-3.5" />
                                   <span>Tangguhkan</span>
@@ -938,7 +938,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                                   }}
                                   title="Tolak / nonaktifkan verifikasi pengguna"
                                   aria-label={`Nonaktifkan ${entry.fullName}`}
-                                  className="min-h-[36px] min-w-[36px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer disabled:opacity-50"
+                                  className="min-h-[40px] min-w-[40px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer disabled:opacity-50"
                                 >
                                   <Ban className="w-3.5 h-3.5" />
                                 </button>
@@ -952,7 +952,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                               disabled={busy}
                               onClick={() => startEditDetails(entry)}
                               aria-label={`Edit data ${entry.fullName}`}
-                              className={`min-h-[36px] px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 cursor-pointer ${
+                              className={`min-h-[40px] px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 cursor-pointer ${
                                 isEditingDetailsThis
                                   ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
                                   : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -968,7 +968,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                               type="button"
                               disabled={busy}
                               onClick={() => startEditRbac(entry)}
-                              className={`min-h-[36px] px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 cursor-pointer ${
+                              className={`min-h-[40px] px-2.5 rounded-lg border text-xs font-semibold inline-flex items-center gap-1 cursor-pointer ${
                                 isEditingThis
                                   ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
                                   : 'border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -985,7 +985,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                               disabled={busy}
                               onClick={() => void onResetClaim(entry)}
                               title="Reset klaim akun agar warga dapat mendaftar ulang"
-                              className="min-h-[36px] px-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
+                              className="min-h-[40px] px-2.5 rounded-lg border border-amber-200 dark:border-amber-800 text-amber-700 dark:text-amber-300 hover:bg-amber-50 dark:hover:bg-amber-950/40 text-xs font-semibold inline-flex items-center gap-1 cursor-pointer"
                             >
                               <RotateCcw className="w-3.5 h-3.5" />
                               <span>Reset</span>
@@ -998,7 +998,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                               disabled={busy}
                               onClick={() => void onDeleteEntry(entry)}
                               aria-label={`Hapus ${entry.fullName}`}
-                              className="min-h-[36px] min-w-[36px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
+                              className="min-h-[40px] min-w-[40px] rounded-lg border border-red-200 dark:border-red-900/70 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/40 flex items-center justify-center cursor-pointer"
                             >
                               <Trash2 className="w-3.5 h-3.5" />
                             </button>

@@ -22,6 +22,8 @@ import {
   X,
 } from 'lucide-react';
 import { APPS_SCRIPT_BRIDGE_CODE } from '../lib/appsScriptTemplate';
+import porseniBannerImg from '../assets/images/porseni 2026.jpeg';
+import appEmblemImg from '../assets/images/app_emblem_icon_1795010549252.png';
 import { hasConfiguredGoogleOAuthClientId } from '../lib/googleAuth';
 import { BUILTIN_SHEETS_WEBAPP_URL, getDefaultWebAppUrl } from '../lib/sheetsDb';
 import type {
@@ -99,7 +101,7 @@ const DEFAULT_FALLBACK_SLIDE: SlideItem = {
   id: 'default-rt-banner',
   title: 'Portal RT 12 / RW 20 Sukatani',
   subtitle: 'Transparansi Kas Warga · Dokumentasi Kegiatan Lingkungan',
-  imageData: 'src/assets/images/porseni 2026.jpeg',
+  imageData: porseniBannerImg,
 };
 
 export const LoginScreen: React.FC<LoginScreenProps> = ({
@@ -131,6 +133,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [failedSlideIds, setFailedSlideIds] = useState<Record<string, boolean>>({});
   const [activeIndex, setActiveIndex] = useState(0);
   const [isHovered, setIsHovered] = useState(false);
+  const touchStartXRef = React.useRef<number | null>(null);
 
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
   const [selectedRole, setSelectedRole] = useState<LoginRole>('warga');
@@ -342,28 +345,43 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
     setActiveIndex((prev) => (prev + 1) % slides.length);
   };
 
+  const handleSlideTouchStart = (e: React.TouchEvent) => {
+    touchStartXRef.current = e.touches[0]?.clientX ?? null;
+  };
+
+  const handleSlideTouchEnd = (e: React.TouchEvent) => {
+    if (touchStartXRef.current === null || slides.length <= 1) return;
+    const endX = e.changedTouches[0]?.clientX ?? touchStartXRef.current;
+    const diff = touchStartXRef.current - endX;
+    if (Math.abs(diff) > 40) {
+      if (diff > 0) handleNextSlide();
+      else handlePrevSlide();
+    }
+    touchStartXRef.current = null;
+  };
+
   const showBootstrapFirstAdmin = Boolean(sheetInfo && isDatabaseEmpty && !isConnectingSheet);
 
   return (
     <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
       <header className="w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-20">
-        <div className="w-full px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3 min-w-0">
+        <div className="w-full px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
             {!emblemFailed ? (
               <img
-                src="src/assets/images/app_emblem_icon_1795010549252.png"
+                src={appEmblemImg}
                 alt="Logo RT12/RW20 SUKATANI"
                 referrerPolicy="no-referrer"
                 onError={() => setEmblemFailed(true)}
-                className="w-9 h-9 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
+                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
               />
             ) : (
-              <div className="w-9 h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
                 RT
               </div>
             )}
             <div className="min-w-0">
-              <span className="font-display text-sm sm:text-base font-extrabold tracking-tight block truncate">
+              <span className="font-display text-xs sm:text-base font-extrabold tracking-tight block truncate">
                 RT12/RW20 SUKATANI
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block truncate">
@@ -372,13 +390,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-2 shrink-0">
+          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
             <PWAInstallButton compact />
             <button
               type="button"
               onClick={onToggleElderlyMode}
               aria-pressed={elderlyMode}
-              className={`min-h-[44px] px-3.5 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              aria-label="Mode Teks Besar"
+              className={`min-h-[44px] px-2.5 sm:px-3.5 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 elderlyMode
                   ? 'bg-emerald-700 text-white border-emerald-700'
                   : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -399,12 +418,16 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </div>
       </header>
 
-      <main className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 min-h-[calc(100dvh-4rem)]">
-        {/* Full-Height Edge-to-Edge Activity Photo Slideshow */}
+      <main className="flex-1 w-full grid grid-cols-1 lg:grid-cols-12 lg:min-h-[calc(100dvh-4rem)]">
+        {/* Crisp Responsive Activity Photo Slideshow */}
         <section
           onMouseEnter={() => setIsHovered(true)}
           onMouseLeave={() => setIsHovered(false)}
-          className="lg:col-span-7 xl:col-span-8 relative min-h-[340px] sm:min-h-[420px] lg:min-h-full bg-slate-900 overflow-hidden"
+          onTouchStart={handleSlideTouchStart}
+          onTouchEnd={handleSlideTouchEnd}
+          aria-roledescription="carousel"
+          aria-label="Slideshow Dokumentasi Kegiatan RT"
+          className="group lg:col-span-7 xl:col-span-8 relative aspect-[16/10] sm:aspect-[16/9] lg:aspect-auto lg:min-h-full w-full bg-slate-900 overflow-hidden select-none"
         >
           <AnimatePresence mode="wait" initial={false}>
             <motion.div
@@ -419,34 +442,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 <img
                   src={currentSlide.imageData}
                   alt={currentSlide.title}
+                  decoding="async"
                   referrerPolicy="no-referrer"
                   onError={() =>
                     setFailedSlideIds((prev) => ({ ...prev, [currentSlide.id]: true }))
                   }
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover object-center"
                 />
               ) : (
-                <div className="w-full h-full bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 flex items-center justify-center p-8 text-white text-center">
-                  <p className="text-lg font-bold">{currentSlide.title}</p>
+                <div className="w-full h-full bg-gradient-to-br from-emerald-900 via-slate-900 to-slate-950 flex items-center justify-center p-6 sm:p-8 text-white text-center">
+                  <p className="text-base sm:text-lg font-bold">{currentSlide.title}</p>
                 </div>
               )}
             </motion.div>
           </AnimatePresence>
 
-          {/* Previous / Next Controls */}
+          {/* Previous / Next Controls (Always accessible on touch, hover-reveal on desktop) */}
           {slides.length > 1 && (
             <div
-              className={`absolute inset-y-0 inset-x-4 z-10 flex items-center justify-between pointer-events-none transition-opacity duration-300 ${
-                isHovered ? 'opacity-100' : 'opacity-0'
+              className={`absolute inset-y-0 inset-x-2.5 sm:inset-x-4 z-10 flex items-center justify-between pointer-events-none transition-opacity duration-200 ${
+                isHovered ? 'opacity-100' : 'opacity-90 lg:opacity-0'
               }`}
             >
               <button
                 type="button"
                 onClick={handlePrevSlide}
                 aria-label="Foto kegiatan sebelumnya"
-                className={`${
-                  isHovered ? 'pointer-events-auto' : 'pointer-events-none'
-                } min-h-[44px] min-w-[44px] rounded-full bg-slate-950/55 hover:bg-slate-950/80 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-colors cursor-pointer`}
+                className="pointer-events-auto min-h-[44px] min-w-[44px] rounded-full bg-slate-950/60 hover:bg-slate-950/85 border border-white/25 text-white flex items-center justify-center shadow-md transition-colors cursor-pointer"
               >
                 <ChevronLeft className="w-5 h-5" />
               </button>
@@ -454,27 +476,25 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 type="button"
                 onClick={handleNextSlide}
                 aria-label="Foto kegiatan berikutnya"
-                className={`${
-                  isHovered ? 'pointer-events-auto' : 'pointer-events-none'
-                } min-h-[44px] min-w-[44px] rounded-full bg-slate-950/55 hover:bg-slate-950/80 border border-white/20 text-white flex items-center justify-center backdrop-blur-sm transition-colors cursor-pointer`}
+                className="pointer-events-auto min-h-[44px] min-w-[44px] rounded-full bg-slate-950/60 hover:bg-slate-950/85 border border-white/25 text-white flex items-center justify-center shadow-md transition-colors cursor-pointer"
               >
                 <ChevronRight className="w-5 h-5" />
               </button>
             </div>
           )}
 
-          {/* Bottom caption & slide indicators */}
-          <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-slate-950/95 via-slate-950/60 to-transparent p-6 sm:p-8 lg:p-10 pt-20">
-            <h2 className="font-display text-xl sm:text-2xl lg:text-3xl font-bold text-white mt-1.5 leading-snug max-w-2xl">
+          {/* Tight Bottom Scrim & Slide Indicators (keeps center/top photo crisp) */}
+          <div className="absolute inset-x-0 bottom-0 z-10 bg-gradient-to-t from-slate-950/90 via-slate-950/45 to-transparent px-4 py-3.5 sm:p-7 lg:p-10 pt-10 sm:pt-16">
+            <h2 className="font-display text-base sm:text-2xl lg:text-3xl font-bold text-white leading-snug max-w-2xl">
               {currentSlide.title}
             </h2>
-            <p className="text-xs sm:text-sm text-slate-200/90 mt-1.5 max-w-2xl line-clamp-2">
+            <p className="text-xs sm:text-sm text-slate-200/95 mt-0.5 sm:mt-1.5 max-w-2xl line-clamp-2">
               {currentSlide.subtitle}
             </p>
 
             {slides.length > 1 && (
               <div
-                className="mt-5 flex items-center gap-1.5"
+                className="mt-2.5 sm:mt-4 flex items-center gap-1.5"
                 role="tablist"
                 aria-label="Pilih foto kegiatan"
               >
@@ -486,13 +506,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     aria-selected={idx === activeIndex}
                     aria-label={`Tampilkan foto ${idx + 1}: ${slide.title}`}
                     onClick={() => setActiveIndex(idx)}
-                    className="min-h-[28px] flex-1 max-w-[56px] flex items-center cursor-pointer group"
+                    className="min-h-[28px] flex-1 max-w-[48px] sm:max-w-[56px] flex items-center cursor-pointer group/dot"
                   >
                     <span
                       className={`block w-full h-1.5 rounded-full transition-all ${
                         idx === activeIndex
                           ? 'bg-emerald-400'
-                          : 'bg-white/35 group-hover:bg-white/60'
+                          : 'bg-white/40 group-hover/dot:bg-white/70'
                       }`}
                     />
                   </button>
@@ -503,14 +523,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </section>
 
         {/* Full-Height Right Panel: Modern Login Portal */}
-        <section className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between px-6 sm:px-8 lg:px-10 pt-3 pb-6 gap-6">
-          <div className="flex-1 flex flex-col justify-start space-y-5">
+        <section className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between px-4 sm:px-8 lg:px-10 py-5 lg:py-6 gap-5">
+          <div className="flex-1 flex flex-col justify-start space-y-4 sm:space-y-5">
             <div>
-              <h1 className="mt-0 font-display text-4xl sm:text-5xl font-extrabold tracking-tight leading-[1.18] text-slate-900 dark:text-slate-50 [text-wrap:balance]">
+              <h1 className="mt-0 font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.2] text-slate-900 dark:text-slate-50 [text-wrap:balance]">
                 Portal Sistem Keuangan &amp; Siaga Warga RT 12 / RW 20 Sukatani
               </h1>
 
-              <p className="mt-3 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="mt-2.5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                 Pantau kas RT secara terbuka, iuran bulanan, cek laporan bulanan, dan akses layanan darurat.
               </p>
             </div>
@@ -746,7 +766,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSwitchMode('login')}
-                      className={`min-h-[36px] px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      className={`min-h-[42px] px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                         authMode === 'login'
                           ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -758,7 +778,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSwitchMode('register')}
-                      className={`min-h-[36px] px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      className={`min-h-[42px] px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                         authMode === 'register'
                           ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -774,7 +794,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSelectRole('warga')}
-                      className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                      className={`min-h-[42px] px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
                         selectedRole === 'warga'
                           ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
@@ -785,7 +805,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSelectRole('pengurus')}
-                      className={`min-h-[36px] px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
+                      className={`min-h-[42px] px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
                         selectedRole === 'pengurus'
                           ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
                           : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
