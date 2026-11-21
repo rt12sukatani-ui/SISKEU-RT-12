@@ -1030,7 +1030,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                       </p>
                       <p className="text-[11px] text-slate-600 dark:text-slate-400 truncate">
                         {sheetInfo
-                          ? `${sheetInfo.spreadsheetTitle} (${sheetInfo.spreadsheetId.slice(0, 12)}…)`
+                          ? `${sheetInfo.spreadsheetTitle} (${
+                              sheetInfo.mode === 'webapp'
+                                ? 'Apps Script Web App'
+                                : sheetInfo.spreadsheetId.slice(0, 12) + '…'
+                            })`
                           : 'Belum ada database Google Spreadsheet terhubung'}
                       </p>
                     </div>
@@ -1110,7 +1114,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                       onClick={() => void onDisconnectGoogle()}
                       className="min-h-[38px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
                     >
-                      Ganti / Putuskan Google
+                      Putuskan Koneksi Spreadsheet
                     </button>
                   )}
                 </div>

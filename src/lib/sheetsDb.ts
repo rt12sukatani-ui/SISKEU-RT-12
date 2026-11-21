@@ -18,6 +18,7 @@ import type {
   ResidentRegistryEntry,
   ResidentStatus,
   RtSettings,
+  SheetConnection,
   SheetDbInfo,
   TransactionCategory,
   TransactionStatus,
@@ -29,6 +30,7 @@ import type {
 export const DEFAULT_SPREADSHEET_TITLE = 'DATABASE_SISKEU_RT12_RW20';
 const LEGACY_SPREADSHEET_TITLE = 'SISKEU_RT12_RW20_DATABASE';
 const SAVED_SPREADSHEET_ID_KEY = 'siskeu_rt12_spreadsheet_id_v1';
+const SAVED_WEBAPP_URL_KEY = 'siskeu_rt12_webapp_url_v1';
 const CHUNK_SIZE = 45000;
 
 export const SHEET_TABS = {
@@ -267,6 +269,55 @@ export function clearSavedSpreadsheetId(): void {
   }
 }
 
+export function getSavedWebAppUrl(): string | null {
+  try {
+    return localStorage.getItem(SAVED_WEBAPP_URL_KEY);
+  } catch {
+    return null;
+  }
+}
+
+export function saveWebAppUrl(url: string): void {
+  try {
+    localStorage.setItem(SAVED_WEBAPP_URL_KEY, url);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function clearSavedWebAppUrl(): void {
+  try {
+    localStorage.removeItem(SAVED_WEBAPP_URL_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function getDefaultWebAppUrl(): string {
+  const envUrl = (import.meta.env.VITE_SHEETS_WEBAPP_URL || '').trim();
+  if (envUrl) return envUrl;
+  return (getSavedWebAppUrl() || '').trim();
+}
+
+export function extractWebAppUrl(input: string): string | null {
+  const trimmed = input.trim();
+  if (!trimmed) return null;
+  try {
+    const u = new URL(trimmed);
+    if (
+      u.protocol === 'https:' &&
+      u.hostname === 'script.google.com' &&
+      u.pathname.includes('/macros/') &&
+      u.pathname.endsWith('/exec')
+    ) {
+      return u.toString();
+    }
+    return null;
+  } catch {
+    return null;
+  }
+}
+
 export function extractSpreadsheetId(input: string): string {
   const trimmed = input.trim();
   const urlMatch = trimmed.match(/\/spreadsheets\/d\/([a-zA-Z0-9-_]+)/);
@@ -417,6 +468,72 @@ async function googleFetch<T>(
   return parsed as T;
 }
 
+async function webAppPost<T extends { ok?: boolean; error?: string }>(
+  webAppUrl: string,
+  payload: Record<string, unknown>
+): Promise<T> {
+  const res = await fetch(webAppUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'text/plain;charset=utf-8',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const text = await res.text();
+  let parsed: T | null = null;
+  try {
+    parsed = text ? (JSON.parse(text) as T) : null;
+  } catch {
+    throw new Error(
+      'Respon dari Apps Script tidak valid. Pastikan Web App di-deploy dengan akses "Siapa saja (Anyone)".'
+    );
+  }
+
+  if (!res.ok || !parsed || parsed.ok === false) {
+    throw new Error(parsed?.error || `Gagal terhubung ke Apps Script (${res.status})`);
+  }
+  return parsed;
+}
+
+export async function connectWebAppAndEnsureSchema(
+  rawUrl: string,
+  defaultSettings: RtSettings
+): Promise<SheetDbInfo> {
+  const webAppUrl = extractWebAppUrl(rawUrl);
+  if (!webAppUrl) {
+    throw new Error(
+      'URL Web App Google Apps Script tidak valid. Pastikan berawalan https://script.google.com/macros/s/... dan berakhiran /exec.'
+    );
+  }
+
+  const nowIso = new Date().toISOString();
+  const res = await webAppPost<{
+    ok: boolean;
+    spreadsheetId: string;
+    spreadsheetTitle: string;
+    spreadsheetUrl: string;
+  }>(webAppUrl, {
+    action: 'ensureSchema',
+    tabs: Object.values(SHEET_TABS),
+    headers: SHEET_HEADERS,
+    legacyMap: LEGACY_TAB_TO_INDONESIAN,
+    defaultSettingsRow: settingsToRow(defaultSettings, nowIso),
+  });
+
+  saveWebAppUrl(webAppUrl);
+  return {
+    mode: 'webapp',
+    spreadsheetId: res.spreadsheetId,
+    spreadsheetTitle: res.spreadsheetTitle || DEFAULT_SPREADSHEET_TITLE,
+    spreadsheetUrl:
+      res.spreadsheetUrl ||
+      `https://docs.google.com/spreadsheets/d/${res.spreadsheetId}/edit`,
+    webAppUrl,
+    lastSyncedAtIso: nowIso,
+  };
+}
+
 export async function findAppDatabaseSpreadsheet(
   accessToken: string
 ): Promise<SheetDbInfo | null> {
@@ -432,6 +549,7 @@ export async function findAppDatabaseSpreadsheet(
     data.files?.find((f) => f.name === DEFAULT_SPREADSHEET_TITLE) || data.files?.[0];
   if (!file) return null;
   return {
+    mode: 'oauth',
     spreadsheetId: file.id,
     spreadsheetTitle: file.name,
     spreadsheetUrl:
@@ -484,6 +602,7 @@ export async function createAppDatabaseSpreadsheet(
 
   saveSpreadsheetId(created.spreadsheetId);
   return {
+    mode: 'oauth',
     spreadsheetId: created.spreadsheetId,
     spreadsheetTitle: created.properties?.title || DEFAULT_SPREADSHEET_TITLE,
     spreadsheetUrl:
@@ -625,6 +744,7 @@ export async function connectAndEnsureSchema(
 
   saveSpreadsheetId(meta.spreadsheetId);
   return {
+    mode: 'oauth',
     spreadsheetId: meta.spreadsheetId,
     spreadsheetTitle: meta.properties?.title || DEFAULT_SPREADSHEET_TITLE,
     spreadsheetUrl:
@@ -652,27 +772,46 @@ function rowsToObjects(values?: string[][]): Record<string, string>[] {
 }
 
 export async function fetchAllSheetTables(
-  accessToken: string,
-  spreadsheetId: string
+  conn: SheetConnection
 ): Promise<SheetSnapshotData> {
   const allTabs = Object.values(SHEET_TABS);
-  const rangesParam = allTabs
-    .map((tab) => `ranges=${encodeURIComponent(`${tab}!A1:Z`)}`)
-    .join('&');
-
-  const res = await googleFetch<{
-    valueRanges?: Array<{ values?: string[][] }>;
-  }>(
-    `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-      spreadsheetId
-    )}/values:batchGet?${rangesParam}`,
-    accessToken
-  );
-
   const byTab = new Map<SheetTabName, Record<string, string>[]>();
-  allTabs.forEach((tab, idx) => {
-    byTab.set(tab, rowsToObjects(res.valueRanges?.[idx]?.values));
-  });
+
+  if (conn.mode === 'webapp') {
+    if (!conn.webAppUrl) {
+      throw new Error('URL Web App Apps Script belum terhubung.');
+    }
+    const res = await webAppPost<{
+      ok: boolean;
+      tables?: Record<string, string[][]>;
+    }>(conn.webAppUrl, {
+      action: 'fetchAll',
+      tabs: allTabs,
+    });
+    allTabs.forEach((tab) => {
+      byTab.set(tab, rowsToObjects(res.tables?.[tab]));
+    });
+  } else {
+    if (!conn.accessToken) {
+      throw new SheetsAuthExpiredError();
+    }
+    const rangesParam = allTabs
+      .map((tab) => `ranges=${encodeURIComponent(`${tab}!A1:Z`)}`)
+      .join('&');
+
+    const res = await googleFetch<{
+      valueRanges?: Array<{ values?: string[][] }>;
+    }>(
+      `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+        conn.spreadsheetId
+      )}/values:batchGet?${rangesParam}`,
+      conn.accessToken
+    );
+
+    allTabs.forEach((tab, idx) => {
+      byTab.set(tab, rowsToObjects(res.valueRanges?.[idx]?.values));
+    });
+  }
 
   // 1. Pengaturan (Settings)
   const settingsRows = byTab.get(SHEET_TABS.SETTINGS) || [];
@@ -1157,17 +1296,22 @@ export function slideToRow(s: BannerSlide): string[] {
 // ==========================================
 
 export async function appendSheetRows(
-  accessToken: string,
-  spreadsheetId: string,
+  conn: SheetConnection,
   tab: SheetTabName,
   rows: string[][]
 ): Promise<void> {
   if (rows.length === 0) return;
+  if (conn.mode === 'webapp') {
+    if (!conn.webAppUrl) throw new Error('URL Web App Apps Script belum terhubung.');
+    await webAppPost(conn.webAppUrl, { action: 'append', tab, rows });
+    return;
+  }
+  if (!conn.accessToken) throw new SheetsAuthExpiredError();
   await googleFetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-      spreadsheetId
+      conn.spreadsheetId
     )}/values/${encodeURIComponent(`${tab}!A1`)}:append?valueInputOption=RAW&insertDataOption=INSERT_ROWS`,
-    accessToken,
+    conn.accessToken,
     {
       method: 'POST',
       body: JSON.stringify({ values: rows }),
@@ -1198,13 +1342,24 @@ async function getKeyRowIndexMap(
 }
 
 export async function upsertSheetRowsByKey(
-  accessToken: string,
-  spreadsheetId: string,
+  conn: SheetConnection,
   tab: SheetTabName,
   rows: string[][]
 ): Promise<void> {
   if (rows.length === 0) return;
-  const keyMap = await getKeyRowIndexMap(accessToken, spreadsheetId, tab);
+  if (conn.mode === 'webapp') {
+    if (!conn.webAppUrl) throw new Error('URL Web App Apps Script belum terhubung.');
+    await webAppPost(conn.webAppUrl, {
+      action: 'upsert',
+      tab,
+      rows,
+      legacySettingsKey: tab === SHEET_TABS.SETTINGS ? 'rt_config' : undefined,
+    });
+    return;
+  }
+  if (!conn.accessToken) throw new SheetsAuthExpiredError();
+
+  const keyMap = await getKeyRowIndexMap(conn.accessToken, conn.spreadsheetId, tab);
   const endCol = columnIndexToLetter(SHEET_HEADERS[tab].length - 1);
 
   const updates: Array<{ range: string; values: string[][] }> = [];
@@ -1230,9 +1385,9 @@ export async function upsertSheetRowsByKey(
   if (updates.length > 0) {
     await googleFetch(
       `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        spreadsheetId
+        conn.spreadsheetId
       )}/values:batchUpdate`,
-      accessToken,
+      conn.accessToken,
       {
         method: 'POST',
         body: JSON.stringify({
@@ -1244,13 +1399,12 @@ export async function upsertSheetRowsByKey(
   }
 
   if (appends.length > 0) {
-    await appendSheetRows(accessToken, spreadsheetId, tab, appends);
+    await appendSheetRows(conn, tab, appends);
   }
 }
 
 export async function deleteSheetRowsByKey(
-  accessToken: string,
-  spreadsheetId: string,
+  conn: SheetConnection,
   tab: SheetTabName,
   keys: string[]
 ): Promise<void> {
@@ -1258,13 +1412,24 @@ export async function deleteSheetRowsByKey(
   const keySet = new Set(keys.map((k) => k.trim()).filter(Boolean));
   if (keySet.size === 0) return;
 
+  if (conn.mode === 'webapp') {
+    if (!conn.webAppUrl) throw new Error('URL Web App Apps Script belum terhubung.');
+    await webAppPost(conn.webAppUrl, {
+      action: 'delete',
+      tab,
+      keys: Array.from(keySet),
+    });
+    return;
+  }
+  if (!conn.accessToken) throw new SheetsAuthExpiredError();
+
   const [keyMap, meta] = await Promise.all([
-    getKeyRowIndexMap(accessToken, spreadsheetId, tab),
+    getKeyRowIndexMap(conn.accessToken, conn.spreadsheetId, tab),
     googleFetch<SpreadsheetMetadata>(
       `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        spreadsheetId
+        conn.spreadsheetId
       )}?fields=sheets.properties(sheetId,title)`,
-      accessToken
+      conn.accessToken
     ),
   ]);
 
@@ -1293,9 +1458,9 @@ export async function deleteSheetRowsByKey(
 
   await googleFetch(
     `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-      spreadsheetId
+      conn.spreadsheetId
     )}:batchUpdate`,
-    accessToken,
+    conn.accessToken,
     {
       method: 'POST',
       body: JSON.stringify({ requests }),

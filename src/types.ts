@@ -110,10 +110,19 @@ export interface AppUserSession {
 }
 
 export interface SheetDbInfo {
+  mode: 'webapp' | 'oauth';
   spreadsheetId: string;
   spreadsheetTitle: string;
   spreadsheetUrl: string;
+  webAppUrl?: string;
   lastSyncedAtIso?: string;
+}
+
+export interface SheetConnection {
+  mode: 'webapp' | 'oauth';
+  spreadsheetId: string;
+  webAppUrl?: string;
+  accessToken?: string;
 }
 
 export interface PrivateProfileData {

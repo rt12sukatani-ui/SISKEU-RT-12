@@ -31,10 +31,10 @@ import {
 } from './lib/crypto';
 import {
   clearGoogleAccessToken,
+  formatGoogleAuthError,
   getGoogleAccessToken,
   googleWorkspaceSignIn,
   googleWorkspaceSignOut,
-  initGoogleAuth,
 } from './lib/googleAuth';
 import {
   enqueueOfflineAction,
@@ -49,7 +49,9 @@ import {
   announcementToRow,
   appendSheetRows,
   clearSavedSpreadsheetId,
+  clearSavedWebAppUrl,
   connectAndEnsureSchema,
+  connectWebAppAndEnsureSchema,
   createAppDatabaseSpreadsheet,
   deleteSheetRowsByKey,
   emergencyToRow,
@@ -57,6 +59,7 @@ import {
   fetchAllSheetTables,
   findAppDatabaseSpreadsheet,
   generateRecordId,
+  getDefaultWebAppUrl,
   getSavedSpreadsheetId,
   notificationToRow,
   privateDataToRow,
@@ -92,6 +95,7 @@ import type {
   ResidentRegistryEntry,
   ResidentStatus,
   RtSettings,
+  SheetConnection,
   SheetDbInfo,
   TransactionCategory,
   UserAccountLookup,
@@ -313,56 +317,79 @@ export default function App() {
     setAdminRecord(null);
     setIsBootstrappedAdminUser(false);
     setLoginError(
-      'Sesi akses Google Spreadsheet telah berakhir. Silakan klik "Sign in with Google" untuk menghubungkan ulang.'
+      'Sesi akses Google Spreadsheet telah berakhir. Silakan hubungkan ulang atau gunakan koneksi Apps Script Web App.'
     );
   }, []);
 
-  const requireActiveSheet = useCallback((): {
-    token: string;
-    spreadsheetId: string;
-    spreadsheetTitle: string;
-  } | null => {
-    const token = getGoogleAccessToken();
-    if (!token) {
-      handleExpiredToken();
-      return null;
+  const getActiveSheetConnection = useCallback((): SheetConnection | null => {
+    if (!sheetInfo?.spreadsheetId) return null;
+    if (sheetInfo.mode === 'webapp') {
+      if (!sheetInfo.webAppUrl) return null;
+      return {
+        mode: 'webapp',
+        spreadsheetId: sheetInfo.spreadsheetId,
+        webAppUrl: sheetInfo.webAppUrl,
+      };
     }
+    const token = getGoogleAccessToken();
+    if (!token) return null;
+    return {
+      mode: 'oauth',
+      spreadsheetId: sheetInfo.spreadsheetId,
+      accessToken: token,
+    };
+  }, [sheetInfo?.mode, sheetInfo?.spreadsheetId, sheetInfo?.webAppUrl]);
+
+  const requireActiveSheet = useCallback((): SheetConnection | null => {
     if (!sheetInfo?.spreadsheetId) {
       showToast(
-        'Database Spreadsheet Belum Dibuat',
-        rbac.isFullAdmin
-          ? 'Klik "Buat Database Spreadsheet Baru" pada panel Admin di atas terlebih dahulu.'
-          : 'Database Google Spreadsheet belum dibuat atau dihubungkan oleh Admin RT.',
+        'Database Spreadsheet Belum Terhubung',
+        'Hubungkan URL Web App Apps Script Google Spreadsheet RT Anda terlebih dahulu.',
+        true
+      );
+      return null;
+    }
+    if (sheetInfo.mode === 'oauth') {
+      const token = getGoogleAccessToken();
+      if (!token) {
+        handleExpiredToken();
+        return null;
+      }
+      return {
+        mode: 'oauth',
+        spreadsheetId: sheetInfo.spreadsheetId,
+        accessToken: token,
+      };
+    }
+    if (!sheetInfo.webAppUrl) {
+      showToast(
+        'URL Web App Belum Lengkap',
+        'Tempel ulang URL Web App Google Apps Script di halaman koneksi.',
         true
       );
       return null;
     }
     return {
-      token,
+      mode: 'webapp',
       spreadsheetId: sheetInfo.spreadsheetId,
-      spreadsheetTitle: sheetInfo.spreadsheetTitle,
+      webAppUrl: sheetInfo.webAppUrl,
     };
   }, [
     handleExpiredToken,
+    sheetInfo?.mode,
     sheetInfo?.spreadsheetId,
-    sheetInfo?.spreadsheetTitle,
+    sheetInfo?.webAppUrl,
     showToast,
-    rbac.isFullAdmin,
   ]);
 
   const refreshSpreadsheetData = useCallback(
-    async (
-      overrideToken?: string,
-      overrideSpreadsheetId?: string,
-      silent = false
-    ) => {
-      const token = overrideToken || getGoogleAccessToken();
-      const targetId = overrideSpreadsheetId || sheetInfo?.spreadsheetId;
-      if (!token || !targetId) return null;
+    async (overrideConn?: SheetConnection, silent = false) => {
+      const conn = overrideConn || getActiveSheetConnection();
+      if (!conn) return null;
 
       if (!silent) setIsSyncing(true);
       try {
-        const snap = await fetchAllSheetTables(token, targetId);
+        const snap = await fetchAllSheetTables(conn);
 
         if (snap.rtSettings) setRtSettings(snap.rtSettings);
         setRegistryEntries(
@@ -454,7 +481,7 @@ export default function App() {
         if (!silent) setIsSyncing(false);
       }
     },
-    [sheetInfo?.spreadsheetId, currentUser, showToast, handleExpiredToken]
+    [getActiveSheetConnection, currentUser, showToast, handleExpiredToken]
   );
 
   // Sync active user profile/admin changes from fresh sheet snapshots
@@ -516,57 +543,95 @@ export default function App() {
     };
   }, [currentUser, privateDataRecords]);
 
-  // Initialize Google Workspace OAuth listener (token strictly in memory)
+  // Auto-connect saved Google Apps Script Web App URL on startup (zero Firebase, zero OAuth block)
   useEffect(() => {
-    const unsubscribe = initGoogleAuth(
-      (user, token) => {
-        setGoogleConnected(true);
-        setGoogleUserEmail(user.email || null);
-        setGoogleDisplayName(user.displayName || null);
-        setGoogleUid(user.uid);
-        setAuthReady(true);
-        const savedId = getSavedSpreadsheetId();
-        if (savedId && !sheetInfo) {
-          void (async () => {
-            try {
-              const info = await connectAndEnsureSchema(token, savedId, DEFAULT_RT_SETTINGS);
-              setSheetInfo(info);
-              await refreshSpreadsheetData(token, info.spreadsheetId, true);
-            } catch {
-              // User can re-select spreadsheet
-            }
-          })();
-        }
-      },
-      (user) => {
-        setGoogleConnected(false);
-        setGoogleUserEmail(user?.email || null);
-        setGoogleDisplayName(user?.displayName || null);
-        setGoogleUid(user?.uid || null);
-        setCurrentUser(null);
-        setProfile(null);
-        setAdminRecord(null);
-        setIsBootstrappedAdminUser(false);
-        setAuthReady(true);
-      }
-    );
+    const defaultWebAppUrl = getDefaultWebAppUrl();
+    if (!defaultWebAppUrl || !isOnline) {
+      setAuthReady(true);
+      return;
+    }
 
-    return () => unsubscribe();
+    let cancelled = false;
+    void (async () => {
+      setIsConnectingSheet(true);
+      try {
+        const info = await connectWebAppAndEnsureSchema(defaultWebAppUrl, DEFAULT_RT_SETTINGS);
+        if (cancelled) return;
+        setSheetInfo(info);
+        setGoogleConnected(true);
+        setGoogleUserEmail('Google Spreadsheet (Apps Script)');
+        await refreshSpreadsheetData(
+          {
+            mode: 'webapp',
+            spreadsheetId: info.spreadsheetId,
+            webAppUrl: info.webAppUrl,
+          },
+          true
+        );
+      } catch {
+        // User can reconnect manually from LoginScreen
+      } finally {
+        if (!cancelled) {
+          setIsConnectingSheet(false);
+          setAuthReady(true);
+        }
+      }
+    })();
+
+    return () => {
+      cancelled = true;
+    };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Periodic background polling of Google Spreadsheet (single batchGet every 25s)
+  // Periodic background polling of Google Spreadsheet every 25s
   useEffect(() => {
-    if (!googleConnected || !sheetInfo?.spreadsheetId || !isOnline) return;
+    if (!sheetInfo?.spreadsheetId || !isOnline) return;
+    if (sheetInfo.mode === 'oauth' && !googleConnected) return;
     const timer = window.setInterval(() => {
       if (document.visibilityState === 'visible' && !isMutatingRef.current) {
-        void refreshSpreadsheetData(undefined, undefined, true);
+        void refreshSpreadsheetData(undefined, true);
       }
     }, 25000);
     return () => window.clearInterval(timer);
-  }, [googleConnected, sheetInfo?.spreadsheetId, isOnline, refreshSpreadsheetData]);
+  }, [googleConnected, sheetInfo?.mode, sheetInfo?.spreadsheetId, isOnline, refreshSpreadsheetData]);
 
-  // Connect Google account + auto-discover or connect saved Google Spreadsheet
+  // Connect via Google Apps Script Web App URL (no Firebase, no OAuth verification errors)
+  const handleConnectWebApp = useCallback(
+    async (webAppUrlInput: string) => {
+      setIsConnectingSheet(true);
+      setLoginError(null);
+      try {
+        const info = await connectWebAppAndEnsureSchema(webAppUrlInput, DEFAULT_RT_SETTINGS);
+        setSheetInfo(info);
+        setGoogleConnected(true);
+        setGoogleUserEmail('Google Spreadsheet (Apps Script)');
+        await refreshSpreadsheetData(
+          {
+            mode: 'webapp',
+            spreadsheetId: info.spreadsheetId,
+            webAppUrl: info.webAppUrl,
+          },
+          true
+        );
+        showToast(
+          'Google Spreadsheet Terhubung',
+          `Berhasil terhubung ke "${info.spreadsheetTitle}" via Apps Script.`
+        );
+      } catch (err) {
+        setLoginError(
+          err instanceof Error
+            ? err.message
+            : 'Gagal menghubungkan URL Web App Google Apps Script.'
+        );
+      } finally {
+        setIsConnectingSheet(false);
+      }
+    },
+    [refreshSpreadsheetData, showToast]
+  );
+
+  // Optional direct GIS Google OAuth connection (requires VITE_GOOGLE_OAUTH_CLIENT_ID)
   const handleGoogleConnect = useCallback(async () => {
     setIsConnectingSheet(true);
     setLoginError(null);
@@ -582,7 +647,10 @@ export default function App() {
         try {
           const info = await connectAndEnsureSchema(accessToken, savedId, DEFAULT_RT_SETTINGS);
           setSheetInfo(info);
-          await refreshSpreadsheetData(accessToken, info.spreadsheetId, true);
+          await refreshSpreadsheetData(
+            { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken },
+            true
+          );
           return;
         } catch {
           clearSavedSpreadsheetId();
@@ -597,31 +665,15 @@ export default function App() {
           DEFAULT_RT_SETTINGS
         );
         setSheetInfo(info);
-        await refreshSpreadsheetData(accessToken, info.spreadsheetId, true);
+        await refreshSpreadsheetData(
+          { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken },
+          true
+        );
       } else {
         setSheetInfo(null);
       }
     } catch (err) {
-      const code = (err as { code?: string })?.code || '';
-      const rawMessage = err instanceof Error ? err.message : '';
-      if (code === 'auth/unauthorized-domain' || rawMessage.includes('auth/unauthorized-domain')) {
-        const host = typeof window !== 'undefined' ? window.location.hostname : '';
-        setLoginError(
-          `Domain "${host}" belum terdaftar di Authorized Domains Google/Firebase Console. Tambahkan "${host}" atau muat ulang halaman.`
-        );
-      } else if (code === 'auth/popup-blocked') {
-        setLoginError(
-          'Pop-up login Google diblokir oleh browser. Mohon izinkan pop-up untuk situs ini lalu coba lagi.'
-        );
-      } else if (code === 'auth/popup-closed-by-user') {
-        setLoginError('Jendela login Google ditutup sebelum selesai. Silakan coba lagi.');
-      } else {
-        setLoginError(
-          err instanceof Error
-            ? `Gagal menghubungkan Google Sheets: ${err.message}`
-            : 'Gagal menghubungkan akun Google.'
-        );
-      }
+      setLoginError(formatGoogleAuthError(err, 'connect'));
     } finally {
       setIsConnectingSheet(false);
     }
@@ -630,6 +682,8 @@ export default function App() {
   const handleGoogleDisconnect = useCallback(async () => {
     setSettingsOpen(false);
     setRegistryOpen(false);
+    clearSavedWebAppUrl();
+    clearSavedSpreadsheetId();
     await googleWorkspaceSignOut();
     setGoogleConnected(false);
     setGoogleUserEmail(null);
@@ -672,6 +726,11 @@ export default function App() {
     setLoginError(null);
     try {
       const info = await createAppDatabaseSpreadsheet(token, DEFAULT_RT_SETTINGS);
+      const conn: SheetConnection = {
+        mode: 'oauth',
+        spreadsheetId: info.spreadsheetId,
+        accessToken: token,
+      };
       const nowIso = new Date().toISOString();
       const adminToSeed: AdminRoleRecord = adminRecord || {
         uid: currentUser.uid,
@@ -698,18 +757,14 @@ export default function App() {
       };
 
       await Promise.all([
-        upsertSheetRowsByKey(token, info.spreadsheetId, SHEET_TABS.ADMINS, [
-          adminRecordToRow(adminToSeed),
-        ]),
-        upsertSheetRowsByKey(token, info.spreadsheetId, SHEET_TABS.USERS, [
-          userProfileToRow(profileToSeed),
-        ]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.ADMINS, [adminRecordToRow(adminToSeed)]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [userProfileToRow(profileToSeed)]),
       ]);
 
       setSheetInfo(info);
       setAdminRecord(adminToSeed);
       setProfile(profileToSeed);
-      await refreshSpreadsheetData(token, info.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
       showToast(
         'Google Spreadsheet Siap',
         `Database "${info.spreadsheetTitle}" berhasil dibuat dan terhubung.`
@@ -745,7 +800,7 @@ export default function App() {
     async (idOrUrl: string) => {
       const token = getGoogleAccessToken();
       if (!token) {
-        const msg = 'Hubungkan akun Google terlebih dahulu.';
+        const msg = 'Mode OAuth memerlukan login Google terlebih dahulu.';
         setLoginError(msg);
         showToast('Google Belum Terhubung', msg, true);
         return;
@@ -772,7 +827,10 @@ export default function App() {
       try {
         const info = await connectAndEnsureSchema(token, spreadsheetId, DEFAULT_RT_SETTINGS);
         setSheetInfo(info);
-        await refreshSpreadsheetData(token, info.spreadsheetId, true);
+        await refreshSpreadsheetData(
+          { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken: token },
+          true
+        );
         showToast(
           'Spreadsheet Terhubung',
           `Berhasil terhubung ke "${info.spreadsheetTitle}".`
@@ -824,8 +882,8 @@ export default function App() {
 
   // Auto-sync offline queue to Google Sheets when back online
   const flushOfflineQueue = useCallback(async () => {
-    const token = getGoogleAccessToken();
-    if (!isOnline || !currentUser || !profile || !token || !sheetInfo?.spreadsheetId) return;
+    const conn = getActiveSheetConnection();
+    if (!isOnline || !currentUser || !profile || !conn || !sheetInfo) return;
     const queue = getOfflineQueue();
     if (queue.length === 0) return;
 
@@ -852,9 +910,7 @@ export default function App() {
             createdAt: item.createdAtIso || nowIso,
             updatedAt: nowIso,
           };
-          await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.TRANSACTIONS, [
-            transactionToRow(tx),
-          ]);
+          await appendSheetRows(conn, SHEET_TABS.TRANSACTIONS, [transactionToRow(tx)]);
           removeOfflineAction(item.localId);
           syncedCount++;
         } else if (item.kind === 'emergency_alert') {
@@ -864,9 +920,7 @@ export default function App() {
             createdAt: item.createdAtIso || nowIso,
             updatedAt: nowIso,
           };
-          await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.EMERGENCIES, [
-            emergencyToRow(em),
-          ]);
+          await appendSheetRows(conn, SHEET_TABS.EMERGENCIES, [emergencyToRow(em)]);
           removeOfflineAction(item.localId);
           syncedCount++;
         }
@@ -879,7 +933,7 @@ export default function App() {
     }
     setOfflineQueueCount(getOfflineQueue().length);
     if (syncedCount > 0) {
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
       showToast(
         'Sinkronisasi Otomatis Berhasil',
         `${syncedCount} data dari mode offline telah tersimpan ke Google Spreadsheet.`
@@ -889,8 +943,8 @@ export default function App() {
     isOnline,
     currentUser,
     profile,
-    sheetInfo?.spreadsheetId,
-    sheetInfo?.spreadsheetTitle,
+    sheetInfo,
+    getActiveSheetConnection,
     requestSheetConfirmation,
     refreshSpreadsheetData,
     showToast,
@@ -907,10 +961,10 @@ export default function App() {
     const normalizedUsername = normalizeUsername(data.username);
 
     try {
-      const token = getGoogleAccessToken();
-      if (!token || !sheetInfo?.spreadsheetId) {
+      const conn = getActiveSheetConnection();
+      if (!conn) {
         setLoginError(
-          'Hubungkan akun Google dan Google Spreadsheet terlebih dahulu pada panel di atas.'
+          'Hubungkan Google Spreadsheet RT terlebih dahulu pada panel di atas.'
         );
         return;
       }
@@ -922,7 +976,7 @@ export default function App() {
         return;
       }
 
-      const freshSnap = await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      const freshSnap = await refreshSpreadsheetData(conn, true);
       const activeAccounts = freshSnap?.userAccounts || userAccounts;
       const activeUsers = freshSnap?.users || residents;
       const activeAdmins = freshSnap?.admins || adminRecords;
@@ -1023,6 +1077,147 @@ export default function App() {
     }
   };
 
+  const handleBootstrapFirstAdmin = async (data: {
+    fullName: string;
+    houseBlock: string;
+    username: string;
+    password: string;
+  }) => {
+    setIsLoggingIn(true);
+    setLoginError(null);
+    const normalizedUsername = normalizeUsername(data.username);
+
+    if (!isValidUsername(normalizedUsername)) {
+      setLoginError('Username harus 3–30 karakter (huruf kecil, angka, _ atau -).');
+      setIsLoggingIn(false);
+      return;
+    }
+
+    try {
+      const conn = getActiveSheetConnection();
+      if (!conn || !sheetInfo) {
+        setLoginError('Hubungkan Google Spreadsheet terlebih dahulu.');
+        return;
+      }
+
+      const freshSnap = await refreshSpreadsheetData(conn, true);
+      const hasExistingData =
+        (freshSnap?.admins.length || 0) > 0 ||
+        (freshSnap?.users.length || 0) > 0 ||
+        (freshSnap?.registryEntries.length || 0) > 0;
+
+      if (hasExistingData) {
+        setLoginError(
+          'Database Spreadsheet sudah memiliki data pengurus/warga. Silakan masuk menggunakan Username & Sandi yang terdaftar.'
+        );
+        return;
+      }
+
+      const confirmed = await requestSheetConfirmation({
+        title: 'Buat Akun Admin Pertama (Ketua RT) di Spreadsheet',
+        description: `Simpan akun Ketua RT pertama "${data.fullName.trim()}" (${data.houseBlock.trim()}) ke Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
+        details: [
+          `Username: @${normalizedUsername}`,
+          `Tab diperbarui: ${SHEET_TABS.RESIDENT_REGISTRY}, ${SHEET_TABS.USER_ACCOUNTS}, ${SHEET_TABS.USERS}, ${SHEET_TABS.ADMINS}`,
+        ],
+        confirmLabel: 'Buat & Masuk Admin',
+      });
+      if (!confirmed) return;
+
+      isMutatingRef.current = true;
+      const newUid = generateRecordId('adm');
+      const registryId = await computeResidentRegistryId(data.fullName, data.houseBlock);
+      const nowIso = new Date().toISOString();
+      const passwordHash = await hashPassword(data.password);
+
+      const newRegistry: ResidentRegistryEntry = {
+        registryId,
+        fullName: data.fullName.trim().slice(0, 80),
+        houseBlock: data.houseBlock.trim().slice(0, 30),
+        role: 'pengurus',
+        pengurusPosition: 'ketua_rt',
+        permissions: [...ALL_RBAC_PERMISSIONS],
+        residentStatus: 'pengurus',
+        familyStatus: 'umum',
+        claimedUid: newUid,
+        claimedUsername: normalizedUsername,
+        communityId: 'rt_warga',
+        createdBy: newUid,
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      const accountLookup: UserAccountLookup = {
+        uid: newUid,
+        username: normalizedUsername,
+        role: 'pengurus',
+        registryId,
+        passwordHash,
+        createdAt: nowIso,
+      };
+
+      const newProfile: ResidentPublic = {
+        uid: newUid,
+        username: normalizedUsername,
+        accountRole: 'pengurus',
+        pengurusPosition: 'ketua_rt',
+        permissions: [...ALL_RBAC_PERMISSIONS],
+        registryId,
+        displayName: newRegistry.fullName,
+        houseBlock: newRegistry.houseBlock,
+        residentStatus: 'pengurus',
+        familyStatus: 'umum',
+        familyStatusLog: [`${getCurrentYearMonth()}:umum`],
+        elderlyMode: false,
+        communityId: 'rt_warga',
+        createdAt: nowIso,
+        updatedAt: nowIso,
+      };
+
+      const newAdmin: AdminRoleRecord = {
+        uid: newUid,
+        email: usernameToAuthEmail(normalizedUsername),
+        name: newRegistry.fullName,
+        role: 'ketua_rt',
+        permissions: [...ALL_RBAC_PERMISSIONS],
+        registryId,
+        createdAt: nowIso,
+      };
+
+      await Promise.all([
+        upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
+          registryEntryToRow(newRegistry),
+        ]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, [
+          userAccountToRow(accountLookup),
+        ]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [userProfileToRow(newProfile)]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.ADMINS, [adminRecordToRow(newAdmin)]),
+      ]);
+
+      await refreshSpreadsheetData(conn, true);
+      setIsBootstrappedAdminUser(false);
+      setAdminRecord(newAdmin);
+      setProfile(newProfile);
+      setCurrentUser({
+        uid: newUid,
+        email: usernameToAuthEmail(normalizedUsername),
+        displayName: newProfile.displayName,
+        username: normalizedUsername,
+        role: 'pengurus',
+      });
+      setActiveTab('beranda');
+      initialNotificationIdsRef.current = null;
+    } catch (err) {
+      setLoginError(
+        err instanceof Error ? `Gagal membuat Admin pertama: ${err.message}` : 'Gagal membuat akun.'
+      );
+    } finally {
+      isMutatingRef.current = false;
+      setIsLoggingIn(false);
+    }
+  };
+
   const handleRegisterAccount = async (data: {
     role: LoginRole;
     fullName: string;
@@ -1046,15 +1241,15 @@ export default function App() {
     }
 
     try {
-      const token = getGoogleAccessToken();
-      if (!token || !sheetInfo?.spreadsheetId) {
+      const conn = getActiveSheetConnection();
+      if (!conn || !sheetInfo) {
         setLoginError(
-          'Hubungkan akun Google dan Google Spreadsheet terlebih dahulu sebelum mendaftarkan akun.'
+          'Hubungkan Google Spreadsheet terlebih dahulu sebelum mendaftarkan akun.'
         );
         return null;
       }
 
-      const freshSnap = await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      const freshSnap = await refreshSpreadsheetData(conn, true);
       const activeRegistry = freshSnap?.registryEntries || registryEntries;
       const activeAccounts = freshSnap?.userAccounts || userAccounts;
 
@@ -1159,18 +1354,14 @@ export default function App() {
       };
 
       await Promise.all([
-        upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USER_ACCOUNTS, [
-          userAccountToRow(accountLookup),
-        ]),
-        upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USERS, [
-          userProfileToRow(newProfile),
-        ]),
-        upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.RESIDENT_REGISTRY, [
+        upsertSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, [userAccountToRow(accountLookup)]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [userProfileToRow(newProfile)]),
+        upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
           registryEntryToRow(updatedRegistry),
         ]),
         ...(reg.role === 'pengurus'
           ? [
-              upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.ADMINS, [
+              upsertSheetRowsByKey(conn, SHEET_TABS.ADMINS, [
                 adminRecordToRow({
                   uid: newUid,
                   email: usernameToAuthEmail(normalizedUsername),
@@ -1185,9 +1376,8 @@ export default function App() {
           : []),
       ]);
 
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
 
-      // Remain on LoginScreen so role-matched login popup appears cleanly
       setIsBootstrappedAdminUser(false);
       setAdminRecord(null);
       setProfile(null);
@@ -1267,7 +1457,19 @@ export default function App() {
       let activeRegistry = registryEntries;
 
       if (activeSheet?.spreadsheetId) {
-        const freshSnap = await refreshSpreadsheetData(token, activeSheet.spreadsheetId, true);
+        const conn: SheetConnection =
+          activeSheet.mode === 'webapp'
+            ? {
+                mode: 'webapp',
+                spreadsheetId: activeSheet.spreadsheetId,
+                webAppUrl: activeSheet.webAppUrl,
+              }
+            : {
+                mode: 'oauth',
+                spreadsheetId: activeSheet.spreadsheetId,
+                accessToken: token,
+              };
+        const freshSnap = await refreshSpreadsheetData(conn, true);
         if (freshSnap) {
           activeAdmins = freshSnap.admins;
           activeUsers = freshSnap.users;
@@ -1348,18 +1550,7 @@ export default function App() {
       if (err instanceof SheetsAuthExpiredError) {
         handleExpiredToken();
       } else {
-        const code = (err as { code?: string })?.code || '';
-        if (code === 'auth/popup-blocked') {
-          setLoginError(
-            'Pop-up login Google diblokir oleh browser. Mohon izinkan pop-up lalu coba lagi.'
-          );
-        } else if (code === 'auth/popup-closed-by-user') {
-          setLoginError('Jendela login Google ditutup sebelum selesai. Silakan coba lagi.');
-        } else {
-          setLoginError(
-            err instanceof Error ? `Gagal masuk Admin Google: ${err.message}` : 'Gagal masuk.'
-          );
-        }
+        setLoginError(formatGoogleAuthError(err, 'admin'));
       }
     } finally {
       setIsLoggingIn(false);
@@ -1379,8 +1570,8 @@ export default function App() {
   const handleToggleElderlyMode = async () => {
     const next = !elderlyMode;
     setElderlyMode(next);
-    const token = getGoogleAccessToken();
-    if (currentUser && profile && token && sheetInfo?.spreadsheetId) {
+    const conn = getActiveSheetConnection();
+    if (currentUser && profile && conn) {
       const confirmed = await requestSheetConfirmation({
         title: 'Simpan Preferensi Mode Ramah Lansia',
         description: `Perbarui preferensi Teks Besar (${next ? 'Aktif' : 'Nonaktif'}) untuk "${
@@ -1397,9 +1588,7 @@ export default function App() {
           elderlyMode: next,
           updatedAt: new Date().toISOString(),
         };
-        await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USERS, [
-          userProfileToRow(updated),
-        ]);
+        await upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [userProfileToRow(updated)]);
         setProfile(updated);
       } catch (err) {
         if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
@@ -1442,11 +1631,8 @@ export default function App() {
       return;
     }
 
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Simpan Pembayaran Iuran ke Google Spreadsheet',
@@ -1467,10 +1653,8 @@ export default function App() {
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.TRANSACTIONS, [
-        transactionToRow(newTx),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await appendSheetRows(conn, SHEET_TABS.TRANSACTIONS, [transactionToRow(newTx)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1489,11 +1673,8 @@ export default function App() {
     notes: string;
   }) => {
     if (!currentUser || !profile) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Catat Transaksi Kas ke Google Spreadsheet',
@@ -1530,10 +1711,8 @@ export default function App() {
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.TRANSACTIONS, [
-        transactionToRow(newTx),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await appendSheetRows(conn, SHEET_TABS.TRANSACTIONS, [transactionToRow(newTx)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1548,11 +1727,8 @@ export default function App() {
     rejectionReason?: string
   ) => {
     if (!currentUser) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const resident = residents.find((r) => r.uid === tx.residentUid);
     const familyStatus = tx.familyStatus || resident?.familyStatus || 'umum';
@@ -1634,14 +1810,13 @@ export default function App() {
       }
 
       await upsertSheetRowsByKey(
-        token,
-        sheetInfo.spreadsheetId,
+        conn,
         SHEET_TABS.TRANSACTIONS,
         txUpdates.map(transactionToRow)
       );
 
       if (decision === 'approved' && tx.category === 'iuran_bulanan' && !isUnderpaid && resident) {
-        await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USERS, [
+        await upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [
           userProfileToRow({
             ...resident,
             lastPaidMonth: tx.billingMonth,
@@ -1683,11 +1858,9 @@ export default function App() {
         relatedId: tx.id,
         createdAt: nowIso,
       };
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.NOTIFICATIONS, [
-        notificationToRow(notif),
-      ]);
+      await appendSheetRows(conn, SHEET_TABS.NOTIFICATIONS, [notificationToRow(notif)]);
 
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1701,11 +1874,8 @@ export default function App() {
     yearMonth: string
   ): Promise<number> => {
     if (!currentUser || unpaidResidents.length === 0) return 0;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return 0;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return 0;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Kirim Pengingat Iuran Massal',
@@ -1742,8 +1912,8 @@ export default function App() {
         });
       });
 
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.NOTIFICATIONS, rows);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await appendSheetRows(conn, SHEET_TABS.NOTIFICATIONS, rows);
+      await refreshSpreadsheetData(conn, true);
       return unpaidResidents.length;
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
@@ -1761,11 +1931,8 @@ export default function App() {
     priority: 'normal' | 'urgent';
   }) => {
     if (!currentUser || !profile) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Terbitkan Pengumuman ke Google Spreadsheet',
@@ -1792,10 +1959,8 @@ export default function App() {
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.ANNOUNCEMENTS, [
-        announcementToRow(ann),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await appendSheetRows(conn, SHEET_TABS.ANNOUNCEMENTS, [announcementToRow(ann)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1805,11 +1970,8 @@ export default function App() {
   };
 
   const handleDeleteAnnouncement = async (id: string) => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
     const target = announcements.find((a) => a.id === id);
 
     const confirmed = await requestSheetConfirmation({
@@ -1825,8 +1987,8 @@ export default function App() {
 
     isMutatingRef.current = true;
     try {
-      await deleteSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.ANNOUNCEMENTS, [id]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await deleteSheetRowsByKey(conn, SHEET_TABS.ANNOUNCEMENTS, [id]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1879,11 +2041,8 @@ export default function App() {
       return;
     }
 
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Kirim Sinyal Darurat SOS ke Google Spreadsheet',
@@ -1905,10 +2064,8 @@ export default function App() {
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.EMERGENCIES, [
-        emergencyToRow(em),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await appendSheetRows(conn, SHEET_TABS.EMERGENCIES, [emergencyToRow(em)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1922,11 +2079,8 @@ export default function App() {
     status: 'responding' | 'resolved'
   ) => {
     if (!currentUser || !profile) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Perbarui Status Darurat SOS di Spreadsheet',
@@ -1949,10 +2103,8 @@ export default function App() {
             : alert.responderName || '',
         updatedAt: new Date().toISOString(),
       };
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.EMERGENCIES, [
-        emergencyToRow(updated),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await upsertSheetRowsByKey(conn, SHEET_TABS.EMERGENCIES, [emergencyToRow(updated)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -1966,11 +2118,8 @@ export default function App() {
     nextHealth: PrivateHealthData
   ) => {
     if (!currentUser) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Simpan Data Pribadi & Kesehatan Terenkripsi',
@@ -2000,7 +2149,7 @@ export default function App() {
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.PRIVATE_DATA, [
+      await upsertSheetRowsByKey(conn, SHEET_TABS.PRIVATE_DATA, [
         privateDataToRow({
           id: `${currentUser.uid}_profile`,
           uid: currentUser.uid,
@@ -2020,7 +2169,7 @@ export default function App() {
           updatedAt: nowIso,
         }),
       ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2036,11 +2185,8 @@ export default function App() {
     familyStatus: FamilyStatus;
   }) => {
     if (!currentUser || !profile) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Perbarui Identitas Rumah Warga di Spreadsheet',
@@ -2078,11 +2224,11 @@ export default function App() {
 
     isMutatingRef.current = true;
     try {
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USERS, [
+      await upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [
         userProfileToRow(updatedProfile),
       ]);
       setProfile(updatedProfile);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2093,11 +2239,8 @@ export default function App() {
 
   const handleSaveRtSettings = async (data: Omit<RtSettings, 'updatedBy' | 'updatedAt'>) => {
     if (!currentUser) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Perbarui Pengaturan Kas RT di Google Spreadsheet',
@@ -2117,11 +2260,11 @@ export default function App() {
         updatedBy: currentUser.uid,
         updatedAt: nowIso,
       };
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.SETTINGS, [
+      await upsertSheetRowsByKey(conn, SHEET_TABS.SETTINGS, [
         settingsToRow(nextSettings, nowIso),
       ]);
       setRtSettings(nextSettings);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2136,11 +2279,8 @@ export default function App() {
     imageData: string;
   }) => {
     if (!currentUser) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Tambahkan Foto Slideshow ke Google Spreadsheet',
@@ -2174,10 +2314,8 @@ export default function App() {
         createdAt: nowIso,
         updatedAt: nowIso,
       };
-      await appendSheetRows(token, sheetInfo.spreadsheetId, SHEET_TABS.SLIDES, [
-        slideToRow(slide),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await appendSheetRows(conn, SHEET_TABS.SLIDES, [slideToRow(slide)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2190,11 +2328,8 @@ export default function App() {
     id: string,
     data: { title: string; subtitle: string }
   ) => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
     const existing = bannerSlides.find((s) => s.id === id);
     if (!existing) return;
 
@@ -2214,10 +2349,8 @@ export default function App() {
         subtitle: data.subtitle.trim().slice(0, 160),
         updatedAt: new Date().toISOString(),
       };
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.SLIDES, [
-        slideToRow(updated),
-      ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await upsertSheetRowsByKey(conn, SHEET_TABS.SLIDES, [slideToRow(updated)]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2227,11 +2360,8 @@ export default function App() {
   };
 
   const handleMoveBannerSlide = async (id: string, direction: 'up' | 'down') => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
     const idx = bannerSlides.findIndex((s) => s.id === id);
     if (idx === -1) return;
     const targetIdx = direction === 'up' ? idx - 1 : idx + 1;
@@ -2261,8 +2391,8 @@ export default function App() {
           updatedAt: nowIso,
         })
       );
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.SLIDES, updatedRows);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await upsertSheetRowsByKey(conn, SHEET_TABS.SLIDES, updatedRows);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2272,11 +2402,8 @@ export default function App() {
   };
 
   const handleDeleteBannerSlide = async (id: string) => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
     const target = bannerSlides.find((s) => s.id === id);
 
     const confirmed = await requestSheetConfirmation({
@@ -2292,8 +2419,8 @@ export default function App() {
 
     isMutatingRef.current = true;
     try {
-      await deleteSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.SLIDES, [id]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await deleteSheetRowsByKey(conn, SHEET_TABS.SLIDES, [id]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2312,11 +2439,8 @@ export default function App() {
     familyStatus: FamilyStatus;
   }) => {
     if (!currentUser) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const registryId = await computeResidentRegistryId(data.fullName, data.houseBlock);
     const existing = registryEntries.find((e) => e.registryId === registryId);
@@ -2375,13 +2499,10 @@ export default function App() {
             updatedAt: nowIso,
           };
 
-      await upsertSheetRowsByKey(
-        token,
-        sheetInfo.spreadsheetId,
-        SHEET_TABS.RESIDENT_REGISTRY,
-        [registryEntryToRow(entry)]
-      );
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
+        registryEntryToRow(entry),
+      ]);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2402,11 +2523,8 @@ export default function App() {
     }>
   ): Promise<number> => {
     if (!currentUser || items.length === 0) return 0;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return 0;
-    }
+    const conn = requireActiveSheet();
+    if (!conn || !sheetInfo) return 0;
 
     const slice = items.slice(0, 200);
     const confirmed = await requestSheetConfirmation({
@@ -2469,13 +2587,8 @@ export default function App() {
       }
 
       if (rowsToUpsert.length > 0) {
-        await upsertSheetRowsByKey(
-          token,
-          sheetInfo.spreadsheetId,
-          SHEET_TABS.RESIDENT_REGISTRY,
-          rowsToUpsert
-        );
-        await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+        await upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, rowsToUpsert);
+        await refreshSpreadsheetData(conn, true);
       }
       return rowsToUpsert.length;
     } catch (err) {
@@ -2489,11 +2602,8 @@ export default function App() {
 
   const handleSyncExistingResidentsToRegistry = async (): Promise<number> => {
     if (!currentUser) return 0;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      handleExpiredToken();
-      return 0;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return 0;
 
     const existingIds = new Set(registryEntries.map((e) => e.registryId));
     const nowIso = new Date().toISOString();
@@ -2545,12 +2655,11 @@ export default function App() {
     isMutatingRef.current = true;
     try {
       await appendSheetRows(
-        token,
-        sheetInfo.spreadsheetId,
+        conn,
         SHEET_TABS.RESIDENT_REGISTRY,
         newEntries.map(registryEntryToRow)
       );
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
       return newEntries.length;
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
@@ -2570,11 +2679,8 @@ export default function App() {
     }
   ) => {
     if (!rbac.isFullAdmin) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const isPengurusNext = next.role === 'pengurus';
     const pos: PengurusPosition = next.pengurusPosition || 'pengurus_lain';
@@ -2605,17 +2711,14 @@ export default function App() {
         permissions: isPengurusNext ? perms : undefined,
         updatedAt: nowIso,
       };
-      await upsertSheetRowsByKey(
-        token,
-        sheetInfo.spreadsheetId,
-        SHEET_TABS.RESIDENT_REGISTRY,
-        [registryEntryToRow(updatedReg)]
-      );
+      await upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
+        registryEntryToRow(updatedReg),
+      ]);
 
       if (entry.claimedUid) {
         const claimedProfile = residents.find((r) => r.uid === entry.claimedUid);
         if (claimedProfile) {
-          await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USERS, [
+          await upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [
             userProfileToRow({
               ...claimedProfile,
               residentStatus: isPengurusNext ? 'pengurus' : 'tetap',
@@ -2632,7 +2735,7 @@ export default function App() {
             (a) => normalizeUsername(a.username) === normalizeUsername(entry.claimedUsername || '')
           );
           if (claimedAcc) {
-            await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USER_ACCOUNTS, [
+            await upsertSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, [
               userAccountToRow({
                 ...claimedAcc,
                 role: next.role,
@@ -2656,23 +2759,19 @@ export default function App() {
             registryId: entry.registryId,
             createdAt: existingAdmin?.createdAt || nowIso,
           };
-          await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.ADMINS, [
-            adminRecordToRow(nextAdmin),
-          ]);
+          await upsertSheetRowsByKey(conn, SHEET_TABS.ADMINS, [adminRecordToRow(nextAdmin)]);
           if (entry.claimedUid === currentUser?.uid) {
             setAdminRecord(nextAdmin);
           }
         } else {
-          await deleteSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.ADMINS, [
-            entry.claimedUid,
-          ]);
+          await deleteSheetRowsByKey(conn, SHEET_TABS.ADMINS, [entry.claimedUid]);
           if (entry.claimedUid === currentUser?.uid && !isBootstrappedAdminUser) {
             setAdminRecord(null);
           }
         }
       }
 
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2682,11 +2781,8 @@ export default function App() {
   };
 
   const handleResetRegistryClaim = async (entry: ResidentRegistryEntry) => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Reset Klaim Akun di Google Spreadsheet',
@@ -2707,18 +2803,13 @@ export default function App() {
         claimedUsername: '',
         updatedAt: new Date().toISOString(),
       };
-      await upsertSheetRowsByKey(
-        token,
-        sheetInfo.spreadsheetId,
-        SHEET_TABS.RESIDENT_REGISTRY,
-        [registryEntryToRow(updated)]
-      );
+      await upsertSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [
+        registryEntryToRow(updated),
+      ]);
       if (entry.claimedUsername) {
-        await deleteSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USER_ACCOUNTS, [
-          entry.claimedUsername,
-        ]);
+        await deleteSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, [entry.claimedUsername]);
       }
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2728,11 +2819,8 @@ export default function App() {
   };
 
   const handleDeleteRegistryEntry = async (entry: ResidentRegistryEntry) => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Hapus Warga dari Google Spreadsheet',
@@ -2749,15 +2837,11 @@ export default function App() {
 
     isMutatingRef.current = true;
     try {
-      await deleteSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.RESIDENT_REGISTRY, [
-        entry.registryId,
-      ]);
+      await deleteSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [entry.registryId]);
       if (entry.claimedUsername) {
-        await deleteSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.USER_ACCOUNTS, [
-          entry.claimedUsername,
-        ]);
+        await deleteSheetRowsByKey(conn, SHEET_TABS.USER_ACCOUNTS, [entry.claimedUsername]);
       }
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
       else throw err;
@@ -2767,11 +2851,8 @@ export default function App() {
   };
 
   const handleMarkNotificationRead = async (id: string) => {
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
     const target = allNotifications.find((n) => n.id === id);
     if (!target || target.isRead) return;
 
@@ -2785,10 +2866,10 @@ export default function App() {
 
     isMutatingRef.current = true;
     try {
-      await upsertSheetRowsByKey(token, sheetInfo.spreadsheetId, SHEET_TABS.NOTIFICATIONS, [
+      await upsertSheetRowsByKey(conn, SHEET_TABS.NOTIFICATIONS, [
         notificationToRow({ ...target, isRead: true }),
       ]);
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
     } finally {
@@ -2799,11 +2880,8 @@ export default function App() {
   const handleMarkAllRead = async () => {
     const unread = notifications.filter((n) => !n.isRead);
     if (unread.length === 0) return;
-    const token = getGoogleAccessToken();
-    if (!token || !sheetInfo?.spreadsheetId) {
-      requireActiveSheet();
-      return;
-    }
+    const conn = requireActiveSheet();
+    if (!conn) return;
 
     const confirmed = await requestSheetConfirmation({
       title: 'Tandai Semua Notifikasi Dibaca',
@@ -2816,12 +2894,11 @@ export default function App() {
     isMutatingRef.current = true;
     try {
       await upsertSheetRowsByKey(
-        token,
-        sheetInfo.spreadsheetId,
+        conn,
         SHEET_TABS.NOTIFICATIONS,
         unread.map((n) => notificationToRow({ ...n, isRead: true }))
       );
-      await refreshSpreadsheetData(token, sheetInfo.spreadsheetId, true);
+      await refreshSpreadsheetData(conn, true);
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) handleExpiredToken();
     } finally {
@@ -2855,11 +2932,19 @@ export default function App() {
           googleUserEmail={googleUserEmail}
           sheetInfo={sheetInfo}
           isConnectingSheet={isConnectingSheet || isSyncing}
+          isDatabaseEmpty={
+            Boolean(sheetInfo?.spreadsheetId) &&
+            adminRecords.length === 0 &&
+            residents.length === 0 &&
+            registryEntries.length === 0
+          }
+          onConnectWebApp={handleConnectWebApp}
+          onBootstrapFirstAdmin={handleBootstrapFirstAdmin}
           onGoogleConnect={handleGoogleConnect}
           onGoogleDisconnect={handleGoogleDisconnect}
           onConnectSpreadsheetById={handleConnectSpreadsheetById}
           onSyncSpreadsheet={async () => {
-            await refreshSpreadsheetData(undefined, undefined, false);
+            await refreshSpreadsheetData(undefined, false);
           }}
           onLoginWithCredentials={handleLoginWithCredentials}
           onRegisterAccount={handleRegisterAccount}
@@ -2917,7 +3002,7 @@ export default function App() {
                 onMarkAllRead={handleMarkAllRead}
                 onOpenSettings={() => setSettingsOpen(true)}
                 activeEmergencyCount={activeEmergencyCount}
-                onSyncSheets={() => void refreshSpreadsheetData(undefined, undefined, false)}
+                onSyncSheets={() => void refreshSpreadsheetData(undefined, false)}
                 isSyncing={isSyncing}
               />
 
@@ -3199,10 +3284,16 @@ export default function App() {
                 sheetInfo={sheetInfo}
                 isSyncing={isSyncing}
                 isConnectingSheet={isConnectingSheet}
-                onSyncNow={() => void refreshSpreadsheetData(undefined, undefined, false)}
-                onCreateSpreadsheet={rbac.isFullAdmin ? handleCreateSpreadsheet : undefined}
+                onSyncNow={() => void refreshSpreadsheetData(undefined, false)}
+                onCreateSpreadsheet={
+                  rbac.isFullAdmin && sheetInfo?.mode !== 'webapp'
+                    ? handleCreateSpreadsheet
+                    : undefined
+                }
                 onConnectSpreadsheetById={
-                  rbac.isFullAdmin ? handleConnectSpreadsheetById : undefined
+                  rbac.isFullAdmin && sheetInfo?.mode !== 'webapp'
+                    ? handleConnectSpreadsheetById
+                    : undefined
                 }
                 onDisconnectGoogle={handleGoogleDisconnect}
               />

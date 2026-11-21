@@ -2,9 +2,14 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   Accessibility,
+  Check,
   CheckCircle2,
+  ChevronDown,
   ChevronLeft,
   ChevronRight,
+  ChevronUp,
+  Code2,
+  Copy,
   ExternalLink,
   Eye,
   EyeOff,
@@ -23,6 +28,8 @@ import {
   WifiOff,
   X,
 } from 'lucide-react';
+import { APPS_SCRIPT_BRIDGE_CODE } from '../lib/appsScriptTemplate';
+import { hasConfiguredGoogleOAuthClientId } from '../lib/googleAuth';
 import { getOfflineSnapshot } from '../lib/offlineSync';
 import type { BannerSlide, LoginRole, PengurusPosition, SheetDbInfo } from '../types';
 import { PENGURUS_POSITION_LABELS } from '../utils/rbac';
@@ -40,6 +47,14 @@ interface LoginScreenProps {
   googleUserEmail: string | null;
   sheetInfo: SheetDbInfo | null;
   isConnectingSheet: boolean;
+  isDatabaseEmpty: boolean;
+  onConnectWebApp: (webAppUrl: string) => Promise<void>;
+  onBootstrapFirstAdmin: (data: {
+    fullName: string;
+    houseBlock: string;
+    username: string;
+    password: string;
+  }) => Promise<void>;
   onGoogleConnect: () => Promise<void>;
   onGoogleDisconnect: () => Promise<void>;
   onConnectSpreadsheetById: (idOrUrl: string) => Promise<void>;
@@ -87,6 +102,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   googleUserEmail,
   sheetInfo,
   isConnectingSheet,
+  isDatabaseEmpty,
+  onConnectWebApp,
+  onBootstrapFirstAdmin,
   onGoogleConnect,
   onGoogleDisconnect,
   onConnectSpreadsheetById,
@@ -119,8 +137,52 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
   const [loginPopupData, setLoginPopupData] = useState<RegisteredAccountNotice | null>(null);
+  const [webAppUrlInput, setWebAppUrlInput] = useState('');
   const [sheetInput, setSheetInput] = useState('');
   const [showSheetSwitcher, setShowSheetSwitcher] = useState(false);
+  const [showSetupGuide, setShowSetupGuide] = useState(false);
+  const [copiedScript, setCopiedScript] = useState(false);
+
+  const oauthAvailable = hasConfiguredGoogleOAuthClientId();
+  const activeErrorText = localError || loginError;
+
+  const handleCopyAppsScript = async () => {
+    try {
+      await navigator.clipboard.writeText(APPS_SCRIPT_BRIDGE_CODE);
+      setCopiedScript(true);
+      window.setTimeout(() => setCopiedScript(false), 3000);
+    } catch {
+      setLocalError('Browser menolak akses salin otomatis. Silakan salin manual dari kotak kode.');
+    }
+  };
+
+  const handleSubmitBootstrapAdmin = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLocalError(null);
+    onClearError();
+    if (!fullName.trim() || !houseBlock.trim()) {
+      setLocalError('Nama Lengkap dan Blok Rumah Ketua RT wajib diisi.');
+      return;
+    }
+    if (!/^[a-zA-Z0-9_-]{3,30}$/.test(username.trim())) {
+      setLocalError('Username harus 3–30 karakter (huruf, angka, garis bawah _, atau tanda hubung -).');
+      return;
+    }
+    if (password.length < 6) {
+      setLocalError('Sandi minimal 6 karakter.');
+      return;
+    }
+    if (password !== confirmPassword) {
+      setLocalError('Konfirmasi sandi tidak cocok.');
+      return;
+    }
+    await onBootstrapFirstAdmin({
+      fullName: fullName.trim(),
+      houseBlock: houseBlock.trim(),
+      username: username.trim(),
+      password,
+    });
+  };
 
   const shouldReduceMotion = useReducedMotion();
   const offlineSnapshot = getOfflineSnapshot();
@@ -414,7 +476,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               Pantau kas RT secara terbuka, iuran bulanan, cek laporan bulanan, dan akses layanan darurat.
             </p>
 
-            {/* Google Spreadsheet Database Connection Card */}
+            {/* Google Spreadsheet Database Connection Card (100% Spreadsheet, Zero Firebase) */}
             <div className="mt-5 rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-4 space-y-3">
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-start gap-2.5 min-w-0">
@@ -426,111 +488,33 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                       Database Google Spreadsheet
                     </p>
                     <p className="text-[11px] text-slate-600 dark:text-slate-300 truncate">
-                      {!googleConnected
-                        ? 'Hubungkan akun Google untuk membaca & menyimpan data RT'
-                        : sheetInfo
-                        ? `${sheetInfo.spreadsheetTitle} · ${googleUserEmail || 'Terhubung'}`
-                        : `Terhubung sebagai ${googleUserEmail || 'Google'} · Pilih Spreadsheet`}
+                      {sheetInfo
+                        ? `${sheetInfo.spreadsheetTitle} · ${
+                            sheetInfo.mode === 'webapp'
+                              ? 'Apps Script Web App'
+                              : googleUserEmail || 'Google OAuth'
+                          }`
+                        : googleConnected
+                        ? `Terhubung (${googleUserEmail || 'Google OAuth'}) · Pilih Spreadsheet`
+                        : 'Hubungkan URL Web App Apps Script dari Google Spreadsheet RT'}
                     </p>
                   </div>
                 </div>
-                {googleConnected && (
+                {(sheetInfo || googleConnected) && (
                   <button
                     type="button"
                     onClick={() => void onGoogleDisconnect()}
-                    title="Putuskan koneksi Google"
-                    aria-label="Putuskan koneksi Google"
+                    title="Putuskan koneksi Spreadsheet"
+                    aria-label="Putuskan koneksi Spreadsheet"
                     className="min-h-[34px] px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-[11px] font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1 shrink-0 cursor-pointer"
                   >
                     <Unplug className="w-3 h-3" />
-                    <span>Keluar</span>
+                    <span>Putuskan</span>
                   </button>
                 )}
               </div>
 
-              {!googleConnected ? (
-                <button
-                  type="button"
-                  disabled={isConnectingSheet || !isOnline}
-                  onClick={() => void onGoogleConnect()}
-                  className="gsi-material-button"
-                >
-                  <div className="gsi-material-button-state" />
-                  <div className="gsi-material-button-content-wrapper">
-                    <div className="gsi-material-button-icon">
-                      <svg
-                        version="1.1"
-                        xmlns="http://www.w3.org/2000/svg"
-                        viewBox="0 0 48 48"
-                        xmlnsXlink="http://www.w3.org/1999/xlink"
-                        style={{ display: 'block' }}
-                      >
-                        <path
-                          fill="#EA4335"
-                          d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
-                        />
-                        <path
-                          fill="#4285F4"
-                          d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
-                        />
-                        <path
-                          fill="#FBBC05"
-                          d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
-                        />
-                        <path
-                          fill="#34A853"
-                          d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
-                        />
-                        <path fill="none" d="M0 0h48v48H0z" />
-                      </svg>
-                    </div>
-                    <span className="gsi-material-button-contents">
-                      {isConnectingSheet ? 'Menghubungkan Google...' : 'Sign in with Google'}
-                    </span>
-                    <span style={{ display: 'none' }}>Sign in with Google</span>
-                  </div>
-                </button>
-              ) : !sheetInfo || showSheetSwitcher ? (
-                <div className="space-y-2.5 pt-1">
-                  {!sheetInfo && (
-                    <div className="rounded-xl bg-amber-50/90 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 px-3 py-2 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
-                      Belum ada database Google Spreadsheet. Tempel URL/ID Spreadsheet RT yang sudah ada, atau masuk sebagai <strong>Admin Google</strong> di bawah untuk membuat database baru setelah login.
-                    </div>
-                  )}
-
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={sheetInput}
-                      onChange={(e) => setSheetInput(e.target.value)}
-                      placeholder="Atau tempel URL / ID Google Spreadsheet..."
-                      className="flex-1 min-w-0 min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                    />
-                    <button
-                      type="button"
-                      disabled={isConnectingSheet || !sheetInput.trim() || !isOnline}
-                      onClick={async () => {
-                        await onConnectSpreadsheetById(sheetInput);
-                        setSheetInput('');
-                        setShowSheetSwitcher(false);
-                      }}
-                      className="min-h-[38px] px-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
-                    >
-                      <Link2 className="w-3.5 h-3.5" />
-                      <span>Pakai</span>
-                    </button>
-                  </div>
-                  {sheetInfo && (
-                    <button
-                      type="button"
-                      onClick={() => setShowSheetSwitcher(false)}
-                      className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:underline cursor-pointer"
-                    >
-                      Batal ganti spreadsheet
-                    </button>
-                  )}
-                </div>
-              ) : (
+              {sheetInfo && !showSheetSwitcher ? (
                 <div className="flex flex-wrap items-center gap-2 pt-0.5">
                   <a
                     href={sheetInfo.spreadsheetUrl}
@@ -555,8 +539,188 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     onClick={() => setShowSheetSwitcher(true)}
                     className="min-h-[32px] px-2.5 rounded-lg bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-[11px] font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
                   >
-                    Ganti Sheet
+                    Ganti Koneksi
                   </button>
+                </div>
+              ) : (
+                <div className="space-y-2.5 pt-0.5">
+                  {/* Primary: Apps Script Web App URL (zero Firebase, zero Google OAuth block) */}
+                  <div className="flex gap-1.5">
+                    <input
+                      type="url"
+                      value={webAppUrlInput}
+                      onChange={(e) => setWebAppUrlInput(e.target.value)}
+                      placeholder="Tempel URL Web App (https://script.google.com/macros/s/.../exec)"
+                      className="flex-1 min-w-0 min-h-[40px] px-3 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 text-xs"
+                    />
+                    <button
+                      type="button"
+                      disabled={isConnectingSheet || !webAppUrlInput.trim() || !isOnline}
+                      onClick={async () => {
+                        await onConnectWebApp(webAppUrlInput);
+                        setShowSheetSwitcher(false);
+                      }}
+                      className="min-h-[40px] px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
+                    >
+                      <Link2 className="w-3.5 h-3.5" />
+                      <span>{isConnectingSheet ? 'Menghubungkan...' : 'Hubungkan'}</span>
+                    </button>
+                  </div>
+
+                  {/* Step-by-step Apps Script setup guide with 1-click copy */}
+                  <div className="rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-900/80 overflow-hidden">
+                    <button
+                      type="button"
+                      onClick={() => setShowSetupGuide((v) => !v)}
+                      className="w-full px-3 py-2 text-left text-[11px] font-bold text-emerald-800 dark:text-emerald-300 flex items-center justify-between gap-2 hover:bg-emerald-50/70 dark:hover:bg-emerald-950/30 cursor-pointer"
+                    >
+                      <span className="inline-flex items-center gap-1.5">
+                        <Code2 className="w-3.5 h-3.5 shrink-0" />
+                        <span>
+                          Panduan Setup Google Spreadsheet (Gratis, Tanpa Firebase &amp; Tanpa Blokir Google)
+                        </span>
+                      </span>
+                      {showSetupGuide ? (
+                        <ChevronUp className="w-3.5 h-3.5 shrink-0" />
+                      ) : (
+                        <ChevronDown className="w-3.5 h-3.5 shrink-0" />
+                      )}
+                    </button>
+
+                    {showSetupGuide && (
+                      <div className="px-3 pb-3 pt-1 border-t border-emerald-100 dark:border-emerald-900/60 space-y-2.5 text-[11px] text-slate-700 dark:text-slate-300 leading-relaxed">
+                        <ol className="list-decimal list-inside space-y-1">
+                          <li>
+                            Buat atau buka file <strong>Google Spreadsheet</strong> khusus RT di Google Drive Anda.
+                          </li>
+                          <li>
+                            Klik menu <strong>Ekstensi → Apps Script</strong>, hapus seluruh kode bawaan, lalu tempel kode bridge di bawah.
+                          </li>
+                          <li>
+                            Klik <strong>Terapkan → Deployment baru</strong> → pilih jenis <strong>Aplikasi web</strong>:
+                            <br />
+                            <span className="text-slate-600 dark:text-slate-400">
+                              • Jalankan sebagai: <strong>Saya (Me)</strong>
+                              <br />
+                              • Yang memiliki akses: <strong>Siapa saja (Anyone)</strong>
+                            </span>
+                          </li>
+                          <li>
+                            Klik <strong>Terapkan</strong>, izinkan akses sekali di akun pemilik Sheet, salin <strong>URL Aplikasi Web</strong> (<code>.../exec</code>), lalu tempel ke kolom di atas.
+                          </li>
+                        </ol>
+
+                        <div className="flex flex-wrap items-center gap-2">
+                          <button
+                            type="button"
+                            onClick={() => void handleCopyAppsScript()}
+                            className="min-h-[34px] px-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-[11px] inline-flex items-center gap-1.5 cursor-pointer"
+                          >
+                            {copiedScript ? (
+                              <>
+                                <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+                                <span>Kode Apps Script Disalin!</span>
+                              </>
+                            ) : (
+                              <>
+                                <Copy className="w-3.5 h-3.5" />
+                                <span>Salin Kode Apps Script (Code.gs)</span>
+                              </>
+                            )}
+                          </button>
+                        </div>
+
+                        <p className="text-[10px] text-slate-500 dark:text-slate-400">
+                          Tips Vercel: Simpan URL tersebut di Environment Variable{' '}
+                          <code className="font-mono">VITE_SHEETS_WEBAPP_URL</code> agar seluruh warga otomatis terhubung tanpa menempel URL lagi.
+                        </p>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Optional OAuth fallback only when VITE_GOOGLE_OAUTH_CLIENT_ID is explicitly configured */}
+                  {oauthAvailable && (
+                    <div className="pt-1.5 border-t border-emerald-200/70 dark:border-emerald-900/60 space-y-2">
+                      {!googleConnected ? (
+                        <button
+                          type="button"
+                          disabled={isConnectingSheet || !isOnline}
+                          onClick={() => void onGoogleConnect()}
+                          className="gsi-material-button"
+                        >
+                          <div className="gsi-material-button-state" />
+                          <div className="gsi-material-button-content-wrapper">
+                            <div className="gsi-material-button-icon">
+                              <svg
+                                version="1.1"
+                                xmlns="http://www.w3.org/2000/svg"
+                                viewBox="0 0 48 48"
+                                xmlnsXlink="http://www.w3.org/1999/xlink"
+                                style={{ display: 'block' }}
+                              >
+                                <path
+                                  fill="#EA4335"
+                                  d="M24 9.5c3.54 0 6.71 1.22 9.21 3.6l6.85-6.85C35.9 2.38 30.47 0 24 0 14.62 0 6.51 5.38 2.56 13.22l7.98 6.19C12.43 13.72 17.74 9.5 24 9.5z"
+                                />
+                                <path
+                                  fill="#4285F4"
+                                  d="M46.98 24.55c0-1.57-.15-3.09-.38-4.55H24v9.02h12.94c-.58 2.96-2.26 5.48-4.78 7.18l7.73 6c4.51-4.18 7.09-10.36 7.09-17.65z"
+                                />
+                                <path
+                                  fill="#FBBC05"
+                                  d="M10.53 28.59c-.48-1.45-.76-2.99-.76-4.59s.27-3.14.76-4.59l-7.98-6.19C.92 16.46 0 20.12 0 24c0 3.88.92 7.54 2.56 10.78l7.97-6.19z"
+                                />
+                                <path
+                                  fill="#34A853"
+                                  d="M24 48c6.48 0 11.93-2.13 15.89-5.81l-7.73-6c-2.15 1.45-4.92 2.3-8.16 2.3-6.26 0-11.57-4.22-13.47-9.91l-7.98 6.19C6.51 42.62 14.62 48 24 48z"
+                                />
+                                <path fill="none" d="M0 0h48v48H0z" />
+                              </svg>
+                            </div>
+                            <span className="gsi-material-button-contents">
+                              {isConnectingSheet
+                                ? 'Menghubungkan Google...'
+                                : 'Atau Hubungkan via OAuth Google'}
+                            </span>
+                            <span style={{ display: 'none' }}>Sign in with Google</span>
+                          </div>
+                        </button>
+                      ) : (
+                        <div className="flex gap-1.5">
+                          <input
+                            type="text"
+                            value={sheetInput}
+                            onChange={(e) => setSheetInput(e.target.value)}
+                            placeholder="URL / ID Google Spreadsheet (Mode OAuth)..."
+                            className="flex-1 min-w-0 min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                          />
+                          <button
+                            type="button"
+                            disabled={isConnectingSheet || !sheetInput.trim() || !isOnline}
+                            onClick={async () => {
+                              await onConnectSpreadsheetById(sheetInput);
+                              setSheetInput('');
+                              setShowSheetSwitcher(false);
+                            }}
+                            className="min-h-[38px] px-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
+                          >
+                            <Link2 className="w-3.5 h-3.5" />
+                            <span>Pakai</span>
+                          </button>
+                        </div>
+                      )}
+                    </div>
+                  )}
+
+                  {sheetInfo && (
+                    <button
+                      type="button"
+                      onClick={() => setShowSheetSwitcher(false)}
+                      className="text-[11px] font-semibold text-slate-600 dark:text-slate-400 hover:underline cursor-pointer"
+                    >
+                      Batal ganti koneksi
+                    </button>
+                  )}
                 </div>
               )}
             </div>
@@ -636,16 +800,129 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </div>
               )}
 
-              {(localError || loginError) && (
+              {activeErrorText && (
                 <div
                   role="alert"
                   className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-xs font-medium text-red-800 dark:text-red-200 leading-relaxed"
                 >
-                  {localError || loginError}
+                  <p>{activeErrorText}</p>
                 </div>
               )}
 
-              {authMode === 'login' ? (
+              {selectedRole === 'pengurus' && sheetInfo && isDatabaseEmpty && authMode === 'login' ? (
+                <form onSubmit={(e) => void handleSubmitBootstrapAdmin(e)} className="space-y-3">
+                  <div className="rounded-xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3 text-[11px] text-emerald-900 dark:text-emerald-200 leading-relaxed">
+                    <p className="font-bold">Spreadsheet Baru Masih Kosong — Buat Admin Pertama</p>
+                    <p className="mt-0.5">
+                      Buat akun <strong>Ketua RT</strong> pertama langsung di Google Spreadsheet tanpa perlu login Google OAuth. Setelah masuk, Anda bisa mengimpor Database Warga.
+                    </p>
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Nama Lengkap Ketua RT
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={75}
+                      placeholder="Contoh: Firman Mahameru"
+                      value={fullName}
+                      onChange={(e) => setFullName(e.target.value)}
+                      className="w-full min-h-[42px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Blok Rumah
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      maxLength={25}
+                      placeholder="Contoh: FF3/5"
+                      value={houseBlock}
+                      onChange={(e) => setHouseBlock(e.target.value)}
+                      className="w-full min-h-[42px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                      Username Admin
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      minLength={3}
+                      maxLength={30}
+                      autoComplete="username"
+                      placeholder="Contoh: ketua_rt12"
+                      value={username}
+                      onChange={(e) => setUsername(e.target.value)}
+                      className="w-full min-h-[42px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Sandi (Min. 6 karakter)
+                      </label>
+                      <div className="relative">
+                        <input
+                          type={showPassword ? 'text' : 'password'}
+                          required
+                          minLength={6}
+                          autoComplete="new-password"
+                          placeholder="Minimal 6 karakter"
+                          value={password}
+                          onChange={(e) => setPassword(e.target.value)}
+                          className="w-full min-h-[42px] pl-3 pr-10 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                        />
+                        <button
+                          type="button"
+                          onClick={() => setShowPassword((v) => !v)}
+                          aria-label={showPassword ? 'Sembunyikan sandi' : 'Lihat sandi'}
+                          className="absolute right-1 top-1/2 -translate-y-1/2 min-h-[34px] min-w-[34px] flex items-center justify-center rounded-lg text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                        >
+                          {showPassword ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
+                        Ulangi Sandi
+                      </label>
+                      <input
+                        type={showPassword ? 'text' : 'password'}
+                        required
+                        minLength={6}
+                        autoComplete="new-password"
+                        placeholder="Ketik ulang sandi"
+                        value={confirmPassword}
+                        onChange={(e) => setConfirmPassword(e.target.value)}
+                        className="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                      />
+                    </div>
+                  </div>
+
+                  <button
+                    type="submit"
+                    disabled={isLoggingIn || !isOnline}
+                    className="w-full min-h-[46px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] disabled:opacity-50 text-white font-bold text-sm flex items-center justify-center gap-2 shadow-sm transition-all cursor-pointer"
+                  >
+                    <ShieldCheck className="w-4 h-4 shrink-0" />
+                    <span>
+                      {isLoggingIn
+                        ? 'Menyimpan Akun Ketua RT...'
+                        : 'Buat Akun Ketua RT Pertama & Masuk'}
+                    </span>
+                  </button>
+                </form>
+              ) : authMode === 'login' ? (
                 <form onSubmit={(e) => void handleSubmitLogin(e)} className="space-y-3">
                   <div>
                     <label className="block text-xs font-semibold text-slate-700 dark:text-slate-300 mb-1">
@@ -711,10 +988,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     </button>
                   </p>
 
-                  {selectedRole === 'pengurus' && (
+                  {selectedRole === 'pengurus' && oauthAvailable && (
                     <div className="pt-3 border-t border-slate-200/80 dark:border-slate-800 space-y-2.5">
                       <p className="text-[11px] text-center text-slate-500 dark:text-slate-400">
-                        Atau masuk langsung sebagai Admin Utama Google (tanpa penyesuaian data, dapat membuat database setelah login)
+                        Atau masuk langsung menggunakan Google OAuth Admin Utama
                       </p>
                       <button
                         type="button"
@@ -871,7 +1148,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               )}
 
               <p className="text-[11px] text-center text-slate-500 dark:text-slate-400">
-                Database Google Spreadsheet · Enkripsi AES-256-GCM · Sinkronisasi Offline
+                Database 100% Google Spreadsheet · Enkripsi AES-256-GCM · Sinkronisasi Offline
               </p>
             </div>
 
