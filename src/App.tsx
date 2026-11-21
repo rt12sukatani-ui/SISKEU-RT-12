@@ -48,6 +48,7 @@ import {
   adminRecordToRow,
   announcementToRow,
   appendSheetRows,
+  BUILTIN_SHEETS_WEBAPP_URL,
   clearSavedSpreadsheetId,
   clearSavedWebAppUrl,
   clearVerifiedSession,
@@ -58,6 +59,7 @@ import {
   emergencyToRow,
   extractAndSaveWebAppUrlFromLocation,
   extractSpreadsheetId,
+  extractWebAppUrl,
   fetchAllSheetTables,
   findAppDatabaseSpreadsheet,
   generateRecordId,
@@ -304,6 +306,7 @@ export default function App() {
   const [googleDisplayName, setGoogleDisplayName] = useState<string | null>(null);
   const [googleUid, setGoogleUid] = useState<string | null>(null);
   const [sheetInfo, setSheetInfo] = useState<SheetDbInfo | null>(null);
+  const [hasSyncedSheetOnce, setHasSyncedSheetOnce] = useState(false);
   const [isConnectingSheet, setIsConnectingSheet] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
@@ -448,9 +451,21 @@ export default function App() {
     if (existingConn && sheetInfo) {
       return { conn: existingConn, info: sheetInfo };
     }
-    const defaultUrl = getDefaultWebAppUrl();
-    if (!defaultUrl) return null;
-    const info = await connectWebAppAndEnsureSchema(defaultUrl, DEFAULT_RT_SETTINGS);
+    const candidateUrl = getDefaultWebAppUrl() || BUILTIN_SHEETS_WEBAPP_URL;
+    let info: SheetDbInfo;
+    try {
+      info = await connectWebAppAndEnsureSchema(candidateUrl, DEFAULT_RT_SETTINGS);
+    } catch (err) {
+      if (candidateUrl !== BUILTIN_SHEETS_WEBAPP_URL) {
+        clearSavedWebAppUrl();
+        info = await connectWebAppAndEnsureSchema(
+          BUILTIN_SHEETS_WEBAPP_URL,
+          DEFAULT_RT_SETTINGS
+        );
+      } else {
+        throw err;
+      }
+    }
     const conn: SheetConnection = {
       mode: 'webapp',
       spreadsheetId: info.spreadsheetId,
@@ -578,6 +593,7 @@ export default function App() {
 
         setBannerSlides(snap.slides);
         saveCachedBannerSlides(snap.slides);
+        setHasSyncedSheetOnce(true);
         setSheetInfo((prev) =>
           prev
             ? {
@@ -670,7 +686,15 @@ export default function App() {
     const urlFromLink = extractAndSaveWebAppUrlFromLocation();
     const savedSession = getSavedVerifiedSession();
     const startupWebAppUrl =
-      urlFromLink || savedSession?.webAppUrl || getDefaultWebAppUrl();
+      urlFromLink ||
+      extractWebAppUrl(savedSession?.webAppUrl || '') ||
+      getDefaultWebAppUrl() ||
+      BUILTIN_SHEETS_WEBAPP_URL;
+
+    // Jika belum ada sesi tersimpan, langsung tampilkan portal login sambil menghubungkan database di latar
+    if (!savedSession) {
+      setAuthReady(true);
+    }
 
     if (!startupWebAppUrl || !isOnline) {
       setAuthReady(true);
@@ -681,7 +705,20 @@ export default function App() {
     void (async () => {
       setIsConnectingSheet(true);
       try {
-        const info = await connectWebAppAndEnsureSchema(startupWebAppUrl, DEFAULT_RT_SETTINGS);
+        let info: SheetDbInfo;
+        try {
+          info = await connectWebAppAndEnsureSchema(startupWebAppUrl, DEFAULT_RT_SETTINGS);
+        } catch (err) {
+          if (startupWebAppUrl !== BUILTIN_SHEETS_WEBAPP_URL) {
+            clearSavedWebAppUrl();
+            info = await connectWebAppAndEnsureSchema(
+              BUILTIN_SHEETS_WEBAPP_URL,
+              DEFAULT_RT_SETTINGS
+            );
+          } else {
+            throw err;
+          }
+        }
         if (cancelled) return;
         setSheetInfo(info);
         setGoogleConnected(true);
@@ -696,7 +733,16 @@ export default function App() {
           true
         );
 
-        if (cancelled || !snap || !savedSession) return;
+        if (cancelled) return;
+        if (!snap) {
+          setSheetInfo(null);
+          setHasSyncedSheetOnce(false);
+          setLoginError(
+            'Koneksi database tercapai, tetapi gagal memuat isi tabel Google Spreadsheet. Silakan klik "Hubungkan Database".'
+          );
+          return;
+        }
+        if (!savedSession) return;
 
         const normUser = normalizeUsername(savedSession.username);
         const accData = snap.userAccounts.find(
@@ -797,8 +843,16 @@ export default function App() {
           verifiedAtIso: savedSession.verifiedAtIso,
         });
         initialNotificationIdsRef.current = null;
-      } catch {
-        // User can reconnect manually from LoginScreen
+      } catch (err) {
+        if (!cancelled) {
+          setSheetInfo(null);
+          setHasSyncedSheetOnce(false);
+          setLoginError(
+            err instanceof Error
+              ? err.message
+              : 'Gagal menghubungkan ke Database Google Spreadsheet. Klik "Hubungkan Database" untuk mencoba lagi.'
+          );
+        }
       } finally {
         if (!cancelled) {
           setIsConnectingSheet(false);
@@ -866,18 +920,49 @@ export default function App() {
       setIsConnectingSheet(true);
       setLoginError(null);
       try {
-        const info = await connectWebAppAndEnsureSchema(webAppUrlInput, DEFAULT_RT_SETTINGS);
+        const targetUrl =
+          extractWebAppUrl(webAppUrlInput || '') ||
+          getDefaultWebAppUrl() ||
+          BUILTIN_SHEETS_WEBAPP_URL;
+
+        let info: SheetDbInfo;
+        try {
+          info = await connectWebAppAndEnsureSchema(targetUrl, DEFAULT_RT_SETTINGS, {
+            forceSchema: true,
+          });
+        } catch (err) {
+          if (targetUrl !== BUILTIN_SHEETS_WEBAPP_URL) {
+            clearSavedWebAppUrl();
+            info = await connectWebAppAndEnsureSchema(
+              BUILTIN_SHEETS_WEBAPP_URL,
+              DEFAULT_RT_SETTINGS,
+              { forceSchema: true }
+            );
+          } else {
+            throw err;
+          }
+        }
+
         setSheetInfo(info);
         setGoogleConnected(true);
         setGoogleUserEmail('Google Spreadsheet (Apps Script)');
-        await refreshSpreadsheetData(
+
+        const snap = await refreshSpreadsheetData(
           {
             mode: 'webapp',
             spreadsheetId: info.spreadsheetId,
             webAppUrl: info.webAppUrl,
           },
-          true
+          false
         );
+        if (!snap) {
+          setSheetInfo(null);
+          setHasSyncedSheetOnce(false);
+          throw new Error(
+            'Berhasil terhubung ke Apps Script, tetapi gagal memuat isi tabel Spreadsheet. Silakan klik "Hubungkan Database" ulang.'
+          );
+        }
+
         showToast(
           'Google Spreadsheet Terhubung',
           `Berhasil terhubung ke "${info.spreadsheetTitle}" via Apps Script.`
@@ -955,6 +1040,7 @@ export default function App() {
     setGoogleDisplayName(null);
     setGoogleUid(null);
     setSheetInfo(null);
+    setHasSyncedSheetOnce(false);
     setCurrentUser(null);
     setProfile(null);
     setAdminRecord(null);
@@ -1327,7 +1413,7 @@ export default function App() {
           ? `Terverifikasi di Database (${reg.fullName} · ${reg.houseBlock}). Akun sudah terdaftar (@${
               reg.claimedUsername || '-'
             }) dan siap masuk otomatis ke Spreadsheet.`
-          : `Terverifikasi di Database (${reg.fullName} · ${reg.houseBlock}). Silakan buat username & sandi agar otomatis terhubung ke Spreadsheet.`,
+          : `(${reg.fullName} · ${reg.houseBlock}). Silakan buat akun.`,
       };
     },
     [ensureDefaultSpreadsheetConnected, refreshSpreadsheetData, registryEntries]
@@ -3488,7 +3574,7 @@ export default function App() {
             SISKEU RT12/RW20 SUKATANI
           </p>
           <p className="text-sm text-slate-500 dark:text-slate-400">
-            Menyiapkan koneksi Google Spreadsheet...
+            Menyiapkan Database...
           </p>
         </div>
       </div>
@@ -3505,6 +3591,7 @@ export default function App() {
           isConnectingSheet={isConnectingSheet || isSyncing}
           isDatabaseEmpty={
             Boolean(sheetInfo?.spreadsheetId) &&
+            hasSyncedSheetOnce &&
             adminRecords.length === 0 &&
             residents.length === 0 &&
             registryEntries.length === 0

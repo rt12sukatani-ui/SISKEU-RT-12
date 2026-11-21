@@ -301,9 +301,9 @@ export function clearSavedWebAppUrl(): void {
 
 export function getDefaultWebAppUrl(): string {
   const envUrl = (import.meta.env.VITE_SHEETS_WEBAPP_URL || '').trim();
-  if (envUrl) return envUrl;
+  if (envUrl && extractWebAppUrl(envUrl)) return envUrl;
   const savedUrl = (getSavedWebAppUrl() || '').trim();
-  if (savedUrl) return savedUrl;
+  if (savedUrl && extractWebAppUrl(savedUrl)) return savedUrl;
   return BUILTIN_SHEETS_WEBAPP_URL;
 }
 
@@ -572,70 +572,158 @@ async function googleFetch<T>(
   return parsed as T;
 }
 
+const ensuredSchemaUrls = new Set<string>();
+const inFlightConnects = new Map<string, Promise<SheetDbInfo>>();
+const inFlightFetches = new Map<string, Promise<SheetSnapshotData>>();
+
+async function webAppGet<T extends { ok?: boolean; error?: string }>(
+  webAppUrl: string,
+  timeoutMs = 20000
+): Promise<T> {
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer =
+    controller !== null ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
+  try {
+    const res = await fetch(webAppUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      cache: 'no-store',
+      signal: controller?.signal,
+    });
+    const text = await res.text();
+    let parsed: T | null = null;
+    try {
+      parsed = text ? (JSON.parse(text) as T) : null;
+    } catch {
+      throw new Error(
+        'Respon dari Apps Script tidak valid. Pastikan Web App di-deploy dengan akses "Siapa saja (Anyone)".'
+      );
+    }
+    if (!res.ok || !parsed || parsed.ok === false) {
+      throw new Error(parsed?.error || `Gagal terhubung ke Apps Script (${res.status})`);
+    }
+    return parsed;
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Koneksi ke Google Spreadsheet habis waktu (timeout). Silakan coba lagi.');
+    }
+    throw err;
+  } finally {
+    if (timer !== null) window.clearTimeout(timer);
+  }
+}
+
 async function webAppPost<T extends { ok?: boolean; error?: string }>(
   webAppUrl: string,
-  payload: Record<string, unknown>
+  payload: Record<string, unknown>,
+  timeoutMs = 30000
 ): Promise<T> {
-  const res = await fetch(webAppUrl, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'text/plain;charset=utf-8',
-    },
-    body: JSON.stringify(payload),
-  });
-
-  const text = await res.text();
-  let parsed: T | null = null;
+  const controller = typeof AbortController !== 'undefined' ? new AbortController() : null;
+  const timer =
+    controller !== null ? window.setTimeout(() => controller.abort(), timeoutMs) : null;
   try {
-    parsed = text ? (JSON.parse(text) as T) : null;
-  } catch {
-    throw new Error(
-      'Respon dari Apps Script tidak valid. Pastikan Web App di-deploy dengan akses "Siapa saja (Anyone)".'
-    );
-  }
+    const res = await fetch(webAppUrl, {
+      method: 'POST',
+      redirect: 'follow',
+      headers: {
+        'Content-Type': 'text/plain;charset=utf-8',
+      },
+      body: JSON.stringify(payload),
+      signal: controller?.signal,
+    });
 
-  if (!res.ok || !parsed || parsed.ok === false) {
-    throw new Error(parsed?.error || `Gagal terhubung ke Apps Script (${res.status})`);
+    const text = await res.text();
+    let parsed: T | null = null;
+    try {
+      parsed = text ? (JSON.parse(text) as T) : null;
+    } catch {
+      throw new Error(
+        'Respon dari Apps Script tidak valid. Pastikan Web App di-deploy dengan akses "Siapa saja (Anyone)".'
+      );
+    }
+
+    if (!res.ok || !parsed || parsed.ok === false) {
+      throw new Error(parsed?.error || `Gagal terhubung ke Apps Script (${res.status})`);
+    }
+    return parsed;
+  } catch (err) {
+    if (err instanceof Error && err.name === 'AbortError') {
+      throw new Error('Permintaan ke Google Spreadsheet habis waktu (timeout). Silakan coba lagi.');
+    }
+    throw err;
+  } finally {
+    if (timer !== null) window.clearTimeout(timer);
   }
-  return parsed;
 }
 
 export async function connectWebAppAndEnsureSchema(
   rawUrl: string,
-  defaultSettings: RtSettings
+  defaultSettings: RtSettings,
+  options?: { forceSchema?: boolean }
 ): Promise<SheetDbInfo> {
-  const webAppUrl = extractWebAppUrl(rawUrl);
+  const candidate = (rawUrl || '').trim() || getDefaultWebAppUrl();
+  const webAppUrl = extractWebAppUrl(candidate);
   if (!webAppUrl) {
     throw new Error(
       'URL Web App Google Apps Script tidak valid. Pastikan berawalan https://script.google.com/macros/s/... dan berakhiran /exec.'
     );
   }
 
-  const nowIso = new Date().toISOString();
-  const res = await webAppPost<{
-    ok: boolean;
-    spreadsheetId: string;
-    spreadsheetTitle: string;
-    spreadsheetUrl: string;
-  }>(webAppUrl, {
-    action: 'ensureSchema',
-    tabs: Object.values(SHEET_TABS),
-    headers: SHEET_HEADERS,
-    legacyMap: LEGACY_TAB_TO_INDONESIAN,
-    defaultSettingsRow: settingsToRow(defaultSettings, nowIso),
+  const key = `${webAppUrl}:${options?.forceSchema ? 'force' : 'auto'}`;
+  const existingPromise = inFlightConnects.get(key);
+  if (existingPromise) return existingPromise;
+
+  const task = (async (): Promise<SheetDbInfo> => {
+    const nowIso = new Date().toISOString();
+    const skipSchema = !options?.forceSchema && ensuredSchemaUrls.has(webAppUrl);
+
+    let res: {
+      ok: boolean;
+      spreadsheetId: string;
+      spreadsheetTitle?: string;
+      spreadsheetUrl?: string;
+    };
+
+    if (skipSchema) {
+      res = await webAppGet<{
+        ok: boolean;
+        spreadsheetId: string;
+        spreadsheetTitle?: string;
+        spreadsheetUrl?: string;
+      }>(webAppUrl);
+    } else {
+      res = await webAppPost<{
+        ok: boolean;
+        spreadsheetId: string;
+        spreadsheetTitle?: string;
+        spreadsheetUrl?: string;
+      }>(webAppUrl, {
+        action: 'ensureSchema',
+        tabs: Object.values(SHEET_TABS),
+        headers: SHEET_HEADERS,
+        legacyMap: LEGACY_TAB_TO_INDONESIAN,
+        defaultSettingsRow: settingsToRow(defaultSettings, nowIso),
+      });
+      ensuredSchemaUrls.add(webAppUrl);
+    }
+
+    saveWebAppUrl(webAppUrl);
+    return {
+      mode: 'webapp',
+      spreadsheetId: res.spreadsheetId,
+      spreadsheetTitle: res.spreadsheetTitle || DEFAULT_SPREADSHEET_TITLE,
+      spreadsheetUrl:
+        res.spreadsheetUrl ||
+        `https://docs.google.com/spreadsheets/d/${res.spreadsheetId}/edit`,
+      webAppUrl,
+      lastSyncedAtIso: nowIso,
+    };
+  })().finally(() => {
+    inFlightConnects.delete(key);
   });
 
-  saveWebAppUrl(webAppUrl);
-  return {
-    mode: 'webapp',
-    spreadsheetId: res.spreadsheetId,
-    spreadsheetTitle: res.spreadsheetTitle || DEFAULT_SPREADSHEET_TITLE,
-    spreadsheetUrl:
-      res.spreadsheetUrl ||
-      `https://docs.google.com/spreadsheets/d/${res.spreadsheetId}/edit`,
-    webAppUrl,
-    lastSyncedAtIso: nowIso,
-  };
+  inFlightConnects.set(key, task);
+  return task;
 }
 
 export async function findAppDatabaseSpreadsheet(
@@ -878,24 +966,32 @@ function rowsToObjects(values?: string[][]): Record<string, string>[] {
 export async function fetchAllSheetTables(
   conn: SheetConnection
 ): Promise<SheetSnapshotData> {
-  const allTabs = Object.values(SHEET_TABS);
-  const byTab = new Map<SheetTabName, Record<string, string>[]>();
+  const dedupKey =
+    conn.mode === 'webapp'
+      ? `webapp:${conn.webAppUrl || ''}`
+      : `oauth:${conn.spreadsheetId}`;
+  const inFlight = inFlightFetches.get(dedupKey);
+  if (inFlight) return inFlight;
 
-  if (conn.mode === 'webapp') {
-    if (!conn.webAppUrl) {
-      throw new Error('URL Web App Apps Script belum terhubung.');
-    }
-    const res = await webAppPost<{
-      ok: boolean;
-      tables?: Record<string, string[][]>;
-    }>(conn.webAppUrl, {
-      action: 'fetchAll',
-      tabs: allTabs,
-    });
-    allTabs.forEach((tab) => {
-      byTab.set(tab, rowsToObjects(res.tables?.[tab]));
-    });
-  } else {
+  const task = (async (): Promise<SheetSnapshotData> => {
+    const allTabs = Object.values(SHEET_TABS);
+    const byTab = new Map<SheetTabName, Record<string, string>[]>();
+
+    if (conn.mode === 'webapp') {
+      if (!conn.webAppUrl) {
+        throw new Error('URL Web App Apps Script belum terhubung.');
+      }
+      const res = await webAppPost<{
+        ok: boolean;
+        tables?: Record<string, string[][]>;
+      }>(conn.webAppUrl, {
+        action: 'fetchAll',
+        tabs: allTabs,
+      });
+      allTabs.forEach((tab) => {
+        byTab.set(tab, rowsToObjects(res.tables?.[tab]));
+      });
+    } else {
     if (!conn.accessToken) {
       throw new SheetsAuthExpiredError();
     }
@@ -1195,19 +1291,25 @@ export async function fetchAllSheetTables(
     .filter((s) => Boolean(s.id))
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-  return {
-    rtSettings,
-    registryEntries,
-    userAccounts,
-    users,
-    admins,
-    privateData,
-    transactions,
-    announcements,
-    emergencies,
-    notifications,
-    slides,
-  };
+    return {
+      rtSettings,
+      registryEntries,
+      userAccounts,
+      users,
+      admins,
+      privateData,
+      transactions,
+      announcements,
+      emergencies,
+      notifications,
+      slides,
+    };
+  })().finally(() => {
+    inFlightFetches.delete(dedupKey);
+  });
+
+  inFlightFetches.set(dedupKey, task);
+  return task;
 }
 
 // ==========================================

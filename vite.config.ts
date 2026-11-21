@@ -15,7 +15,7 @@ export default defineConfig(() => {
         includeAssets: ['icon.svg', 'apple-touch-icon.png', 'pwa-192x192.png', 'pwa-512x512.png'],
         manifest: {
           id: '/',
-          name: 'IURAN WARGA RT12/RW20 SUKATANI — Keuangan & Siaga Warga',
+          name: 'SISKEU RT 12/RW 20 SUKATANI',
           short_name: 'Iuran Warga',
           description:
             'Aplikasi keuangan RT transparan, iuran bulanan, pengumuman real-time, dan tombol darurat SOS dengan dukungan offline.',
