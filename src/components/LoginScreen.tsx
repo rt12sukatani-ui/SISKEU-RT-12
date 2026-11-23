@@ -510,38 +510,40 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               >
                 {isConnectingSheet ? (
                   <div className="flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300">
-                    {/* Container Animasi Plug & Socket */}
-                    <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
-                      {/* Bagian Atas: Soket / Port Tujuan */}
+                    {/* Ikon Colokan Horizontal (Steker Kiri menghadap kanan & Soket Kanan) */}
+                    <div className="relative w-5 h-4 flex items-center justify-center shrink-0">
+                      {/* Bagian Kanan: Soket / Port Tujuan menghadap kiri */}
                       <svg
                         viewBox="0 0 24 24"
                         fill="none"
                         stroke="currentColor"
                         strokeWidth="2.5"
                         strokeLinecap="round"
-                        className="w-4 h-4 absolute top-0 text-emerald-600/70 dark:text-emerald-400/70 animate-socket-glow"
+                        className="w-4 h-4 absolute right-0 text-emerald-600/70 dark:text-emerald-400/70 animate-socket-glow"
                         aria-hidden="true"
                       >
-                        {/* Garis horizontal port & lubang penerima */}
-                        <path d="M7 3h10" />
-                        <path d="M9 3v3" />
-                        <path d="M15 3v3" />
+                        {/* Garis vertikal port kanan & lubang penerima menghadap kiri */}
+                        <path d="M21 7v10" />
+                        <path d="M21 9h-3" />
+                        <path d="M21 15h-3" />
                       </svg>
 
-                      {/* Bagian Bawah: Steker (Plug) yang bergerak mencolok */}
-                      <Plug className="w-3.5 h-3.5 translate-y-1 animate-plug-connect text-emerald-600 dark:text-emerald-400" />
+                      {/* Bagian Kiri: Steker (Plug) horizontal menghadap kanan yang bergerak mencolok */}
+                      <span className="inline-flex -translate-x-1 animate-plug-connect text-emerald-600 dark:text-emerald-400">
+                        <Plug className="w-3.5 h-3.5 rotate-90" />
+                      </span>
                     </div>
 
                     <span className="font-bold tracking-wide">Menghubungkan Database...</span>
                   </div>
                 ) : sheetInfo ? (
                   <>
-                    <Plug className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                    <Plug className="w-4 h-4 rotate-90 text-emerald-700 dark:text-emerald-400 shrink-0" />
                     <span>Terhubung</span>
                   </>
                 ) : (
                   <>
-                    <Unplug className="w-4 h-4 shrink-0" />
+                    <Unplug className="w-4 h-4 rotate-45 shrink-0" />
                     <span>Hubungkan Database</span>
                   </>
                 )}
