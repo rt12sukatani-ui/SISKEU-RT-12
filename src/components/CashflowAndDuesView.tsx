@@ -94,6 +94,12 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   const [showAdminEntryForm, setShowAdminEntryForm] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  useEffect(() => {
+    if (openPaymentModalInitially) {
+      setShowDuesForm(true);
+    }
+  }, [openPaymentModalInitially]);
+
   // Resident dues submission form state
   const [billingMonth, setBillingMonth] = useState(currentMonth);
   const selectedMonthSummary = getResidentMonthDuesSummary(profile, transactions, billingMonth);
@@ -273,7 +279,8 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           <button
             type="button"
             onClick={() => {
-              setShowDuesForm((v) => !v);
+              setFormError(null);
+              setShowDuesForm(true);
               setShowAdminEntryForm(false);
             }}
             className="min-h-[48px] px-4 sm:px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
@@ -382,36 +389,60 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
         </div>
       </div>
 
-      {/* Resident Dues Submission Form */}
+      {/* Resident Dues Submission Popup Modal */}
       {showDuesForm && (
-        <form
-          onSubmit={(e) => void handleDuesSubmit(e)}
-          className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-5"
+        <div
+          role="dialog"
+          aria-modal="true"
+          aria-label="Pembayaran Iuran"
+          onClick={() => {
+            if (!submitting) {
+              setShowDuesForm(false);
+              onCloseInitialPaymentModal?.();
+            }
+          }}
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
         >
-          <div className="flex items-center justify-between gap-4">
-            <div>
-              <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-                Pembayaran Iuran
-              </h2>
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="w-full sm:max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+          >
+            <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
+              <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
             </div>
-            <button
-              type="button"
-              onClick={() => {
-                setShowDuesForm(false);
-                onCloseInitialPaymentModal?.();
-              }}
-              aria-label="Tutup formulir pembayaran"
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
-            >
-              <X className="w-5 h-5" />
-            </button>
-          </div>
 
-          {formError && (
-            <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-sm text-red-700 dark:text-red-300">
-              {formError}
+            <div className="px-4 sm:px-6 py-3.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-4 shrink-0">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
+                  <Wallet className="w-4 h-4" />
+                </div>
+                <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
+                  Pembayaran Iuran
+                </h2>
+              </div>
+              <button
+                type="button"
+                disabled={submitting}
+                onClick={() => {
+                  setShowDuesForm(false);
+                  onCloseInitialPaymentModal?.();
+                }}
+                aria-label="Tutup formulir pembayaran"
+                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer shrink-0 disabled:opacity-50"
+              >
+                <X className="w-5 h-5" />
+              </button>
             </div>
-          )}
+
+            <form
+              onSubmit={(e) => void handleDuesSubmit(e)}
+              className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5"
+            >
+              {formError && (
+                <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-sm text-red-700 dark:text-red-300">
+                  {formError}
+                </div>
+              )}
 
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
@@ -435,7 +466,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             <div>
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 {selectedMonthSummary.shortfall > 0 && selectedMonthSummary.shortfall < selectedMonthSummary.tariff
-                  ? `Sisa Kurang ${formatRupiah(selectedMonthSummary.shortfall)}`
+                  ? `Kurang Bayar ${formatRupiah(selectedMonthSummary.shortfall)}`
                   : `${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]} ${formatRupiah(selectedMonthSummary.tariff)}`}
               </label>
               <input
@@ -546,11 +577,15 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             />
           </div>
 
-          <div className="flex justify-end gap-3">
+          <div className="flex justify-end gap-3 pt-1">
             <button
               type="button"
-              onClick={() => setShowDuesForm(false)}
-              className="min-h-[48px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm cursor-pointer"
+              disabled={submitting}
+              onClick={() => {
+                setShowDuesForm(false);
+                onCloseInitialPaymentModal?.();
+              }}
+              className="min-h-[48px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm cursor-pointer disabled:opacity-50"
             >
               Batal
             </button>
@@ -562,7 +597,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               {submitting ? 'Mengirim...' : 'Kirim Pembayaran'}
             </button>
           </div>
-        </form>
+            </form>
+          </div>
+        </div>
       )}
 
       {/* Admin Create Income/Expense Form */}
@@ -932,7 +969,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                       </p>
                       {txUnderpaid && txLedger && txLedger.shortfall > 0 && (
                         <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mt-1">
-                          Tarif {FAMILY_STATUS_LABELS[txFamily]}: {formatRupiah(txTariff)} (sisa kurang {formatRupiah(txLedger.shortfall)})
+                          Tarif {FAMILY_STATUS_LABELS[txFamily]}: {formatRupiah(txTariff)} (Kurang Bayar {formatRupiah(txLedger.shortfall)})
                         </p>
                       )}
                       {isSettledMonth && txLedger && txLedger.surplus > 0 && (
@@ -1019,7 +1056,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Pratinjau foto bukti pembayaran"
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4"
           onClick={() => setPreviewImage(null)}
         >
           <div
