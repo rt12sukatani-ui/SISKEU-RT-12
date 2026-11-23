@@ -467,7 +467,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 {selectedMonthSummary.shortfall > 0 && selectedMonthSummary.shortfall < selectedMonthSummary.tariff
                   ? `Kurang Bayar ${formatRupiah(selectedMonthSummary.shortfall)}`
-                  : `${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]} ${formatRupiah(selectedMonthSummary.tariff)}`}
+                  : `${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]}`}
               </label>
               <input
                 type="number"
@@ -490,7 +490,6 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
               >
                 <option value="transfer">Transfer Bank</option>
-                <option value="qris">QRIS RT</option>
                 <option value="tunai">Tunai ke Pengurus</option>
               </select>
             </div>

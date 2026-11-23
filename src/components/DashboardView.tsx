@@ -331,9 +331,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               <span className="font-semibold">
                 Iuran {formatMonthLabel(currentMonth)}
               </span>
-              <span className="font-medium">
-                {myFamilyLabel}
-              </span>
             </div>
             <div className="mt-1.5 flex items-center justify-between gap-3">
               <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight min-w-0 truncate">
@@ -356,6 +353,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
               <span className="font-medium">{profile.houseBlock}</span>
+              <span className="font-medium shrink-0 text-right">
+                {myFamilyLabel}
+              </span>
             </div>
 
             {myDuesSummary.status === 'lunas' ? (
@@ -433,7 +433,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {copiedBank ? (
                       <>
                         <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>No. Rekening Disalin</span>
+                        <span>Disalin</span>
                       </>
                     ) : (
                       <>

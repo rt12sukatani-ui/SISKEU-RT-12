@@ -2,7 +2,7 @@ import React, { useState } from 'react';
 import {
   Bell,
   CheckCheck,
-  RefreshCw,
+  LogOut,
   Settings,
   Trash2,
   X,
@@ -19,8 +19,7 @@ interface HeaderNavProps {
   onDeleteNotification?: (id: string) => Promise<void>;
   onOpenSettings: () => void;
   activeEmergencyCount: number;
-  onSyncSheets?: () => void;
-  isSyncing?: boolean;
+  onLogout: () => void | Promise<void>;
 }
 
 const NAV_ITEMS: { id: AppTab; label: string }[] = [
@@ -40,8 +39,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   onDeleteNotification,
   onOpenSettings,
   activeEmergencyCount,
-  onSyncSheets,
-  isSyncing = false,
+  onLogout,
 }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
@@ -83,20 +81,18 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             })}
           </nav>
 
-          {/* Zone 3: Single Action Cluster (Sync + Notifications + Account/Mode) */}
+          {/* Zone 3: Single Action Cluster (Logout + Notifications + Account/Mode) */}
           <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-            {onSyncSheets && (
-              <button
-                type="button"
-                onClick={onSyncSheets}
-                disabled={isSyncing}
-                aria-label="Sinkronkan Google Spreadsheet"
-                title="Sinkronkan Google Spreadsheet"
-                className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer disabled:opacity-50"
-              >
-                <RefreshCw className={`w-4 h-4 ${isSyncing ? 'animate-spin text-emerald-600' : ''}`} />
-              </button>
-            )}
+            <button
+              type="button"
+              onClick={() => void onLogout()}
+              aria-label="Keluar dari akun"
+              title="Keluar"
+              className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border-0 outline-none focus:outline-none text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+            >
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className="hidden md:inline"></span>
+            </button>
             <button
               type="button"
               onClick={() => setNotifOpen(true)}
@@ -117,7 +113,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               className="min-h-[44px] min-w-[44px] sm:px-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors cursor-pointer"
             >
               <Settings className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Pengaturan</span>
+              <span className="hidden sm:inline">Setting</span>
             </button>
           </div>
         </div>

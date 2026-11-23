@@ -1146,7 +1146,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                       onClick={() => void onDisconnectGoogle()}
                       className="min-h-[38px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
                     >
-                      Putuskan Koneksi Spreadsheet
+                      Putuskan Koneksi Database
                     </button>
                   )}
                 </div>
@@ -1155,14 +1155,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
           )}
 
           <div className="pt-5 border-t border-slate-100 dark:border-slate-800 flex justify-between items-center">
-            <button
-              type="button"
-              onClick={() => void onLogout()}
-              className="min-h-[44px] px-4 rounded-xl border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 text-sm font-semibold inline-flex items-center gap-2 cursor-pointer"
-            >
-              <LogOut className="w-4 h-4" />
-              <span>Keluar Akun</span>
-            </button>
+
           </div>
         </div>
       </div>

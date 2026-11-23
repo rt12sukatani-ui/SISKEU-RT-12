@@ -12,7 +12,6 @@ import {
 import { motion } from 'motion/react';
 import { AnnouncementsView } from './components/AnnouncementsView';
 import { CashflowAndDuesView } from './components/CashflowAndDuesView';
-import { ConfirmActionModal } from './components/ConfirmActionModal';
 import { DashboardView } from './components/DashboardView';
 import { EmergencyAndHealthView } from './components/EmergencyAndHealthView';
 import { HeaderNav } from './components/HeaderNav';
@@ -165,15 +164,6 @@ const DEFAULT_HEALTH_PROFILE: PrivateHealthData = {
 };
 
 const BOOTSTRAPPED_ADMIN_EMAILS = ['pinasta@gmail.com', 'retakanbumi@gmail.com'];
-
-interface ConfirmPromptState {
-  title: string;
-  description: string;
-  details?: string[];
-  confirmLabel?: string;
-  destructive?: boolean;
-  resolve: (confirmed: boolean) => void;
-}
 
 function sortByCreatedAtDesc<T extends { createdAt?: unknown }>(items: T[]): T[] {
   return [...items].sort((a, b) => {
@@ -343,7 +333,6 @@ export default function App() {
   const [offlineQueueCount, setOfflineQueueCount] = useState<number>(
     () => getOfflineQueue().length
   );
-  const [confirmPrompt, setConfirmPrompt] = useState<ConfirmPromptState | null>(null);
   const [adminSheetInput, setAdminSheetInput] = useState('');
 
   const initialAnnouncementIdsRef = useRef<Set<string> | null>(null);
@@ -385,27 +374,6 @@ export default function App() {
       setLiveToast((prev) => (prev?.title === title && prev?.body === body ? null : prev));
     }, 6500);
   }, []);
-
-  const requestSheetConfirmation = useCallback(
-    (opts: {
-      title: string;
-      description: string;
-      details?: string[];
-      confirmLabel?: string;
-      destructive?: boolean;
-    }): Promise<boolean> => {
-      return new Promise((resolve) => {
-        setConfirmPrompt({
-          ...opts,
-          resolve: (confirmed) => {
-            setConfirmPrompt(null);
-            resolve(confirmed);
-          },
-        });
-      });
-    },
-    []
-  );
 
   const handleExpiredToken = useCallback(() => {
     clearGoogleAccessToken();
@@ -1057,17 +1025,6 @@ export default function App() {
       return;
     }
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Buat Database Google Spreadsheet Baru',
-      description:
-        'Aplikasi akan membuat file Google Spreadsheet baru bernama "DATABASE_SISKEU_RT12_RW20" di Google Drive Anda beserta seluruh tab tabel RT berbahasa Indonesia.',
-      details: [
-        'Tab dibuat: pengaturan, database_warga, akun_pengguna, profil_warga, pengurus_admin, data_pribadi, transaksi_kas, pengumuman, darurat_sos, notifikasi, foto_kegiatan',
-      ],
-      confirmLabel: 'Buat Spreadsheet',
-    });
-    if (!confirmed) return;
-
     setIsConnectingSheet(true);
     setLoginError(null);
     try {
@@ -1136,7 +1093,6 @@ export default function App() {
     profile,
     googleUserEmail,
     googleDisplayName,
-    requestSheetConfirmation,
     refreshSpreadsheetData,
     showToast,
     handleExpiredToken,
@@ -1158,15 +1114,6 @@ export default function App() {
         showToast('URL/ID Tidak Valid', msg, true);
         return;
       }
-
-      const confirmed = await requestSheetConfirmation({
-        title: 'Hubungkan & Siapkan Struktur Spreadsheet',
-        description:
-          'Aplikasi akan memeriksa tab database yang diperlukan pada Google Spreadsheet tersebut dan menambahkan header tabel yang belum ada.',
-        details: [`Spreadsheet ID: ${spreadsheetId}`],
-        confirmLabel: 'Hubungkan Spreadsheet',
-      });
-      if (!confirmed) return;
 
       setIsConnectingSheet(true);
       setLoginError(null);
@@ -1196,7 +1143,7 @@ export default function App() {
         setIsConnectingSheet(false);
       }
     },
-    [requestSheetConfirmation, refreshSpreadsheetData, showToast, handleExpiredToken]
+    [refreshSpreadsheetData, showToast, handleExpiredToken]
   );
 
   // Offline emergency snapshot
@@ -1232,18 +1179,6 @@ export default function App() {
     if (!isOnline || !currentUser || !profile || !conn || !sheetInfo) return;
     const queue = getOfflineQueue();
     if (queue.length === 0) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Sinkronkan Data Mode Offline ke Google Spreadsheet',
-      description: `Terdapat ${queue.length} catatan offline yang siap disimpan ke Google Spreadsheet "${sheetInfo.spreadsheetTitle}".`,
-      details: queue.map((q) =>
-        q.kind === 'dues_submission'
-          ? `Iuran: ${(q.payload as { title?: string }).title || 'Pembayaran'}`
-          : `Darurat SOS: ${(q.payload as { emergencyType?: string }).emergencyType || 'Laporan'}`
-      ),
-      confirmLabel: 'Sinkronkan Sekarang',
-    });
-    if (!confirmed) return;
 
     let syncedCount = 0;
     const nowIso = new Date().toISOString();
@@ -1291,7 +1226,6 @@ export default function App() {
     profile,
     sheetInfo,
     getActiveSheetConnection,
-    requestSheetConfirmation,
     refreshSpreadsheetData,
     showToast,
     handleExpiredToken,
@@ -1500,17 +1434,6 @@ export default function App() {
         );
         return;
       }
-
-      const confirmed = await requestSheetConfirmation({
-        title: 'Buat Akun Admin Pertama (Ketua RT) di Spreadsheet',
-        description: `Simpan akun Ketua RT pertama "${data.fullName.trim()}" (${data.houseBlock.trim()}) ke Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-        details: [
-          `Username: @${normalizedUsername}`,
-          `Tab diperbarui: ${SHEET_TABS.RESIDENT_REGISTRY}, ${SHEET_TABS.USER_ACCOUNTS}, ${SHEET_TABS.USERS}, ${SHEET_TABS.ADMINS}`,
-        ],
-        confirmLabel: 'Buat & Masuk Admin',
-      });
-      if (!confirmed) return;
 
       isMutatingRef.current = true;
       const newUid = generateRecordId('adm');
@@ -2011,16 +1934,6 @@ export default function App() {
     setElderlyMode(next);
     const conn = getActiveSheetConnection();
     if (currentUser && profile && conn) {
-      const confirmed = await requestSheetConfirmation({
-        title: 'Simpan Preferensi Mode Ramah Lansia',
-        description: `Perbarui preferensi Teks Besar (${next ? 'Aktif' : 'Nonaktif'}) untuk "${
-          profile.displayName
-        }" di Google Spreadsheet?`,
-        details: [`Tab: ${SHEET_TABS.USERS}`],
-        confirmLabel: 'Simpan Perubahan',
-      });
-      if (!confirmed) return;
-
       try {
         const updated: ResidentPublic = {
           ...profile,
@@ -2073,16 +1986,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Simpan Pembayaran Iuran ke Google Spreadsheet',
-      description: `Tambahkan catatan pembayaran iuran "${payload.title}" sebesar ${formatRupiah(
-        payload.amount
-      )} ke Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.TRANSACTIONS}`, `Bulan Tagihan: ${payload.billingMonth}`],
-      confirmLabel: 'Kirim & Simpan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -2114,18 +2017,6 @@ export default function App() {
     if (!currentUser || !profile) return;
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Catat Transaksi Kas ke Google Spreadsheet',
-      description: `Simpan transaksi ${
-        data.type === 'income' ? 'Pemasukan' : 'Pengeluaran'
-      } "${data.title}" (${formatRupiah(data.amount)}) ke Google Spreadsheet "${
-        sheetInfo.spreadsheetTitle
-      }"?`,
-      details: [`Tab: ${SHEET_TABS.TRANSACTIONS}`],
-      confirmLabel: 'Simpan Transaksi',
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -2196,23 +2087,6 @@ export default function App() {
       ledgerAfter.status === 'kurang_bayar';
     const finalStatus =
       decision === 'rejected' ? 'rejected' : isUnderpaid ? 'kurang_bayar' : 'approved';
-
-    const confirmed = await requestSheetConfirmation({
-      title:
-        decision === 'rejected'
-          ? 'Konfirmasi Penolakan Pembayaran di Spreadsheet'
-          : 'Konfirmasi Verifikasi Pembayaran di Spreadsheet',
-      description: `Perbarui status transaksi "${tx.title}" milik ${tx.residentName} (${tx.houseBlock}) menjadi "${finalStatus === 'approved' ? 'DISETUJUI' : finalStatus === 'rejected' ? 'DITOLAK' : 'KURANG BAYAR'}" pada Google Spreadsheet?`,
-      details: [
-        `Nominal: ${formatRupiah(tx.amount)}`,
-        `Tab diperbarui: ${SHEET_TABS.TRANSACTIONS}, ${SHEET_TABS.NOTIFICATIONS}${
-          decision === 'approved' && !isUnderpaid ? `, ${SHEET_TABS.USERS}` : ''
-        }`,
-      ],
-      confirmLabel: decision === 'rejected' ? 'Ya, Tolak Pembayaran' : 'Setujui & Simpan',
-      destructive: decision === 'rejected',
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -2316,19 +2190,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn) return 0;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Kirim Pengingat Iuran Massal',
-      description: `Tambahkan ${unpaidResidents.length} notifikasi pengingat iuran bulan ${formatMonthLabel(
-        yearMonth
-      )} ke Google Spreadsheet?`,
-      details: [
-        `Tab: ${SHEET_TABS.NOTIFICATIONS}`,
-        `Jumlah penerima: ${unpaidResidents.length} warga`,
-      ],
-      confirmLabel: `Kirim (${unpaidResidents.length} Warga)`,
-    });
-    if (!confirmed) return 0;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -2373,16 +2234,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Terbitkan Pengumuman ke Google Spreadsheet',
-      description: `Simpan pengumuman "${data.title}" (${data.priority.toUpperCase()}) ke Google Spreadsheet "${
-        sheetInfo.spreadsheetTitle
-      }"?`,
-      details: [`Tab: ${SHEET_TABS.ANNOUNCEMENTS}`],
-      confirmLabel: 'Terbitkan Pengumuman',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -2421,16 +2272,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Pengumuman di Google Spreadsheet',
-      description: `Simpan perubahan pengumuman "${data.title}" (${data.priority.toUpperCase()}) di Google Spreadsheet "${
-        sheetInfo.spreadsheetTitle
-      }"?`,
-      details: [`Tab: ${SHEET_TABS.ANNOUNCEMENTS}`],
-      confirmLabel: 'Simpan Perubahan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const updated: Announcement = {
@@ -2455,18 +2296,6 @@ export default function App() {
   const handleDeleteAnnouncement = async (id: string) => {
     const conn = requireActiveSheet();
     if (!conn) return;
-    const target = announcements.find((a) => a.id === id);
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Hapus Pengumuman dari Google Spreadsheet',
-      description: `Anda yakin ingin menghapus pengumuman "${
-        target?.title || id
-      }" secara permanen dari Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.ANNOUNCEMENTS}`],
-      confirmLabel: 'Ya, Hapus Pengumuman',
-      destructive: true,
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -2527,17 +2356,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Kirim Sinyal Darurat SOS ke Google Spreadsheet',
-      description: `Catat dan siarkan laporan darurat (${payload.emergencyType.toUpperCase()}) dari ${
-        profile.houseBlock
-      } ke Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.EMERGENCIES}`],
-      confirmLabel: 'Kirim Sinyal SOS',
-      destructive: true,
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -2564,16 +2382,6 @@ export default function App() {
     if (!currentUser || !profile) return;
     const conn = requireActiveSheet();
     if (!conn) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Status Darurat SOS di Spreadsheet',
-      description: `Ubah status laporan darurat ${alert.reporterName} (${alert.houseBlock}) menjadi "${
-        status === 'responding' ? 'Sedang Ditangani' : 'Selesai'
-      }" di Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.EMERGENCIES}`],
-      confirmLabel: 'Perbarui Status',
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -2609,16 +2417,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Detail Laporan Darurat di Spreadsheet',
-      description: `Simpan perubahan laporan darurat (${data.emergencyType.toUpperCase()}) dari ${
-        alert.reporterName
-      } (${alert.houseBlock}) ke Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.EMERGENCIES}`],
-      confirmLabel: 'Simpan Perubahan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const updated: EmergencyAlert = {
@@ -2645,15 +2443,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Hapus Laporan Darurat dari Google Spreadsheet',
-      description: `Anda yakin ingin menghapus laporan darurat "${alert.reporterName} (${alert.houseBlock})" secara permanen dari Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.EMERGENCIES}`],
-      confirmLabel: 'Ya, Hapus Laporan',
-      destructive: true,
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       await deleteSheetRowsByKey(conn, SHEET_TABS.EMERGENCIES, [alert.id]);
@@ -2674,14 +2463,6 @@ export default function App() {
     if (!currentUser) return;
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Simpan Data Pribadi & Kesehatan Terenkripsi',
-      description: `Enkripsi (AES-256-GCM) dan perbarui data kontak darurat serta kartu medis Anda di Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.PRIVATE_DATA}`],
-      confirmLabel: 'Enkripsi & Simpan',
-    });
-    if (!confirmed) return;
 
     setPrivateProfile(nextProfile);
     setHealthProfile(nextHealth);
@@ -2742,14 +2523,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Identitas Rumah Warga di Spreadsheet',
-      description: `Simpan perubahan identitas atas nama "${data.displayName}" (${data.houseBlock}) ke Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.USERS}`],
-      confirmLabel: 'Simpan Identitas',
-    });
-    if (!confirmed) return;
-
     const prevFamilyStatus: FamilyStatus = profile.familyStatus || 'umum';
     const hasFamilyStatusChanged = data.familyStatus !== prevFamilyStatus;
     let nextFamilyStatusLog = profile.familyStatusLog;
@@ -2796,16 +2569,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Pengaturan Kas RT di Google Spreadsheet',
-      description: `Timpa pengaturan RT (${data.rtName} / ${data.rwName}, iuran ${formatRupiah(
-        data.monthlyDuesAmount
-      )}) pada Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.SETTINGS}`],
-      confirmLabel: 'Simpan Pengaturan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -2835,16 +2598,6 @@ export default function App() {
     if (!currentUser) return;
     const conn = requireActiveSheet();
     if (!conn || !sheetInfo) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Tambahkan Foto Slideshow ke Google Spreadsheet',
-      description: `Simpan foto kegiatan "${
-        data.title || 'Kegiatan Warga'
-      }" ke tab slideshow Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: [`Tab: ${SHEET_TABS.SLIDES}`],
-      confirmLabel: 'Tambahkan Foto',
-    });
-    if (!confirmed) return;
 
     const nextSortOrder =
       bannerSlides.length > 0
@@ -2887,14 +2640,6 @@ export default function App() {
     const existing = bannerSlides.find((s) => s.id === id);
     if (!existing) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Keterangan Foto Slideshow',
-      description: `Ubah judul dan keterangan foto "${existing.title}" menjadi "${data.title}" di Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.SLIDES}`],
-      confirmLabel: 'Simpan Perubahan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const updated: BannerSlide = {
@@ -2925,16 +2670,6 @@ export default function App() {
     const [moved] = reordered.splice(idx, 1);
     reordered.splice(targetIdx, 0, moved);
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Ubah Urutan Slideshow di Google Spreadsheet',
-      description: `Geser posisi foto "${moved.title}" ${
-        direction === 'up' ? 'ke atas' : 'ke bawah'
-      } pada Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.SLIDES}`, `${reordered.length} baris diperbarui`],
-      confirmLabel: 'Simpan Urutan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -2958,18 +2693,6 @@ export default function App() {
   const handleDeleteBannerSlide = async (id: string) => {
     const conn = requireActiveSheet();
     if (!conn) return;
-    const target = bannerSlides.find((s) => s.id === id);
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Hapus Foto Slideshow dari Google Spreadsheet',
-      description: `Anda yakin ingin menghapus foto "${
-        target?.title || id
-      }" secara permanen dari Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.SLIDES}`],
-      confirmLabel: 'Ya, Hapus Foto',
-      destructive: true,
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -3007,18 +2730,6 @@ export default function App() {
       isPengurusEntry && pengurusPosition
         ? normalizePengurusPermissions(pengurusPosition, data.permissions)
         : undefined;
-
-    const confirmed = await requestSheetConfirmation({
-      title: existing
-        ? 'Perbarui Data Warga di Google Spreadsheet'
-        : 'Tambah Data Warga ke Google Spreadsheet',
-      description: `${existing ? 'Perbarui' : 'Tambahkan'} data "${data.fullName.trim()}" (${data.houseBlock.trim()}) sebagai ${
-        effectiveRole === 'pengurus' ? 'Pengurus' : 'Warga'
-      } pada Database Warga di Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.RESIDENT_REGISTRY}`],
-      confirmLabel: existing ? 'Perbarui Data' : 'Simpan Data',
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -3083,13 +2794,6 @@ export default function App() {
     if (!conn || !sheetInfo) return 0;
 
     const slice = items.slice(0, 200);
-    const confirmed = await requestSheetConfirmation({
-      title: 'Impor Massal Database Warga ke Spreadsheet',
-      description: `Simpan/perbarui ${slice.length} data warga ke tab "${SHEET_TABS.RESIDENT_REGISTRY}" di Google Spreadsheet "${sheetInfo.spreadsheetTitle}"?`,
-      details: slice.slice(0, 5).map((i) => `${i.fullName} (${i.houseBlock})`),
-      confirmLabel: `Impor ${slice.length} Data`,
-    });
-    if (!confirmed) return 0;
 
     isMutatingRef.current = true;
     try {
@@ -3202,14 +2906,6 @@ export default function App() {
 
     if (newEntries.length === 0) return 0;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Sinkronkan Warga Aktif ke Database Warga',
-      description: `Tambahkan ${newEntries.length} profil warga aktif ke tab "${SHEET_TABS.RESIDENT_REGISTRY}" di Google Spreadsheet?`,
-      details: newEntries.slice(0, 5).map((e) => `${e.fullName} (${e.houseBlock})`),
-      confirmLabel: `Sinkronkan (${newEntries.length})`,
-    });
-    if (!confirmed) return 0;
-
     isMutatingRef.current = true;
     try {
       await appendSheetRows(
@@ -3243,20 +2939,6 @@ export default function App() {
     const isPengurusNext = next.role === 'pengurus';
     const pos: PengurusPosition = next.pengurusPosition || 'pengurus_lain';
     const perms = isPengurusNext ? normalizePengurusPermissions(pos, next.permissions) : [];
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Role & Kewenangan RBAC di Spreadsheet',
-      description: `Ubah hak akses "${entry.fullName}" (${entry.houseBlock}) menjadi ${
-        isPengurusNext ? `Pengurus (${pos})` : 'Warga'
-      } pada Google Spreadsheet?`,
-      details: [
-        `Tab: ${SHEET_TABS.RESIDENT_REGISTRY}${
-          entry.claimedUid ? `, ${SHEET_TABS.USERS}, ${SHEET_TABS.ADMINS}` : ''
-        }`,
-      ],
-      confirmLabel: 'Simpan Kewenangan',
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -3356,20 +3038,6 @@ export default function App() {
     const trimmedBlock = next.houseBlock.trim().slice(0, 30);
     if (!trimmedName || !trimmedBlock) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Perbarui Data Warga di Google Spreadsheet',
-      description: `Simpan perubahan data "${trimmedName}" (${trimmedBlock}) ke Database Warga di Google Spreadsheet?`,
-      details: [
-        `Tab: ${SHEET_TABS.RESIDENT_REGISTRY}${
-          entry.claimedUid
-            ? `, ${SHEET_TABS.USERS}${entry.role === 'pengurus' ? `, ${SHEET_TABS.ADMINS}` : ''}`
-            : ''
-        }`,
-      ],
-      confirmLabel: 'Simpan Perubahan',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const nowIso = new Date().toISOString();
@@ -3446,17 +3114,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Reset Klaim Akun di Google Spreadsheet',
-      description: `Reset status pendaftaran akun untuk "${entry.fullName}" (${entry.houseBlock}) dan hapus username "@${
-        entry.claimedUsername || '-'
-      }" dari tab ${SHEET_TABS.USER_ACCOUNTS} agar warga dapat mendaftar ulang?`,
-      details: [`Tab: ${SHEET_TABS.RESIDENT_REGISTRY}, ${SHEET_TABS.USER_ACCOUNTS}`],
-      confirmLabel: 'Reset Klaim Akun',
-      destructive: true,
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       const updated: ResidentRegistryEntry = {
@@ -3486,25 +3143,6 @@ export default function App() {
   ) => {
     const conn = requireActiveSheet();
     if (!conn) return;
-
-    const statusLabel =
-      nextStatus === 'verified'
-        ? 'TERVERIFIKASI (Otomatis Terhubung ke Spreadsheet)'
-        : nextStatus === 'pending'
-        ? 'MENUNGGU VERIFIKASI'
-        : 'DITOLAK / NONAKTIF';
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Ubah Status Verifikasi Pengguna di Spreadsheet',
-      description: `Ubah status verifikasi "${entry.fullName}" (${entry.houseBlock}) menjadi ${statusLabel}?`,
-      details: [
-        `Tab: ${SHEET_TABS.RESIDENT_REGISTRY}${entry.claimedUid ? `, ${SHEET_TABS.USERS}` : ''}`,
-      ],
-      confirmLabel:
-        nextStatus === 'verified' ? 'Verifikasi & Aktifkan' : 'Simpan Status Verifikasi',
-      destructive: nextStatus === 'rejected',
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -3542,19 +3180,6 @@ export default function App() {
     const conn = requireActiveSheet();
     if (!conn) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Hapus Warga dari Google Spreadsheet',
-      description: `Anda yakin ingin menghapus data "${entry.fullName}" (${entry.houseBlock}) secara permanen dari Database Warga di Google Spreadsheet?`,
-      details: [
-        `Tab: ${SHEET_TABS.RESIDENT_REGISTRY}${
-          entry.claimedUsername ? `, ${SHEET_TABS.USER_ACCOUNTS}` : ''
-        }`,
-      ],
-      confirmLabel: 'Ya, Hapus Data',
-      destructive: true,
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       await deleteSheetRowsByKey(conn, SHEET_TABS.RESIDENT_REGISTRY, [entry.registryId]);
@@ -3576,14 +3201,6 @@ export default function App() {
     const target = allNotifications.find((n) => n.id === id);
     if (!target || target.isRead) return;
 
-    const confirmed = await requestSheetConfirmation({
-      title: 'Tandai Notifikasi Dibaca',
-      description: `Perbarui status notifikasi "${target.title}" menjadi sudah dibaca pada Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.NOTIFICATIONS}`],
-      confirmLabel: 'Tandai Dibaca',
-    });
-    if (!confirmed) return;
-
     isMutatingRef.current = true;
     try {
       await upsertSheetRowsByKey(conn, SHEET_TABS.NOTIFICATIONS, [
@@ -3602,14 +3219,6 @@ export default function App() {
     if (unread.length === 0) return;
     const conn = requireActiveSheet();
     if (!conn) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Tandai Semua Notifikasi Dibaca',
-      description: `Perbarui ${unread.length} notifikasi menjadi sudah dibaca di Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.NOTIFICATIONS}`],
-      confirmLabel: `Tandai ${unread.length} Dibaca`,
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -3631,15 +3240,6 @@ export default function App() {
     if (!conn) return;
     const target = allNotifications.find((n) => n.id === id);
     if (!target || (currentUser && target.targetUid !== currentUser.uid)) return;
-
-    const confirmed = await requestSheetConfirmation({
-      title: 'Hapus Notifikasi dari Google Spreadsheet',
-      description: `Hapus notifikasi "${target.title}" secara permanen dari Google Spreadsheet?`,
-      details: [`Tab: ${SHEET_TABS.NOTIFICATIONS}`],
-      confirmLabel: 'Hapus Notifikasi',
-      destructive: true,
-    });
-    if (!confirmed) return;
 
     isMutatingRef.current = true;
     try {
@@ -3747,8 +3347,7 @@ export default function App() {
                 onDeleteNotification={handleDeleteNotification}
                 onOpenSettings={() => setSettingsOpen(true)}
                 activeEmergencyCount={activeEmergencyCount}
-                onSyncSheets={() => void refreshSpreadsheetData(undefined, false)}
-                isSyncing={isSyncing}
+                onLogout={handleLogout}
               />
 
               {/* Non-intrusive Real-Time Toast Banner */}
@@ -4069,17 +3668,6 @@ export default function App() {
           );
         })()
       )}
-
-      <ConfirmActionModal
-        isOpen={Boolean(confirmPrompt)}
-        title={confirmPrompt?.title || ''}
-        description={confirmPrompt?.description || ''}
-        details={confirmPrompt?.details}
-        confirmLabel={confirmPrompt?.confirmLabel}
-        destructive={confirmPrompt?.destructive}
-        onConfirm={() => confirmPrompt?.resolve(true)}
-        onCancel={() => confirmPrompt?.resolve(false)}
-      />
     </>
   );
 }
