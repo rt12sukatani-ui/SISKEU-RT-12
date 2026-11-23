@@ -2,7 +2,6 @@ import React, { useEffect, useMemo, useState } from 'react';
 import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   Accessibility,
-  BadgeCheck,
   Check,
   CheckCircle2,
   ChevronLeft,
@@ -31,7 +30,6 @@ import type {
   LoginRole,
   PengurusPosition,
   SheetDbInfo,
-  VerifiedDatabaseCheckResult,
 } from '../types';
 import { PENGURUS_POSITION_LABELS } from '../utils/rbac';
 import { PWAInstallButton } from './PWAInstallButton';
@@ -60,19 +58,11 @@ interface LoginScreenProps {
   onGoogleConnect: () => Promise<void>;
   onGoogleDisconnect: () => Promise<void>;
   onConnectSpreadsheetById: (idOrUrl: string) => Promise<void>;
-  onSyncSpreadsheet: () => Promise<void>;
-  onCheckDatabaseVerification: (data: {
-    fullName: string;
-    houseBlock: string;
-    role: LoginRole;
-  }) => Promise<VerifiedDatabaseCheckResult>;
   onLoginWithCredentials: (data: {
-    role: LoginRole;
     username: string;
     password: string;
   }) => Promise<void>;
   onRegisterAccount: (data: {
-    role: LoginRole;
     fullName: string;
     houseBlock: string;
     username: string;
@@ -114,8 +104,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   onBootstrapFirstAdmin,
   onGoogleConnect,
   onConnectSpreadsheetById,
-  onSyncSpreadsheet,
-  onCheckDatabaseVerification,
   onLoginWithCredentials,
   onRegisterAccount,
   onGoogleAdminLogin,
@@ -136,7 +124,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const touchStartXRef = React.useRef<number | null>(null);
 
   const [authMode, setAuthMode] = useState<'login' | 'register'>('login');
-  const [selectedRole, setSelectedRole] = useState<LoginRole>('warga');
   const [fullName, setFullName] = useState('');
   const [houseBlock, setHouseBlock] = useState('');
   const [username, setUsername] = useState('');
@@ -144,8 +131,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [dbCheckResult, setDbCheckResult] = useState<VerifiedDatabaseCheckResult | null>(null);
-  const [isCheckingDb, setIsCheckingDb] = useState(false);
   const [loginPopupData, setLoginPopupData] = useState<RegisteredAccountNotice | null>(null);
   const [sheetInput, setSheetInput] = useState('');
   const [showSheetSwitcher, setShowSheetSwitcher] = useState(false);
@@ -198,40 +183,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const handleSwitchMode = (mode: 'login' | 'register') => {
     setAuthMode(mode);
     setLocalError(null);
-    setDbCheckResult(null);
     onClearError();
-  };
-
-  const handleSelectRole = (role: LoginRole) => {
-    setSelectedRole(role);
-    setLocalError(null);
-    setDbCheckResult(null);
-    onClearError();
-  };
-
-  const handleCheckDatabase = async () => {
-    setLocalError(null);
-    onClearError();
-    if (!fullName.trim() || !houseBlock.trim()) {
-      setAuthMode('register');
-      setLocalError('Isi Nama Lengkap dan Blok Rumah terlebih dahulu untuk verifikasi database.');
-      return;
-    }
-    setIsCheckingDb(true);
-    try {
-      const check = await onCheckDatabaseVerification({
-        fullName: fullName.trim(),
-        houseBlock: houseBlock.trim(),
-        role: selectedRole,
-      });
-      setDbCheckResult(check);
-    } catch (err) {
-      setLocalError(
-        err instanceof Error ? err.message : 'Gagal memeriksa verifikasi database.'
-      );
-    } finally {
-      setIsCheckingDb(false);
-    }
   };
 
   const handleSubmitLogin = async (e: React.FormEvent) => {
@@ -243,7 +195,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       return;
     }
     await onLoginWithCredentials({
-      role: selectedRole,
       username: username.trim(),
       password,
     });
@@ -259,7 +210,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       return;
     }
     await onLoginWithCredentials({
-      role: loginPopupData.role,
       username: username.trim(),
       password,
     });
@@ -286,21 +236,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       return;
     }
     const result = await onRegisterAccount({
-      role: selectedRole,
       fullName: fullName.trim(),
       houseBlock: houseBlock.trim(),
       username: username.trim(),
       password,
     });
     if (result) {
-      setSelectedRole(result.role);
       setAuthMode('login');
       setUsername(result.username);
       setPassword('');
       setConfirmPassword('');
       setFullName('');
       setHouseBlock('');
-      setDbCheckResult(null);
       setLocalError(null);
       if (!result.autoConnected) {
         setLoginPopupData(result);
@@ -543,33 +490,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
                     <span>Terhubung</span>
                   </div>
-                  <button
-                    type="button"
-                    disabled={isCheckingDb || !isOnline}
-                    onClick={() => void handleCheckDatabase()}
-                    className="min-h-[34px] px-3 rounded-xl border border-emerald-300 dark:border-emerald-800 bg-white dark:bg-slate-900 hover:bg-emerald-50 dark:hover:bg-emerald-950/50 text-xs font-semibold text-emerald-800 dark:text-emerald-300 inline-flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
-                  >
-                    <BadgeCheck className={`w-3.5 h-3.5 ${isCheckingDb ? 'animate-spin' : ''}`} />
-                    <span>{isCheckingDb ? 'Verifikasi' : 'Verifikasi'}</span>
-                  </button>
-                  <button
-                    type="button"
-                    disabled={isConnectingSheet}
-                    onClick={async () => {
-                      setLocalError(null);
-                      onClearError();
-                      await onSyncSpreadsheet();
-                    }}
-                    className="min-h-[34px] px-3 rounded-xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 shrink-0 cursor-pointer disabled:opacity-50"
-                  >
-                    <RefreshCw className={`w-3.5 h-3.5 ${isConnectingSheet ? 'animate-spin' : ''}`} />
-                    <span>Muat Ulang</span>
-                  </button>
                 </div>
               ) : isConnectingSheet && !showSheetSwitcher ? (
                 <div className="rounded-xl bg-white/90 dark:bg-slate-900/90 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
                   <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                  <span>Sedang menghubungkan database</span>
+                  <span>Menghubungkan database</span>
                 </div>
               ) : (
                 <div className="space-y-2.5 pt-0.5">
@@ -789,32 +714,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     </button>
                   </div>
 
-                  {/* Role Selector: Warga / Pengurus */}
-                  <div className="grid grid-cols-2 gap-2">
-                    <button
-                      type="button"
-                      onClick={() => handleSelectRole('warga')}
-                      className={`min-h-[42px] px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
-                        selectedRole === 'warga'
-                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      Warga
-                    </button>
-                    <button
-                      type="button"
-                      onClick={() => handleSelectRole('pengurus')}
-                      className={`min-h-[42px] px-3 rounded-xl border text-xs font-semibold transition-colors cursor-pointer ${
-                        selectedRole === 'pengurus'
-                          ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/50 text-emerald-800 dark:text-emerald-300'
-                          : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-600 dark:text-slate-300'
-                      }`}
-                    >
-                      Pengurus RT
-                    </button>
-                  </div>
-
                   {authMode === 'login' ? (
                     <form onSubmit={handleSubmitLogin} className="space-y-3">
                       <div>
@@ -874,7 +773,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                         <span>{isLoggingIn ? 'Masuk...' : 'Masuk ke Portal'}</span>
                       </button>
 
-                      {selectedRole === 'pengurus' && oauthAvailable && (
+                      {oauthAvailable && (
                         <button
                           type="button"
                           disabled={isLoggingIn || !isOnline}
@@ -904,31 +803,10 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                           type="text"
                           value={houseBlock}
                           onChange={(e) => setHouseBlock(e.target.value)}
-                          placeholder="FF3/5"
+                          placeholder="FF2/2"
                           className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                         />
                       </div>
-
-                      {dbCheckResult && (
-                        <div
-                          className={`rounded-xl border px-3 py-2 text-xs ${
-                            dbCheckResult.verified
-                              ? 'bg-emerald-50 dark:bg-emerald-950/50 border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200'
-                              : 'bg-amber-50 dark:bg-amber-950/50 border-amber-200 dark:border-amber-800 text-amber-900 dark:text-amber-200'
-                          }`}
-                        >
-                          <p className="font-bold">
-                            {dbCheckResult.verified
-                              ? 'Data terverifikasi di database'
-                              : 'Data belum ditemukan / perlu verifikasi'}
-                          </p>
-                          {dbCheckResult.message && (
-                            <p className="mt-0.5 text-[11px] opacity-90">
-                              {dbCheckResult.message}
-                            </p>
-                          )}
-                        </div>
-                      )}
 
                       <div>
                         <label className="block text-xs font-semibold mb-1">Username</label>
@@ -936,7 +814,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                           type="text"
                           value={username}
                           onChange={(e) => setUsername(e.target.value)}
-                          placeholder="3–8 karakter"
+                          placeholder="Contoh: budi_ff2 (3–30 karakter)"
                           autoComplete="username"
                           className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                         />

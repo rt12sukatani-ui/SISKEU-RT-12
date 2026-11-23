@@ -438,7 +438,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     ) : (
                       <>
                         <Copy className="w-3.5 h-3.5" />
-                        <span>Salin No. Rekening</span>
+                        <span>Salin Rekening</span>
                       </>
                     )}
                   </button>

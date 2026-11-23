@@ -545,7 +545,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                   type="text"
                   required
                   maxLength={25}
-                  placeholder="Contoh: FF3/5"
+                  placeholder="FF2/2"
                   value={houseBlock}
                   onChange={(e) => setHouseBlock(e.target.value)}
                   className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"

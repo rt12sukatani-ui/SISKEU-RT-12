@@ -573,7 +573,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                   type="text"
                   required
                   maxLength={25}
-                  placeholder="Contoh: FF3/5"
+                  placeholder="FF2/2"
                   value={houseBlock}
                   onChange={(e) => setHouseBlock(e.target.value)}
                   className="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
@@ -734,7 +734,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                 onChange={(e) => setBulkText(e.target.value)}
                 placeholder={
                   canManageRbac
-                    ? 'Firman Mahameru, FF3/5, warga, umum\nLuky Sanjaya, FF3/5, pengurus, khusus, bendahara'
+                    ? 'Firman Mahameru, FF3/5, pengurus, khusus, bendahara\nLuky Sanjaya, FF3/5, warga, umum'
                     : 'Firman Mahameru, FF3/5, warga, umum'
                 }
                 className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs font-mono"

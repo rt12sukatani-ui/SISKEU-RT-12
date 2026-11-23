@@ -7,6 +7,7 @@ import {
   Clock,
   Copy,
   Eye,
+  Image as ImageIcon,
   Plus,
   Search,
   Wallet,
@@ -178,6 +179,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
+    e.target.value = '';
     if (!file) return;
     setFormError(null);
     try {
@@ -434,7 +436,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 {selectedMonthSummary.shortfall > 0 && selectedMonthSummary.shortfall < selectedMonthSummary.tariff
                   ? `Sisa Kurang ${formatRupiah(selectedMonthSummary.shortfall)}`
-                  : `Tarif ${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]} ${formatRupiah(selectedMonthSummary.tariff)}`}
+                  : `${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]} ${formatRupiah(selectedMonthSummary.tariff)}`}
               </label>
               <input
                 type="number"
@@ -486,17 +488,30 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               Unggah Foto Bukti Transfer / Kwitansi
             </label>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
-              <label className="min-h-[48px] px-4 rounded-xl border border-dashed border-emerald-600 dark:border-emerald-500 bg-emerald-50/50 dark:bg-emerald-950/30 text-emerald-800 dark:text-emerald-300 font-semibold text-sm inline-flex items-center gap-2 cursor-pointer hover:bg-emerald-50 dark:hover:bg-emerald-950/50 transition-colors">
-                <Camera className="w-4 h-4 shrink-0" />
-                <span>{proofImageData ? 'Ganti Foto Bukti' : 'Pilih atau Foto Bukti'}</span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  capture="environment"
-                  onChange={(e) => void handleFileChange(e)}
-                  className="hidden"
-                />
-              </label>
+              <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full sm:w-auto">
+                <label className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-dashed border-slate-400 dark:border-slate-600 bg-slate-50/70 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <Camera className="w-4 h-4 shrink-0" />
+                  <span>{proofImageData ? 'Foto Ulang' : 'Ambil Foto'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={(e) => void handleFileChange(e)}
+                    className="hidden"
+                  />
+                </label>
+
+                <label className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-dashed border-slate-400 dark:border-slate-600 bg-slate-50/70 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                  <ImageIcon className="w-4 h-4 shrink-0" />
+                  <span>{proofImageData ? 'Ganti Galeri' : 'Pilih Galeri'}</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => void handleFileChange(e)}
+                    className="hidden"
+                  />
+                </label>
+              </div>
 
               {proofImageData && (
                 <div className="flex items-center gap-3">

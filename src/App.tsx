@@ -109,7 +109,6 @@ import type {
   UserAccountLookup,
   UserNotification,
   VerificationStatus,
-  VerifiedDatabaseCheckResult,
 } from './types';
 import {
   computeResidentRegistryId,
@@ -258,16 +257,10 @@ function checkRegistryVerification(
   }
 
   const status = matched.verificationStatus || 'verified';
-  if (status === 'pending') {
-    return {
-      ok: false,
-      reason: `Akun "${matched.fullName}" (${matched.houseBlock}) berstatus MENUNGGU VERIFIKASI Pengurus di Database Warga.`,
-    };
-  }
   if (status === 'rejected') {
     return {
       ok: false,
-      reason: `Verifikasi akun "${matched.fullName}" (${matched.houseBlock}) DITOLAK atau dinonaktifkan di Database Warga. Hubungi Ketua RT.`,
+      reason: `Akun "${matched.fullName}" (${matched.houseBlock}) dinonaktifkan di Database Warga. Hubungi Ketua RT.`,
     };
   }
 
@@ -1099,7 +1092,7 @@ export default function App() {
         pengurusPosition: 'ketua_rt',
         permissions: [...ALL_RBAC_PERMISSIONS],
         displayName: googleDisplayName || 'Ketua RT',
-        houseBlock: 'FF3/5',
+        houseBlock: 'FF2/2',
         residentStatus: 'pengurus',
         familyStatus: 'umum',
         familyStatusLog: [`${getCurrentYearMonth()}:umum`],
@@ -1304,125 +1297,7 @@ export default function App() {
     handleExpiredToken,
   ]);
 
-  const handleCheckDatabaseVerification = useCallback(
-    async (data: {
-      fullName: string;
-      houseBlock: string;
-      role: LoginRole;
-    }): Promise<VerifiedDatabaseCheckResult> => {
-      let ensured: { conn: SheetConnection; info: SheetDbInfo } | null = null;
-      try {
-        ensured = await ensureDefaultSpreadsheetConnected();
-      } catch (err) {
-        return {
-          found: false,
-          verified: false,
-          message:
-            err instanceof Error
-              ? `Gagal terhubung ke Database Spreadsheet: ${err.message}`
-              : 'Gagal terhubung otomatis ke Database Spreadsheet RT.',
-        };
-      }
-      if (!ensured) {
-        return {
-          found: false,
-          verified: false,
-          message: 'URL Web App Google Spreadsheet RT belum tersedia.',
-        };
-      }
-
-      const freshSnap = await refreshSpreadsheetData(ensured.conn, true);
-      const activeRegistry = freshSnap?.registryEntries || registryEntries;
-      if (activeRegistry.length === 0) {
-        return {
-          found: false,
-          verified: false,
-          message:
-            'Database Warga di Google Spreadsheet masih kosong. Ketua RT perlu menginisialisasi atau mengimpor data warga terlebih dahulu.',
-        };
-      }
-
-      const computedId = await computeResidentRegistryId(data.fullName, data.houseBlock);
-      const reg = findMatchingRegistryEntry(
-        activeRegistry,
-        data.fullName,
-        data.houseBlock,
-        computedId
-      );
-
-      if (!reg) {
-        return {
-          found: false,
-          verified: false,
-          message:
-            'Nama Lengkap atau Blok Rumah tidak ditemukan di Database Warga (tab "database_warga") Google Spreadsheet.',
-        };
-      }
-
-      const status = reg.verificationStatus || 'verified';
-      if (reg.role !== data.role) {
-        return {
-          found: true,
-          verified: false,
-          verificationStatus: status,
-          role: reg.role,
-          pengurusPosition: reg.pengurusPosition,
-          fullName: reg.fullName,
-          houseBlock: reg.houseBlock,
-          claimed: Boolean(reg.claimedUid),
-          claimedUsername: reg.claimedUsername,
-          message: `Data ditemukan sebagai ${
-            reg.role === 'pengurus' ? 'Pengurus' : 'Warga'
-          }, bukan ${data.role === 'pengurus' ? 'Pengurus' : 'Warga'}.`,
-        };
-      }
-
-      if (status === 'pending') {
-        return {
-          found: true,
-          verified: false,
-          verificationStatus: 'pending',
-          role: reg.role,
-          fullName: reg.fullName,
-          houseBlock: reg.houseBlock,
-          message: `Data "${reg.fullName}" (${reg.houseBlock}) ditemukan, namun masih MENUNGGU VERIFIKASI Pengurus RT di Spreadsheet.`,
-        };
-      }
-
-      if (status === 'rejected') {
-        return {
-          found: true,
-          verified: false,
-          verificationStatus: 'rejected',
-          role: reg.role,
-          fullName: reg.fullName,
-          houseBlock: reg.houseBlock,
-          message: `Status verifikasi "${reg.fullName}" (${reg.houseBlock}) DITOLAK / dinonaktifkan di Database Warga.`,
-        };
-      }
-
-      return {
-        found: true,
-        verified: true,
-        verificationStatus: 'verified',
-        role: reg.role,
-        pengurusPosition: reg.pengurusPosition,
-        fullName: reg.fullName,
-        houseBlock: reg.houseBlock,
-        claimed: Boolean(reg.claimedUid),
-        claimedUsername: reg.claimedUsername,
-        message: reg.claimedUid
-          ? `Terverifikasi di Database (${reg.fullName} · ${reg.houseBlock}). Akun sudah terdaftar (@${
-              reg.claimedUsername || '-'
-            }) dan siap masuk otomatis ke Spreadsheet.`
-          : `(${reg.fullName} · ${reg.houseBlock}). Silakan buat akun.`,
-      };
-    },
-    [ensureDefaultSpreadsheetConnected, refreshSpreadsheetData, registryEntries]
-  );
-
   const handleLoginWithCredentials = async (data: {
-    role: LoginRole;
     username: string;
     password: string;
   }) => {
@@ -1458,7 +1333,7 @@ export default function App() {
       );
       if (!accData) {
         setLoginError(
-          `Username "${normalizedUsername}" belum terdaftar di Google Spreadsheet. Silakan verifikasi data dan daftar terlebih dahulu pada tab Verifikasi & Daftar.`
+          `Username "${normalizedUsername}" belum terdaftar di Google Spreadsheet. Silakan daftar akun terlebih dahulu pada tab Daftar Akun.`
         );
         return;
       }
@@ -1483,7 +1358,6 @@ export default function App() {
         username: normalizedUsername,
         fullName: userProf?.displayName,
         houseBlock: userProf?.houseBlock,
-        expectedRole: data.role,
       });
 
       if (!dbCheck.ok) {
@@ -1745,7 +1619,6 @@ export default function App() {
   };
 
   const handleRegisterAccount = async (data: {
-    role: LoginRole;
     fullName: string;
     houseBlock: string;
     username: string;
@@ -1791,39 +1664,23 @@ export default function App() {
 
       if (!reg) {
         setLoginError(
-          'Verifikasi ditolak: Nama Lengkap atau Blok Rumah tidak ditemukan pada Database Warga di Google Spreadsheet. Hubungi Pengurus RT untuk memastikan data Anda terdaftar.'
+          'Pendaftaran ditolak: Nama Lengkap dan Blok Rumah tidak sesuai atau tidak ditemukan di Database Warga.'
         );
         return null;
       }
 
-      const regStatus = reg.verificationStatus || 'verified';
-      if (regStatus === 'pending') {
+      if (reg.verificationStatus === 'rejected') {
         setLoginError(
-          `Verifikasi tertunda: Data "${reg.fullName}" (${reg.houseBlock}) berstatus MENUNGGU VERIFIKASI Pengurus di Database Warga.`
-        );
-        return null;
-      }
-      if (regStatus === 'rejected') {
-        setLoginError(
-          `Verifikasi ditolak: Data "${reg.fullName}" (${reg.houseBlock}) dinonaktifkan/ditolak pada Database Warga.`
-        );
-        return null;
-      }
-
-      if (reg.role !== data.role) {
-        setLoginError(
-          `Verifikasi ditolak: Data warga Anda terdaftar sebagai ${
-            reg.role === 'pengurus' ? 'Pengurus' : 'Warga'
-          }, bukan ${data.role === 'pengurus' ? 'Pengurus' : 'Warga'}.`
+          `Pendaftaran ditolak: Data "${reg.fullName}" (${reg.houseBlock}) dinonaktifkan pada Database Warga. Hubungi Pengurus RT.`
         );
         return null;
       }
 
       if (reg.claimedUid) {
         setLoginError(
-          `Akun untuk warga ${reg.fullName} (${reg.houseBlock}) sudah terdaftar dengan username "${
+          `Akun untuk ${reg.fullName} (${reg.houseBlock}) sudah terdaftar dengan username "${
             reg.claimedUsername || '-'
-          }". Silakan langsung masuk agar terhubung otomatis ke Spreadsheet.`
+          }". Silakan langsung masuk menggunakan username dan sandi Anda.`
         );
         return null;
       }
@@ -1837,23 +1694,6 @@ export default function App() {
         );
         return null;
       }
-
-      const confirmed = await requestSheetConfirmation({
-        title: 'Verifikasi Akun & Hubungkan Otomatis ke Spreadsheet',
-        description: `Verifikasi akun ${
-          reg.role === 'pengurus' ? 'Pengurus' : 'Warga'
-        } atas nama "${reg.fullName}" (${reg.houseBlock}) di Google Spreadsheet "${
-          activeSheetInfo.spreadsheetTitle
-        }" dan hubungkan langsung?`,
-        details: [
-          `Username: @${normalizedUsername}`,
-          `Tab diperbarui: ${SHEET_TABS.USER_ACCOUNTS}, ${SHEET_TABS.USERS}, ${SHEET_TABS.RESIDENT_REGISTRY}${
-            reg.role === 'pengurus' ? `, ${SHEET_TABS.ADMINS}` : ''
-          }`,
-        ],
-        confirmLabel: 'Verifikasi & Masuk Otomatis',
-      });
-      if (!confirmed) return null;
 
       isMutatingRef.current = true;
       const newUid = generateRecordId('usr');
@@ -1960,8 +1800,10 @@ export default function App() {
         setShowNewUserBanner(true);
       }
       showToast(
-        'Akun Terverifikasi & Terhubung Otomatis',
-        `${reg.fullName} (${reg.houseBlock}) otomatis terhubung ke Google Spreadsheet "${activeSheetInfo.spreadsheetTitle}".`
+        'Pendaftaran Berhasil',
+        `${reg.fullName} (${reg.houseBlock}) terdaftar sebagai ${
+          reg.role === 'pengurus' ? 'Pengurus RT' : 'Warga'
+        } dan terhubung ke "${activeSheetInfo.spreadsheetTitle}".`
       );
 
       return {
@@ -3845,13 +3687,9 @@ export default function App() {
           }
           onConnectWebApp={handleConnectWebApp}
           onBootstrapFirstAdmin={handleBootstrapFirstAdmin}
-          onCheckDatabaseVerification={handleCheckDatabaseVerification}
           onGoogleConnect={handleGoogleConnect}
           onGoogleDisconnect={handleGoogleDisconnect}
           onConnectSpreadsheetById={handleConnectSpreadsheetById}
-          onSyncSpreadsheet={async () => {
-            await refreshSpreadsheetData(undefined, false);
-          }}
           onLoginWithCredentials={handleLoginWithCredentials}
           onRegisterAccount={handleRegisterAccount}
           onGoogleAdminLogin={handleGoogleAdminLogin}
