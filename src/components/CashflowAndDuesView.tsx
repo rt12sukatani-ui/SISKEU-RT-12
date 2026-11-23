@@ -23,6 +23,7 @@ import type {
   TransactionCategory,
 } from '../types';
 import {
+  calculatePeriodDuesTarget,
   calculateResidentLedger,
   CATEGORY_LABELS,
   FAMILY_STATUS_LABELS,
@@ -32,6 +33,8 @@ import {
   getCurrentYearMonth,
   getRequiredTariff,
   getResidentMonthDuesSummary,
+  getResidentPaidMonthsCoverage,
+  previewPaymentPeriodCoverage,
 } from '../utils/format';
 
 interface CashflowAndDuesViewProps {
@@ -82,9 +85,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 }) => {
   const currentMonth = getCurrentYearMonth();
   const myDuesSummary = getResidentMonthDuesSummary(profile, transactions, currentMonth);
+  const myPaidCoverage = getResidentPaidMonthsCoverage(profile, transactions, currentMonth);
   const myFamilyStatus = myDuesSummary.familyStatus;
   const myRequiredTariff = myDuesSummary.tariff;
   const residentMap = new Map(residents.map((r) => [r.uid, r]));
+
+  const defaultStartMonth = myPaidCoverage.isReferenceMonthPaid
+    ? myPaidCoverage.nextUnpaidMonth
+    : currentMonth;
 
   const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'kurang_bayar' | 'mine' | 'expense'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -94,25 +102,42 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   const [showAdminEntryForm, setShowAdminEntryForm] = useState(false);
   const [previewImage, setPreviewImage] = useState<string | null>(null);
 
-  useEffect(() => {
-    if (openPaymentModalInitially) {
-      setShowDuesForm(true);
-    }
-  }, [openPaymentModalInitially]);
-
   // Resident dues submission form state
-  const [billingMonth, setBillingMonth] = useState(currentMonth);
+  const [billingMonth, setBillingMonth] = useState(defaultStartMonth);
+  const [periodMonths, setPeriodMonths] = useState<number>(1);
   const selectedMonthSummary = getResidentMonthDuesSummary(profile, transactions, billingMonth);
-  const [amount, setAmount] = useState(
-    String(myDuesSummary.shortfall > 0 ? myDuesSummary.shortfall : myDuesSummary.tariff)
-  );
+  const periodTarget = calculatePeriodDuesTarget(profile, transactions, billingMonth, periodMonths);
+  const [amount, setAmount] = useState(String(periodTarget.totalAmount));
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('transfer');
 
   useEffect(() => {
-    if (!showDuesForm) {
-      setAmount(String(myDuesSummary.shortfall > 0 ? myDuesSummary.shortfall : myDuesSummary.tariff));
+    if (openPaymentModalInitially) {
+      const nextStart = myPaidCoverage.isReferenceMonthPaid
+        ? myPaidCoverage.nextUnpaidMonth
+        : currentMonth;
+      const nextTarget = calculatePeriodDuesTarget(profile, transactions, nextStart, 1);
+      setBillingMonth(nextStart);
+      setPeriodMonths(1);
+      setAmount(String(nextTarget.totalAmount));
+      setShowDuesForm(true);
     }
-  }, [myDuesSummary.shortfall, myDuesSummary.tariff, showDuesForm]);
+  }, [openPaymentModalInitially, myPaidCoverage.isReferenceMonthPaid, myPaidCoverage.nextUnpaidMonth, currentMonth, profile, transactions]);
+
+  useEffect(() => {
+    if (!showDuesForm) {
+      setBillingMonth(defaultStartMonth);
+      setPeriodMonths(1);
+      const nextTarget = calculatePeriodDuesTarget(profile, transactions, defaultStartMonth, 1);
+      setAmount(String(nextTarget.totalAmount));
+    }
+  }, [defaultStartMonth, profile, transactions, showDuesForm]);
+
+  const paymentPreview = previewPaymentPeriodCoverage(
+    profile,
+    transactions,
+    billingMonth,
+    Number(amount) || 0
+  );
 
   const [proofImageData, setProofImageData] = useState('');
   const [notes, setNotes] = useState('');
@@ -213,8 +238,20 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
     setSubmitting(true);
     try {
+      const coveredCount = paymentPreview.coveredCount;
+      const effectiveMonths =
+        coveredCount > 1 && paymentPreview.endMonth ? coveredCount : periodMonths;
+      const effectiveEndMonth =
+        coveredCount > 1 && paymentPreview.endMonth
+          ? paymentPreview.endMonth
+          : periodTarget.endMonth;
+      const duesTitle =
+        effectiveMonths > 1
+          ? `Iuran ${effectiveMonths} Bulan (${formatMonthLabel(billingMonth)} – ${formatMonthLabel(effectiveEndMonth)})`
+          : `Iuran Bulanan ${formatMonthLabel(billingMonth)}`;
+
       await onSubmitDues({
-        title: `Iuran Bulanan ${formatMonthLabel(billingMonth)}`,
+        title: duesTitle,
         amount: numAmount,
         billingMonth,
         paymentMethod,
@@ -280,6 +317,10 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             type="button"
             onClick={() => {
               setFormError(null);
+              const nextTarget = calculatePeriodDuesTarget(profile, transactions, defaultStartMonth, 1);
+              setBillingMonth(defaultStartMonth);
+              setPeriodMonths(1);
+              setAmount(String(nextTarget.totalAmount));
               setShowDuesForm(true);
               setShowAdminEntryForm(false);
             }}
@@ -327,21 +368,36 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           )}
           <p className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
             {myDuesSummary.status === 'lunas'
-              ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas (${formatRupiah(myDuesSummary.verifiedPaid)})`
+              ? myPaidCoverage.streakMonthsCount > 1
+                ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
+                : `Iuran ${formatMonthLabel(currentMonth)}: Lunas (${formatRupiah(myDuesSummary.verifiedPaid)})`
               : myDuesSummary.status === 'kurang_bayar'
               ? `Iuran ${formatMonthLabel(currentMonth)}: Kurang Bayar (kurang ${formatRupiah(myDuesSummary.shortfall)})`
               : myDuesSummary.status === 'menunggu'
               ? `Iuran ${formatMonthLabel(currentMonth)}: Menunggu Verifikasi (${formatRupiah(myDuesSummary.pendingPaid)})`
               : `Iuran ${formatMonthLabel(currentMonth)}: Belum Bayar (${formatRupiah(myRequiredTariff)})`}
           </p>
+          {myDuesSummary.status === 'lunas' && myPaidCoverage.streakStartMonth && myPaidCoverage.streakEndMonth && (
+            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+              Periode terbayar: {formatMonthLabel(myPaidCoverage.streakStartMonth)}
+              {myPaidCoverage.streakEndMonth !== myPaidCoverage.streakStartMonth
+                ? ` – ${formatMonthLabel(myPaidCoverage.streakEndMonth)}`
+                : ''}{' '}
+              ({myPaidCoverage.remainingMonthsFromRef} bulan mulai bulan ini
+              {myPaidCoverage.totalPaidMonths > myPaidCoverage.streakMonthsCount
+                ? ` · total ${myPaidCoverage.totalPaidMonths} bulan terbayar`
+                : ''}
+              )
+            </p>
+          )}
           {myDuesSummary.carryOverFromPrev > 0 && (
             <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               Termasuk saldo lebih bulan sebelumnya: {formatRupiah(myDuesSummary.carryOverFromPrev)}
             </p>
           )}
-          {myDuesSummary.surplus > 0 && (
+          {myDuesSummary.status === 'lunas' && myPaidCoverage.partialCarryOverForNext > 0 && (
             <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
-              Kelebihan bayar {formatRupiah(myDuesSummary.surplus)} otomatis menjadi saldo bulan berikutnya
+              Sisa saldo {formatRupiah(myPaidCoverage.partialCarryOverForNext)} otomatis menjadi saldo {formatMonthLabel(myPaidCoverage.nextUnpaidMonth)}
             </p>
           )}
           {rtSettings.bankAccountNumber && (
@@ -377,6 +433,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               type="button"
               onClick={() => {
                 setBillingMonth(currentMonth);
+                setPeriodMonths(1);
                 setAmount(String(myDuesSummary.shortfall > 0 ? myDuesSummary.shortfall : myRequiredTariff));
                 setShowDuesForm(true);
                 setShowAdminEntryForm(false);
@@ -444,10 +501,16 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 </div>
               )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+          {myPaidCoverage.isReferenceMonthPaid && myPaidCoverage.streakEndMonth && (
+            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
+              Iuran Anda sudah lunas hingga {formatMonthLabel(myPaidCoverage.streakEndMonth)} ({myPaidCoverage.totalPaidMonths} bulan terbayar). Pembayaran lanjutan otomatis dimulai dari {formatMonthLabel(myPaidCoverage.nextUnpaidMonth)}.
+            </div>
+          )}
+
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-                Bulan Tagihan
+                Mulai Bulan Tagihan
               </label>
               <input
                 type="month"
@@ -455,8 +518,13 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 onChange={(e) => {
                   const nextMonth = e.target.value;
                   setBillingMonth(nextMonth);
-                  const nextSummary = getResidentMonthDuesSummary(profile, transactions, nextMonth);
-                  setAmount(String(nextSummary.shortfall > 0 ? nextSummary.shortfall : nextSummary.tariff));
+                  const nextTarget = calculatePeriodDuesTarget(
+                    profile,
+                    transactions,
+                    nextMonth,
+                    periodMonths
+                  );
+                  setAmount(String(nextTarget.totalAmount));
                 }}
                 required
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
@@ -465,7 +533,42 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
             <div>
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-                {selectedMonthSummary.shortfall > 0 && selectedMonthSummary.shortfall < selectedMonthSummary.tariff
+                Periode Pembayaran
+              </label>
+              <select
+                value={periodMonths}
+                onChange={(e) => {
+                  const nextPeriod = Number(e.target.value) || 1;
+                  setPeriodMonths(nextPeriod);
+                  const nextTarget = calculatePeriodDuesTarget(
+                    profile,
+                    transactions,
+                    billingMonth,
+                    nextPeriod
+                  );
+                  setAmount(String(nextTarget.totalAmount));
+                }}
+                className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
+              >
+                {Array.from({ length: 12 }, (_, idx) => idx + 1).map((mCount) => (
+                  <option key={mCount} value={mCount}>
+                    {mCount === 1
+                      ? '1 Bulan'
+                      : mCount === 3
+                      ? '3 Bulan (Triwulan)'
+                      : mCount === 6
+                      ? '6 Bulan (1 Semester)'
+                      : mCount === 12
+                      ? '12 Bulan (1 Tahun)'
+                      : `${mCount} Bulan`}
+                  </option>
+                ))}
+              </select>
+            </div>
+
+            <div>
+              <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
+                {selectedMonthSummary.shortfall > 0 && selectedMonthSummary.shortfall < selectedMonthSummary.tariff && periodMonths === 1
                   ? `Kurang Bayar ${formatRupiah(selectedMonthSummary.shortfall)}`
                   : `${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]}`}
               </label>
@@ -495,23 +598,36 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             </div>
           </div>
 
-          {Number(amount) > 0 && selectedMonthSummary.shortfall > 0 && Number(amount) < selectedMonthSummary.shortfall && (
-            <div className="rounded-xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800 p-3.5 text-xs font-semibold text-amber-800 dark:text-amber-200">
-              Pembayaran ({formatRupiah(Number(amount))}) masih kurang {formatRupiah(selectedMonthSummary.shortfall - Number(amount))} dari sisa tagihan {formatRupiah(selectedMonthSummary.shortfall)}. Status akan tercatat sebagai Kurang Bayar hingga kekurangannya dilunasi.
+          <div className="rounded-xl bg-slate-50 dark:bg-slate-950/70 border border-slate-200 dark:border-slate-800 p-3.5 text-xs space-y-1">
+            <div className="flex flex-wrap items-center justify-between gap-2 font-semibold text-slate-800 dark:text-slate-200">
+              <span>
+                Periode dipilih:{' '}
+                {periodMonths === 1
+                  ? formatMonthLabel(billingMonth)
+                  : `${formatMonthLabel(billingMonth)} – ${formatMonthLabel(periodTarget.endMonth)} (${periodMonths} Bulan)`}
+              </span>
+              <span className="font-mono-num text-emerald-700 dark:text-emerald-400">
+                Total: {formatRupiah(periodTarget.totalAmount)}
+              </span>
             </div>
-          )}
-
-          {Number(amount) > 0 && selectedMonthSummary.shortfall > 0 && Number(amount) === selectedMonthSummary.shortfall && selectedMonthSummary.shortfall < selectedMonthSummary.tariff && (
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3.5 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
-              Pembayaran ini melunasi sisa kekurangan bulan {formatMonthLabel(billingMonth)}. Status iuran Anda akan berubah menjadi Lunas setelah diverifikasi admin.
-            </div>
-          )}
-
-          {Number(amount) > selectedMonthSummary.shortfall && (
-            <div className="rounded-xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3.5 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
-              Kelebihan pembayaran sebesar {formatRupiah(Number(amount) - selectedMonthSummary.shortfall)} akan otomatis menjadi saldo iuran untuk bulan berikutnya.
-            </div>
-          )}
+            {Number(amount) > 0 && paymentPreview.coveredCount === 0 && paymentPreview.shortfallInStartMonth > 0 && (
+              <p className="font-semibold text-amber-700 dark:text-amber-400">
+                Nominal ({formatRupiah(Number(amount))}) masih kurang {formatRupiah(paymentPreview.shortfallInStartMonth)} untuk melunasi {formatMonthLabel(billingMonth)}. Status akan tercatat Kurang Bayar hingga dilunasi.
+              </p>
+            )}
+            {Number(amount) > 0 && paymentPreview.coveredCount >= 1 && paymentPreview.endMonth && (
+              <p className="font-semibold text-emerald-700 dark:text-emerald-400">
+                Nominal {formatRupiah(Number(amount))} melunasi {paymentPreview.coveredCount} bulan (
+                {paymentPreview.coveredCount === 1
+                  ? formatMonthLabel(billingMonth)
+                  : `${formatMonthLabel(billingMonth)} – ${formatMonthLabel(paymentPreview.endMonth)}`}
+                )
+                {paymentPreview.remainderForNextMonth > 0
+                  ? ` + sisa saldo ${formatRupiah(paymentPreview.remainderForNextMonth)} untuk bulan berikutnya`
+                  : '.'}
+              </p>
+            )}
+          </div>
 
           <div>
             <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
@@ -760,6 +876,16 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 simulatedTxs,
                 tx.billingMonth
               );
+              const otherTxs = transactions.filter((t) => t.id !== tx.id);
+              const txPreview =
+                tx.category === 'iuran_bulanan'
+                  ? previewPaymentPeriodCoverage(
+                      effectiveResident,
+                      otherTxs,
+                      tx.billingMonth,
+                      tx.amount
+                    )
+                  : null;
               const txFamily =
                 tx.category === 'iuran_bulanan'
                   ? ledgerAfter.familyStatus
@@ -793,6 +919,13 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                       {willBeUnderpaid ? (
                         <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mt-1">
                           Kurang Bayar (masih kurang {formatRupiah(ledgerAfter.shortfall)} dari tarif {formatRupiah(txTariff)})
+                        </p>
+                      ) : txPreview && txPreview.coveredCount > 1 && txPreview.endMonth ? (
+                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1">
+                          Lunas {txPreview.coveredCount} Bulan ({formatMonthLabel(tx.billingMonth)} – {formatMonthLabel(txPreview.endMonth)})
+                          {txPreview.remainderForNextMonth > 0
+                            ? ` · Sisa ${formatRupiah(txPreview.remainderForNextMonth)} ke bulan berikutnya`
+                            : ''}
                         </p>
                       ) : ledgerAfter.surplus > 0 ? (
                         <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1">
@@ -833,7 +966,13 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                       className="flex-1 min-h-[44px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
                       <Check className="w-4 h-4" />
-                      <span>{willBeUnderpaid ? 'Verifikasi (Kurang Bayar)' : 'Setujui (Lunas)'}</span>
+                      <span>
+                        {willBeUnderpaid
+                          ? 'Verifikasi (Kurang Bayar)'
+                          : txPreview && txPreview.coveredCount > 1
+                          ? `Setujui (${txPreview.coveredCount} Bln Lunas)`
+                          : 'Setujui (Lunas)'}
+                      </span>
                     </button>
                     <button
                       type="button"
@@ -930,6 +1069,15 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               const txLedger = isMonthlyDues
                 ? calculateResidentLedger(effectiveResident, transactions, tx.billingMonth)
                 : null;
+              const txPreview =
+                isMonthlyDues && tx.status !== 'rejected'
+                  ? previewPaymentPeriodCoverage(
+                      effectiveResident,
+                      transactions.filter((t) => t.id !== tx.id),
+                      tx.billingMonth,
+                      tx.amount
+                    )
+                  : null;
               const txFamily = txLedger?.familyStatus || tx.familyStatus || effectiveResident.familyStatus || 'umum';
               const txTariff = txLedger?.requiredTariff || getRequiredTariff(txFamily);
               const isSettledMonth = Boolean(txLedger && txLedger.status === 'lunas');
@@ -971,11 +1119,18 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                           Tarif {FAMILY_STATUS_LABELS[txFamily]}: {formatRupiah(txTariff)} (Kurang Bayar {formatRupiah(txLedger.shortfall)})
                         </p>
                       )}
-                      {isSettledMonth && txLedger && txLedger.surplus > 0 && (
+                      {isSettledMonth && txPreview && txPreview.coveredCount > 1 && txPreview.endMonth ? (
+                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
+                          Melunasi {txPreview.coveredCount} bulan ({formatMonthLabel(tx.billingMonth)} – {formatMonthLabel(txPreview.endMonth)})
+                          {txPreview.remainderForNextMonth > 0
+                            ? ` · sisa ${formatRupiah(txPreview.remainderForNextMonth)} ke bulan berikutnya`
+                            : ''}
+                        </p>
+                      ) : isSettledMonth && txLedger && txLedger.surplus > 0 ? (
                         <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
                           Saldo lebih {formatRupiah(txLedger.surplus)} masuk ke bulan berikutnya
                         </p>
-                      )}
+                      ) : null}
                       {tx.notes && (
                         <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
                           {tx.notes}
@@ -1036,7 +1191,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                             : 'Menunggu Verifikasi'
                           : isMonthlyDues
                           ? isSettledMonth
-                            ? 'Lunas'
+                            ? txPreview && txPreview.coveredCount > 1
+                              ? `Lunas (${txPreview.coveredCount} Bln)`
+                              : 'Lunas'
                             : 'Kurang Bayar'
                           : 'Disetujui'}
                       </p>

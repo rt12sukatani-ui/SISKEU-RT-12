@@ -20,6 +20,7 @@ import {
   formatRupiah,
   getCurrentYearMonth,
   getResidentMonthDuesSummary,
+  getResidentPaidMonthsCoverage,
 } from '../utils/format';
 
 interface MonthlyReportViewProps {
@@ -82,6 +83,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
       residents.map((res) => ({
         resident: res,
         summary: getResidentMonthDuesSummary(res, transactions, selectedMonth),
+        coverage: getResidentPaidMonthsCoverage(res, transactions, selectedMonth),
       })),
     [residents, transactions, selectedMonth]
   );
@@ -340,7 +342,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                 Tidak ada data warga sesuai filter.
               </p>
             ) : (
-              visibleResidents.map(({ resident: res, summary }) => (
+              visibleResidents.map(({ resident: res, summary, coverage }) => (
                 <div
                   key={res.uid}
                   className="px-4 sm:px-6 py-3.5 flex flex-wrap sm:flex-nowrap items-center justify-between gap-2.5 sm:gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
@@ -357,17 +359,30 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
                           {' '}· Saldo lalu {formatRupiah(summary.carryOverFromPrev)}
                         </span>
                       )}
-                      {summary.surplus > 0 && (
+                      {summary.status === 'lunas' &&
+                      coverage.streakMonthsCount > 1 &&
+                      coverage.streakEndMonth ? (
+                        <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
+                          {' '}· Lunas {coverage.streakMonthsCount} bln (s.d. {formatMonthLabel(coverage.streakEndMonth)})
+                          {coverage.partialCarryOverForNext > 0
+                            ? ` + saldo ${formatRupiah(coverage.partialCarryOverForNext)}`
+                            : ''}
+                        </span>
+                      ) : summary.surplus > 0 ? (
                         <span className="text-emerald-700 dark:text-emerald-400 font-semibold">
                           {' '}· Lebih +{formatRupiah(summary.surplus)} (ke bln depan)
                         </span>
-                      )}
+                      ) : null}
                     </p>
                   </div>
                   {summary.status === 'lunas' ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
                       <CheckCircle2 className="w-4 h-4" />
-                      <span>Lunas</span>
+                      <span>
+                        {coverage.totalPaidMonths > 1
+                          ? `Lunas (${coverage.totalPaidMonths} Bln)`
+                          : 'Lunas'}
+                      </span>
                     </span>
                   ) : summary.status === 'kurang_bayar' ? (
                     <span className="inline-flex items-center gap-1.5 text-xs font-bold text-amber-700 dark:text-amber-400 shrink-0">

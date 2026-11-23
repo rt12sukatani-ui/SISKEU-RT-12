@@ -401,3 +401,288 @@ export function calculateResidentLedger(
 
   return defaultLedger;
 }
+
+export function addMonthsToYearMonth(yearMonth: string, offset: number): string {
+  if (!/^\d{4}-\d{2}$/.test(yearMonth)) return yearMonth;
+  let result = yearMonth;
+  const count = Math.max(0, Math.floor(offset));
+  for (let i = 0; i < count; i++) {
+    result = advanceYearMonth(result);
+  }
+  return result;
+}
+
+export interface ResidentPaidCoverage {
+  referenceMonth: string;
+  isReferenceMonthPaid: boolean;
+  remainingMonthsFromRef: number;
+  streakStartMonth: string | null;
+  streakEndMonth: string | null;
+  streakMonthsCount: number;
+  totalPaidMonths: number;
+  paidMonthsInRefYear: number;
+  nextUnpaidMonth: string;
+  partialCarryOverForNext: number;
+}
+
+export function getResidentPaidMonthsCoverage(
+  resident: ResidentPublic,
+  allTransactions: KasTransaction[],
+  referenceMonth: string = getCurrentYearMonth()
+): ResidentPaidCoverage {
+  const isValidRef = /^\d{4}-\d{2}$/.test(referenceMonth);
+  const safeRef = isValidRef ? referenceMonth : getCurrentYearMonth();
+
+  const userTxs = allTransactions.filter(
+    (t) =>
+      t.residentUid === resident.uid &&
+      t.type === 'income' &&
+      t.category === 'iuran_bulanan' &&
+      t.status !== 'rejected' &&
+      /^\d{4}-\d{2}$/.test(t.billingMonth || '')
+  );
+
+  if (userTxs.length === 0) {
+    return {
+      referenceMonth: safeRef,
+      isReferenceMonthPaid: false,
+      remainingMonthsFromRef: 0,
+      streakStartMonth: null,
+      streakEndMonth: null,
+      streakMonthsCount: 0,
+      totalPaidMonths: 0,
+      paidMonthsInRefYear: 0,
+      nextUnpaidMonth: safeRef,
+      partialCarryOverForNext: 0,
+    };
+  }
+
+  let earliestMonth = safeRef;
+  let latestTxMonth = safeRef;
+  for (const t of userTxs) {
+    if (t.billingMonth < earliestMonth) earliestMonth = t.billingMonth;
+    if (t.billingMonth > latestTxMonth) latestTxMonth = t.billingMonth;
+  }
+
+  const paidMonths: string[] = [];
+  let runningSurplus = 0;
+  let cursor = earliestMonth;
+  let steps = 0;
+  const MAX_MONTHS = 240;
+  let firstUnpaidFromRef: string | null = null;
+  let partialAtFirstUnpaid = 0;
+
+  while (steps < MAX_MONTHS) {
+    const monthFamilyStatus = getResidentFamilyStatusForMonth(resident, cursor, userTxs);
+    const tariff = getRequiredTariff(monthFamilyStatus);
+
+    const approvedPaid = userTxs
+      .filter(
+        (t) =>
+          t.billingMonth === cursor &&
+          (t.status === 'approved' || t.status === 'kurang_bayar')
+      )
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const totalEffective = runningSurplus + approvedPaid;
+
+    if (totalEffective >= tariff) {
+      paidMonths.push(cursor);
+      runningSurplus = totalEffective - tariff;
+    } else {
+      if (cursor >= safeRef && firstUnpaidFromRef === null) {
+        firstUnpaidFromRef = cursor;
+        partialAtFirstUnpaid = totalEffective;
+      }
+      runningSurplus = 0;
+      if (cursor >= safeRef && cursor >= latestTxMonth) {
+        break;
+      }
+    }
+
+    cursor = advanceYearMonth(cursor);
+    steps++;
+  }
+
+  if (firstUnpaidFromRef === null) {
+    firstUnpaidFromRef = cursor;
+    partialAtFirstUnpaid = runningSurplus;
+  }
+
+  const refIdx = paidMonths.indexOf(safeRef);
+  const isReferenceMonthPaid = refIdx !== -1;
+
+  let streakStartMonth: string | null = null;
+  let streakEndMonth: string | null = null;
+  let streakMonthsCount = 0;
+  let remainingMonthsFromRef = 0;
+
+  if (isReferenceMonthPaid) {
+    let startIdx = refIdx;
+    while (
+      startIdx > 0 &&
+      advanceYearMonth(paidMonths[startIdx - 1]) === paidMonths[startIdx]
+    ) {
+      startIdx--;
+    }
+    let endIdx = refIdx;
+    while (
+      endIdx < paidMonths.length - 1 &&
+      advanceYearMonth(paidMonths[endIdx]) === paidMonths[endIdx + 1]
+    ) {
+      endIdx++;
+    }
+    streakStartMonth = paidMonths[startIdx];
+    streakEndMonth = paidMonths[endIdx];
+    streakMonthsCount = endIdx - startIdx + 1;
+    remainingMonthsFromRef = endIdx - refIdx + 1;
+  }
+
+  const refYearPrefix = `${safeRef.slice(0, 4)}-`;
+  const paidMonthsInRefYear = paidMonths.filter((m) => m.startsWith(refYearPrefix)).length;
+
+  return {
+    referenceMonth: safeRef,
+    isReferenceMonthPaid,
+    remainingMonthsFromRef,
+    streakStartMonth,
+    streakEndMonth,
+    streakMonthsCount,
+    totalPaidMonths: paidMonths.length,
+    paidMonthsInRefYear,
+    nextUnpaidMonth: firstUnpaidFromRef,
+    partialCarryOverForNext: partialAtFirstUnpaid,
+  };
+}
+
+export function calculatePeriodDuesTarget(
+  resident: ResidentPublic,
+  allTransactions: KasTransaction[],
+  startMonth: string,
+  periodMonths: number
+): {
+  totalAmount: number;
+  endMonth: string;
+  hasAlreadyPaidMonths: boolean;
+  fullRateTotal: number;
+} {
+  const safePeriod = Math.max(1, Math.min(12, Math.round(periodMonths || 1)));
+  const safeStart = /^\d{4}-\d{2}$/.test(startMonth) ? startMonth : getCurrentYearMonth();
+  const endMonth = addMonthsToYearMonth(safeStart, safePeriod - 1);
+
+  const userTxs = allTransactions.filter(
+    (t) =>
+      t.residentUid === resident.uid &&
+      t.type === 'income' &&
+      t.category === 'iuran_bulanan' &&
+      t.status !== 'rejected' &&
+      /^\d{4}-\d{2}$/.test(t.billingMonth || '')
+  );
+
+  const startLedger = calculateResidentLedger(resident, allTransactions, safeStart);
+  let carry = startLedger.carryOverFromPrev;
+  let totalShortfall = 0;
+  let fullRateTotal = 0;
+  let alreadyPaidMonthsCount = 0;
+  let cursor = safeStart;
+
+  for (let i = 0; i < safePeriod; i++) {
+    const fam = getResidentFamilyStatusForMonth(resident, cursor, userTxs);
+    const tariff = getRequiredTariff(fam);
+    fullRateTotal += tariff;
+
+    const approvedInMonth = userTxs
+      .filter(
+        (t) =>
+          t.billingMonth === cursor &&
+          (t.status === 'approved' || t.status === 'kurang_bayar')
+      )
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const available = carry + approvedInMonth;
+    if (available >= tariff) {
+      alreadyPaidMonthsCount++;
+      carry = available - tariff;
+    } else {
+      totalShortfall += tariff - available;
+      carry = 0;
+    }
+
+    cursor = advanceYearMonth(cursor);
+  }
+
+  return {
+    totalAmount: totalShortfall > 0 ? totalShortfall : fullRateTotal,
+    endMonth,
+    hasAlreadyPaidMonths: alreadyPaidMonthsCount > 0,
+    fullRateTotal,
+  };
+}
+
+export function previewPaymentPeriodCoverage(
+  resident: ResidentPublic,
+  otherTransactions: KasTransaction[],
+  startMonth: string,
+  paymentAmount: number
+): {
+  coveredCount: number;
+  startMonth: string;
+  endMonth: string | null;
+  remainderForNextMonth: number;
+  shortfallInStartMonth: number;
+} {
+  const safeStart = /^\d{4}-\d{2}$/.test(startMonth) ? startMonth : getCurrentYearMonth();
+  const amt = Math.max(0, Number(paymentAmount) || 0);
+
+  const userTxs = otherTransactions.filter(
+    (t) =>
+      t.residentUid === resident.uid &&
+      t.type === 'income' &&
+      t.category === 'iuran_bulanan' &&
+      t.status !== 'rejected' &&
+      /^\d{4}-\d{2}$/.test(t.billingMonth || '')
+  );
+
+  const startLedger = calculateResidentLedger(resident, otherTransactions, safeStart);
+  let carry = startLedger.carryOverFromPrev + amt;
+  let cursor = safeStart;
+  let coveredCount = 0;
+  let endMonth: string | null = null;
+  let remainderForNextMonth = 0;
+  let shortfallInStartMonth = 0;
+
+  for (let i = 0; i < 60; i++) {
+    const fam = getResidentFamilyStatusForMonth(resident, cursor, userTxs);
+    const tariff = getRequiredTariff(fam);
+    const approvedInMonth = userTxs
+      .filter(
+        (t) =>
+          t.billingMonth === cursor &&
+          (t.status === 'approved' || t.status === 'kurang_bayar')
+      )
+      .reduce((sum, t) => sum + Number(t.amount || 0), 0);
+
+    const available = carry + approvedInMonth;
+    if (available >= tariff) {
+      coveredCount++;
+      endMonth = cursor;
+      carry = available - tariff;
+    } else {
+      if (i === 0) {
+        shortfallInStartMonth = tariff - available;
+      } else {
+        remainderForNextMonth = available;
+      }
+      break;
+    }
+    cursor = advanceYearMonth(cursor);
+  }
+
+  return {
+    coveredCount,
+    startMonth: safeStart,
+    endMonth,
+    remainderForNextMonth,
+    shortfallInStartMonth,
+  };
+}

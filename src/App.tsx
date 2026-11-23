@@ -125,6 +125,7 @@ import {
   getEffectiveFamilyStatusChangeMonth,
   getRequiredTariff,
   getResidentFamilyStatusForMonth,
+  getResidentPaidMonthsCoverage,
   sendBrowserPush,
 } from './utils/format';
 import {
@@ -2128,11 +2129,17 @@ export default function App() {
         txUpdates.map(transactionToRow)
       );
 
+      const coverageAfter = getResidentPaidMonthsCoverage(
+        effectiveResident,
+        simulatedTxs,
+        tx.billingMonth
+      );
+
       if (decision === 'approved' && tx.category === 'iuran_bulanan' && !isUnderpaid && resident) {
         await upsertSheetRowsByKey(conn, SHEET_TABS.USERS, [
           userProfileToRow({
             ...resident,
-            lastPaidMonth: tx.billingMonth,
+            lastPaidMonth: coverageAfter.streakEndMonth || tx.billingMonth,
             updatedAt: nowIso,
           }),
         ]);
@@ -2140,6 +2147,11 @@ export default function App() {
 
       const shortfall = ledgerAfter.shortfall;
       const surplus = ledgerAfter.surplus;
+      const isMultiMonthCovered =
+        decision === 'approved' &&
+        !isUnderpaid &&
+        coverageAfter.remainingMonthsFromRef > 1 &&
+        Boolean(coverageAfter.streakEndMonth);
       const notif: UserNotification = {
         id: generateRecordId('ntf'),
         targetUid: tx.residentUid,
@@ -2149,6 +2161,10 @@ export default function App() {
             ? `Bukti Iuran ${formatMonthLabel(tx.billingMonth)} Ditolak`
             : isUnderpaid
             ? `Iuran ${formatMonthLabel(tx.billingMonth)} Kurang Bayar`
+            : isMultiMonthCovered && coverageAfter.streakEndMonth
+            ? `Iuran ${coverageAfter.remainingMonthsFromRef} Bulan (${formatMonthLabel(
+                tx.billingMonth
+              )} – ${formatMonthLabel(coverageAfter.streakEndMonth)}) Lunas`
             : `Iuran ${formatMonthLabel(tx.billingMonth)} Lunas & Disetujui`,
         message:
           decision === 'rejected'
@@ -2157,6 +2173,18 @@ export default function App() {
             ? `Pembayaran ${formatRupiah(tx.amount)} diterima, namun masih kurang ${formatRupiah(
                 shortfall
               )} dari tarif ${formatRupiah(ledgerAfter.requiredTariff)}.`
+            : isMultiMonthCovered && coverageAfter.streakEndMonth
+            ? `Pembayaran ${formatRupiah(tx.amount)} disetujui. Iuran LUNAS ${
+                coverageAfter.remainingMonthsFromRef
+              } bulan (${formatMonthLabel(tx.billingMonth)} – ${formatMonthLabel(
+                coverageAfter.streakEndMonth
+              )}).${
+                coverageAfter.partialCarryOverForNext > 0
+                  ? ` Sisa saldo ${formatRupiah(
+                      coverageAfter.partialCarryOverForNext
+                    )} otomatis masuk ke ${formatMonthLabel(coverageAfter.nextUnpaidMonth)}.`
+                  : ''
+              }`
             : surplus > 0
             ? `Pembayaran ${formatRupiah(tx.amount)} disetujui. Iuran ${formatMonthLabel(
                 tx.billingMonth

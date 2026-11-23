@@ -37,6 +37,8 @@ import {
   formatTimestamp,
   getCurrentYearMonth,
   getResidentMonthDuesSummary,
+  getResidentPaidMonthsCoverage,
+  previewPaymentPeriodCoverage,
 } from '../utils/format';
 
 interface DashboardViewProps {
@@ -138,6 +140,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     calendarCursor.month === now.getMonth();
 
   const myDuesSummary = getResidentMonthDuesSummary(profile, transactions, currentMonth);
+  const myPaidCoverage = getResidentPaidMonthsCoverage(profile, transactions, currentMonth);
+  const myPendingPreview =
+    myDuesSummary.status === 'menunggu'
+      ? previewPaymentPeriodCoverage(
+          profile,
+          transactions,
+          currentMonth,
+          myDuesSummary.pendingPaid
+        )
+      : null;
   const myFamilyLabel = FAMILY_STATUS_LABELS[myDuesSummary.familyStatus];
 
   const residentMap = new Map(residents.map((r) => [r.uid, r]));
@@ -363,17 +375,42 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
-                    Iuran Bulan Ini Sudah Lunas
+                    {myPaidCoverage.streakMonthsCount > 1
+                      ? `Iuran Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
+                      : `Iuran Bulan Ini Sudah Lunas (${myPaidCoverage.totalPaidMonths} Bulan Terbayar)`}
                   </p>
                   <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-1 leading-relaxed">
-                    Terverifikasi {formatRupiah(myDuesSummary.verifiedPaid)} dari tarif {formatRupiah(myDuesSummary.tariff)}
-                    {myDuesSummary.carryOverFromPrev > 0
-                      ? ` (termasuk saldo bulan lalu ${formatRupiah(myDuesSummary.carryOverFromPrev)})`
-                      : ''}
-                    .{' '}
-                    {myDuesSummary.surplus > 0
-                      ? `Kelebihan ${formatRupiah(myDuesSummary.surplus)} otomatis menjadi saldo bulan berikutnya.`
-                      : 'Terima kasih atas partisipasi Anda.'}
+                    {myPaidCoverage.streakMonthsCount > 1 &&
+                    myPaidCoverage.streakStartMonth &&
+                    myPaidCoverage.streakEndMonth ? (
+                      <>
+                        Periode lunas:{' '}
+                        <strong>
+                          {formatMonthLabel(myPaidCoverage.streakStartMonth)} –{' '}
+                          {formatMonthLabel(myPaidCoverage.streakEndMonth)}
+                        </strong>{' '}
+                        ({myPaidCoverage.remainingMonthsFromRef} bulan mulai bulan ini
+                        {myPaidCoverage.totalPaidMonths > myPaidCoverage.streakMonthsCount
+                          ? `, total ${myPaidCoverage.totalPaidMonths} bulan terbayar`
+                          : ''}
+                        ).{' '}
+                        {myPaidCoverage.partialCarryOverForNext > 0
+                          ? `Sisa saldo ${formatRupiah(myPaidCoverage.partialCarryOverForNext)} masuk ke ${formatMonthLabel(myPaidCoverage.nextUnpaidMonth)}.`
+                          : 'Terima kasih atas partisipasi Anda.'}
+                      </>
+                    ) : (
+                      <>
+                        Terverifikasi {formatRupiah(myDuesSummary.verifiedPaid)} dari tarif{' '}
+                        {formatRupiah(myDuesSummary.tariff)}
+                        {myDuesSummary.carryOverFromPrev > 0
+                          ? ` (termasuk saldo bulan lalu ${formatRupiah(myDuesSummary.carryOverFromPrev)})`
+                          : ''}
+                        .{' '}
+                        {myPaidCoverage.partialCarryOverForNext > 0
+                          ? `Sisa saldo ${formatRupiah(myPaidCoverage.partialCarryOverForNext)} otomatis menjadi saldo ${formatMonthLabel(myPaidCoverage.nextUnpaidMonth)}.`
+                          : 'Terima kasih atas partisipasi Anda.'}
+                      </>
+                    )}
                   </p>
                 </div>
               </div>
@@ -402,7 +439,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     Menunggu Verifikasi Admin
                   </p>
                   <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
-                    Bukti pembayaran {formatRupiah(myDuesSummary.pendingPaid)} sedang diperiksa bendahara RT secara real-time.
+                    Bukti pembayaran {formatRupiah(myDuesSummary.pendingPaid)}
+                    {myPendingPreview && myPendingPreview.coveredCount > 1 && myPendingPreview.endMonth
+                      ? ` (periode ${myPendingPreview.coveredCount} bulan: ${formatMonthLabel(currentMonth)} – ${formatMonthLabel(myPendingPreview.endMonth)})`
+                      : ''}{' '}
+                    sedang diperiksa bendahara RT secara real-time.
                   </p>
                 </div>
               </div>
