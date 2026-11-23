@@ -3,7 +3,6 @@ import { AnimatePresence, motion, useReducedMotion } from 'motion/react';
 import {
   Accessibility,
   Check,
-  CheckCircle2,
   ChevronLeft,
   ChevronRight,
   Copy,
@@ -13,9 +12,10 @@ import {
   Lock,
   LogIn,
   Moon,
-  RefreshCw,
+  Plug,
   ShieldCheck,
   Sun,
+  Unplug,
   User,
   UserPlus,
   X,
@@ -133,7 +133,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const [localError, setLocalError] = useState<string | null>(null);
   const [loginPopupData, setLoginPopupData] = useState<RegisteredAccountNotice | null>(null);
   const [sheetInput, setSheetInput] = useState('');
-  const [showSheetSwitcher, setShowSheetSwitcher] = useState(false);
   const [showSetupGuide] = useState(false);
   const [copiedScript, setCopiedScript] = useState(false);
 
@@ -483,103 +482,133 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
 
             {/* Google Spreadsheet Database Connection (100% Spreadsheet, Zero Firebase) */}
-            <div className="py-1 space-y-3">
-              {sheetInfo && !showSheetSwitcher ? (
-                <div className="flex flex-wrap items-center gap-2">
-                  <div className="rounded-xl bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 px-3 py-1.5 min-h-[34px] inline-flex items-center gap-1.5 text-xs font-semibold text-emerald-900 dark:text-emerald-200 shrink-0">
-                    <CheckCircle2 className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                    <span>Terhubung</span>
+            <div className="py-1 space-y-2.5">
+              <button
+                type="button"
+                disabled={isConnectingSheet || !isOnline}
+                onClick={async () => {
+                  setLocalError(null);
+                  onClearError();
+                  await onConnectWebApp(
+                    sheetInfo?.webAppUrl || getDefaultWebAppUrl() || BUILTIN_SHEETS_WEBAPP_URL
+                  );
+                }}
+                aria-label={
+                  isConnectingSheet
+                    ? 'Menghubungkan database'
+                    : sheetInfo
+                    ? 'Database terhubung, klik untuk sinkronkan ulang'
+                    : 'Hubungkan Database'
+                }
+                className={`w-full min-h-[40px] px-3.5 rounded-xl text-xs font-bold inline-flex items-center justify-center gap-2 transition-colors disabled:opacity-60 cursor-pointer ${
+                  isConnectingSheet
+                    ? 'bg-emerald-50 dark:bg-emerald-950/50 border border-emerald-200 dark:border-emerald-800 text-emerald-800 dark:text-emerald-300'
+                    : sheetInfo
+                    ? 'bg-emerald-100/80 dark:bg-emerald-950/60 border border-emerald-200 dark:border-emerald-800 text-emerald-900 dark:text-emerald-200 hover:bg-emerald-100 dark:hover:bg-emerald-950'
+                    : 'bg-emerald-700 hover:bg-emerald-800 text-white'
+                }`}
+              >
+                {isConnectingSheet ? (
+                  <div className="flex items-center gap-2.5 text-emerald-700 dark:text-emerald-300">
+                    {/* Container Animasi Plug & Socket */}
+                    <div className="relative w-4 h-4 flex items-center justify-center shrink-0">
+                      {/* Bagian Atas: Soket / Port Tujuan */}
+                      <svg
+                        viewBox="0 0 24 24"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="2.5"
+                        strokeLinecap="round"
+                        className="w-4 h-4 absolute top-0 text-emerald-600/70 dark:text-emerald-400/70 animate-socket-glow"
+                        aria-hidden="true"
+                      >
+                        {/* Garis horizontal port & lubang penerima */}
+                        <path d="M7 3h10" />
+                        <path d="M9 3v3" />
+                        <path d="M15 3v3" />
+                      </svg>
+
+                      {/* Bagian Bawah: Steker (Plug) yang bergerak mencolok */}
+                      <Plug className="w-3.5 h-3.5 translate-y-1 animate-plug-connect text-emerald-600 dark:text-emerald-400" />
+                    </div>
+
+                    <span className="font-bold tracking-wide">Menghubungkan Database...</span>
                   </div>
+                ) : sheetInfo ? (
+                  <>
+                    <Plug className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                    <span>Terhubung</span>
+                  </>
+                ) : (
+                  <>
+                    <Unplug className="w-4 h-4 shrink-0" />
+                    <span>Hubungkan Database</span>
+                  </>
+                )}
+              </button>
+
+              {!sheetInfo && !isConnectingSheet && activeErrorText && (
+                <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300">
+                  {activeErrorText}
                 </div>
-              ) : isConnectingSheet && !showSheetSwitcher ? (
-                <div className="rounded-xl bg-white/90 dark:bg-slate-900/90 border border-emerald-200 dark:border-emerald-800 px-3 py-2.5 flex items-center gap-2 text-xs font-semibold text-emerald-800 dark:text-emerald-300">
-                  <RefreshCw className="w-4 h-4 animate-spin shrink-0" />
-                  <span>Menghubungkan database</span>
+              )}
+
+              {showSetupGuide && (
+                <div className="rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-900/80 p-3 space-y-2 text-[11px] text-slate-700 dark:text-slate-300">
+                  <button
+                    type="button"
+                    onClick={() => void handleCopyAppsScript()}
+                    className="min-h-[34px] px-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-[11px] inline-flex items-center gap-1.5 cursor-pointer"
+                  >
+                    {copiedScript ? (
+                      <>
+                        <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
+                        <span>Kode Apps Script Disalin!</span>
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="w-3.5 h-3.5" />
+                        <span>Salin Kode Apps Script (Code.gs)</span>
+                      </>
+                    )}
+                  </button>
                 </div>
-              ) : (
-                <div className="space-y-2.5 pt-0.5">
-                  {!sheetInfo && (
+              )}
+
+              {oauthAvailable && !sheetInfo && (
+                <div className="pt-1.5 border-t border-emerald-200/70 dark:border-emerald-900/60 space-y-2">
+                  {!googleConnected ? (
                     <button
                       type="button"
                       disabled={isConnectingSheet || !isOnline}
-                      onClick={async () => {
-                        setLocalError(null);
-                        onClearError();
-                        await onConnectWebApp(getDefaultWebAppUrl() || BUILTIN_SHEETS_WEBAPP_URL);
-                        setShowSheetSwitcher(false);
-                      }}
-                      className="w-full min-h-[40px] px-3.5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                      onClick={() => void onGoogleConnect()}
+                      className="w-full min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold cursor-pointer"
                     >
-                      <RefreshCw className={`w-3.5 h-3.5 ${isConnectingSheet ? 'animate-spin' : ''}`} />
-                      <span>Hubungkan Database</span>
+                      {isConnectingSheet
+                        ? 'Menghubungkan Google...'
+                        : `Hubungkan Google${googleUserEmail ? ` (${googleUserEmail})` : ''}`}
                     </button>
-                  )}
-
-                  {!sheetInfo && activeErrorText && (
-                    <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300">
-                      {activeErrorText}
-                    </div>
-                  )}
-
-                  {showSetupGuide && (
-                    <div className="rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-900/80 p-3 space-y-2 text-[11px] text-slate-700 dark:text-slate-300">
+                  ) : (
+                    <div className="flex gap-1.5">
+                      <input
+                        type="text"
+                        value={sheetInput}
+                        onChange={(e) => setSheetInput(e.target.value)}
+                        placeholder="URL / ID Google Spreadsheet (Mode OAuth)..."
+                        className="flex-1 min-w-0 min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
+                      />
                       <button
                         type="button"
-                        onClick={() => void handleCopyAppsScript()}
-                        className="min-h-[34px] px-3 rounded-lg bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 font-bold text-[11px] inline-flex items-center gap-1.5 cursor-pointer"
+                        disabled={isConnectingSheet || !sheetInput.trim() || !isOnline}
+                        onClick={async () => {
+                          await onConnectSpreadsheetById(sheetInput);
+                          setSheetInput('');
+                        }}
+                        className="min-h-[38px] px-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
                       >
-                        {copiedScript ? (
-                          <>
-                            <Check className="w-3.5 h-3.5 text-emerald-400 dark:text-emerald-600" />
-                            <span>Kode Apps Script Disalin!</span>
-                          </>
-                        ) : (
-                          <>
-                            <Copy className="w-3.5 h-3.5" />
-                            <span>Salin Kode Apps Script (Code.gs)</span>
-                          </>
-                        )}
+                        <Link2 className="w-3.5 h-3.5" />
+                        <span>Pakai</span>
                       </button>
-                    </div>
-                  )}
-
-                  {oauthAvailable && (
-                    <div className="pt-1.5 border-t border-emerald-200/70 dark:border-emerald-900/60 space-y-2">
-                      {!googleConnected ? (
-                        <button
-                          type="button"
-                          disabled={isConnectingSheet || !isOnline}
-                          onClick={() => void onGoogleConnect()}
-                          className="w-full min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold cursor-pointer"
-                        >
-                          {isConnectingSheet
-                            ? 'Menghubungkan Google...'
-                            : `Hubungkan Google${googleUserEmail ? ` (${googleUserEmail})` : ''}`}
-                        </button>
-                      ) : (
-                        <div className="flex gap-1.5">
-                          <input
-                            type="text"
-                            value={sheetInput}
-                            onChange={(e) => setSheetInput(e.target.value)}
-                            placeholder="URL / ID Google Spreadsheet (Mode OAuth)..."
-                            className="flex-1 min-w-0 min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                          />
-                          <button
-                            type="button"
-                            disabled={isConnectingSheet || !sheetInput.trim() || !isOnline}
-                            onClick={async () => {
-                              await onConnectSpreadsheetById(sheetInput);
-                              setSheetInput('');
-                              setShowSheetSwitcher(false);
-                            }}
-                            className="min-h-[38px] px-3 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold inline-flex items-center gap-1 shrink-0 disabled:opacity-50 cursor-pointer"
-                          >
-                            <Link2 className="w-3.5 h-3.5" />
-                            <span>Pakai</span>
-                          </button>
-                        </div>
-                      )}
                     </div>
                   )}
                 </div>
@@ -745,9 +774,9 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                           />
                           <button
                             type="button"
-                            onClick={() => setShowPassword((prev) => !prev)}
-                            aria-label={showPassword ? 'Sembunyikan sandi' : 'Tampilkan sandi'}
-                            className="absolute right-2.5 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600 dark:hover:text-slate-200 p-1 cursor-pointer"
+                            onClick={() => setShowPassword((s) => !s)}
+                            aria-label={showPassword ? 'Sembunyikan sandi' : 'Lihat sandi'}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 min-h-[34px] min-w-[34px] flex items-center justify-center text-slate-500 hover:text-slate-700 dark:text-slate-400 cursor-pointer"
                           >
                             {showPassword ? (
                               <EyeOff className="w-4 h-4" />
@@ -766,33 +795,26 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
                       <button
                         type="submit"
-                        disabled={isLoggingIn}
-                        className="w-full min-h-[42px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        disabled={isLoggingIn || !isOnline}
+                        className="w-full min-h-[42px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         <LogIn className="w-4 h-4" />
-                        <span>{isLoggingIn ? 'Masuk...' : 'Masuk ke Portal'}</span>
+                        <span>{isLoggingIn ? 'Memverifikasi...' : 'Masuk'}</span>
                       </button>
-
-                      {oauthAvailable && (
-                        <button
-                          type="button"
-                          disabled={isLoggingIn || !isOnline}
-                          onClick={() => void onGoogleAdminLogin()}
-                          className="w-full min-h-[38px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs font-semibold text-slate-700 dark:text-slate-200 disabled:opacity-50 cursor-pointer"
-                        >
-                          Masuk Pengurus dengan Akun Google
-                        </button>
-                      )}
                     </form>
                   ) : (
                     <form onSubmit={handleSubmitRegister} className="space-y-3">
+                      <p className="text-[11px] text-slate-600 dark:text-slate-300 leading-relaxed">
+                        Masukkan Nama Lengkap dan Blok Rumah sesuai data warga RT. Role Warga atau Pengurus RT akan mengikuti data database secara otomatis.
+                      </p>
+
                       <div>
-                        <label className="block text-xs font-semibold mb-1">Nama Lengkap sesuai KTP</label>
+                        <label className="block text-xs font-semibold mb-1">Nama Lengkap</label>
                         <input
                           type="text"
                           value={fullName}
                           onChange={(e) => setFullName(e.target.value)}
-                          placeholder="Budi Santoso"
+                          placeholder="Sesuai Database Warga RT"
                           className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                         />
                       </div>
@@ -803,21 +825,24 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                           type="text"
                           value={houseBlock}
                           onChange={(e) => setHouseBlock(e.target.value)}
-                          placeholder="FF2/2"
+                          placeholder="Contoh: FF2/5"
                           className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                         />
                       </div>
 
                       <div>
                         <label className="block text-xs font-semibold mb-1">Username</label>
-                        <input
-                          type="text"
-                          value={username}
-                          onChange={(e) => setUsername(e.target.value)}
-                          placeholder="Contoh: budi_ff2 (3–30 karakter)"
-                          autoComplete="username"
-                          className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                        />
+                        <div className="relative">
+                          <User className="w-4 h-4 text-slate-400 absolute left-3 top-1/2 -translate-y-1/2" />
+                          <input
+                            type="text"
+                            value={username}
+                            onChange={(e) => setUsername(e.target.value)}
+                            placeholder="Contoh: budi_ff2"
+                            autoComplete="username"
+                            className="w-full min-h-[40px] pl-9 pr-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
+                          />
+                        </div>
                       </div>
 
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
@@ -863,11 +888,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
 
                       <button
                         type="submit"
-                        disabled={isLoggingIn}
-                        className="w-full min-h-[42px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 cursor-pointer"
+                        disabled={isLoggingIn || !isOnline}
+                        className="w-full min-h-[42px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs sm:text-sm font-bold inline-flex items-center justify-center gap-2 disabled:opacity-50 transition-colors cursor-pointer"
                       >
                         <UserPlus className="w-4 h-4" />
-                        <span>{isLoggingIn ? 'Mendaftarkan...' : 'Daftar Akun'}</span>
+                        <span>{isLoggingIn ? 'Memeriksa Database...' : 'Daftar Akun'}</span>
                       </button>
                     </form>
                   )}
@@ -878,35 +903,31 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </section>
       </main>
 
-      {/* Modal Konfirmasi & Login Cepat Setelah Daftar Akun */}
       {loginPopupData && (
-        <div className="fixed inset-0 z-50 bg-slate-950/60 backdrop-blur-xs flex items-center justify-center p-4">
-          <div className="w-full max-w-md rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 space-y-4 shadow-xl">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4">
+          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xl space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100">
                   Akun Berhasil Didaftarkan
                 </h3>
                 <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
-                  Nama: <strong>{loginPopupData.fullName}</strong> · Username:{' '}
-                  <strong>{loginPopupData.username}</strong>
-                  {loginPopupData.pengurusPosition && (
-                    <>
-                      {' '}
-                      · Jabatan:{' '}
-                      <strong>
-                        {PENGURUS_POSITION_LABELS[loginPopupData.pengurusPosition] ||
-                          loginPopupData.pengurusPosition}
-                      </strong>
-                    </>
-                  )}
+                  {loginPopupData.fullName} terdaftar sebagai{' '}
+                  <strong>
+                    {loginPopupData.role === 'pengurus'
+                      ? loginPopupData.pengurusPosition
+                        ? PENGURUS_POSITION_LABELS[loginPopupData.pengurusPosition]
+                        : 'Pengurus RT'
+                      : 'Warga'}
+                  </strong>
+                  .
                 </p>
               </div>
               <button
                 type="button"
                 onClick={() => setLoginPopupData(null)}
-                aria-label="Tutup modal"
-                className="min-h-[36px] min-w-[36px] rounded-lg hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-center cursor-pointer"
+                aria-label="Tutup popup masuk"
+                className="min-h-[36px] min-w-[36px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
               >
                 <X className="w-4 h-4" />
               </button>
@@ -919,18 +940,17 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                   type="text"
                   value={username}
                   onChange={(e) => setUsername(e.target.value)}
-                  className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                  className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                 />
               </div>
               <div>
-                <label className="block text-xs font-semibold mb-1">Masukkan Sandi untuk Masuk</label>
+                <label className="block text-xs font-semibold mb-1">Sandi</label>
                 <input
-                  type="password"
+                  type={showPassword ? 'text' : 'password'}
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Masukkan sandi akun Anda"
-                  autoFocus
-                  className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
+                  placeholder="Masukkan sandi Anda"
+                  className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                 />
               </div>
 
@@ -940,21 +960,21 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 </div>
               )}
 
-              <div className="flex items-center justify-end gap-2 pt-1">
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => setLoginPopupData(null)}
-                  className="min-h-[38px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                  className="flex-1 min-h-[40px] rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-bold cursor-pointer"
                 >
-                  Nanti Saja
+                  Tutup
                 </button>
                 <button
                   type="submit"
                   disabled={isLoggingIn}
-                  className="min-h-[38px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center gap-1.5 disabled:opacity-50 cursor-pointer"
+                  className="flex-1 min-h-[40px] rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-xs font-bold inline-flex items-center justify-center gap-1.5 disabled:opacity-50 cursor-pointer"
                 >
-                  <LogIn className="w-3.5 h-3.5" />
-                  <span>{isLoggingIn ? 'Masuk...' : 'Masuk Sekarang'}</span>
+                  <LogIn className="w-4 h-4" />
+                  <span>{isLoggingIn ? 'Masuk...' : 'Masuk'}</span>
                 </button>
               </div>
             </form>
