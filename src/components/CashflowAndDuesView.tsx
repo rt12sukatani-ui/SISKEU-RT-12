@@ -113,7 +113,24 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedBank, setCopiedBank] = useState(false);
+  const [clickedAction, setClickedAction] = useState<'bayar' | 'catat' | 'copy' | null>(null);
+  const clickTimerRef = useRef<number | null>(null);
   const transactionsSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
+  const triggerActionClick = (key: 'bayar' | 'catat' | 'copy', callback: () => void) => {
+    setClickedAction(key);
+    if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = window.setTimeout(() => {
+      setClickedAction(null);
+    }, 450);
+    callback();
+  };
 
   useEffect(() => {
     const nextTab =
@@ -359,19 +376,31 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
+        <div
+          className={
+            canManageKas
+              ? 'grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto'
+              : 'flex items-center gap-2 sm:gap-3 w-full sm:w-auto'
+          }
+        >
           <button
             type="button"
-            onClick={() => {
-              setFormError(null);
-              const nextTarget = calculatePeriodDuesTarget(profile, transactions, defaultStartMonth, 1);
-              setBillingMonth(defaultStartMonth);
-              setPeriodMonths(1);
-              setAmount(formatNominalInput(nextTarget.totalAmount));
-              setShowDuesForm(true);
-              setShowAdminEntryForm(false);
-            }}
-            className="flex-1 min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+            onClick={() =>
+              triggerActionClick('bayar', () => {
+                setFormError(null);
+                const nextTarget = calculatePeriodDuesTarget(profile, transactions, defaultStartMonth, 1);
+                setBillingMonth(defaultStartMonth);
+                setPeriodMonths(1);
+                setAmount(formatNominalInput(nextTarget.totalAmount));
+                setShowDuesForm(true);
+                setShowAdminEntryForm(false);
+              })
+            }
+            className={`w-full sm:w-auto min-h-[42px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+              clickedAction === 'bayar' || showDuesForm
+                ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+            }`}
           >
             <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Bayar Iuran</span>
@@ -380,11 +409,17 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           {canManageKas && (
             <button
               type="button"
-              onClick={() => {
-                setShowAdminEntryForm((v) => !v);
-                setShowDuesForm(false);
-              }}
-              className="min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+              onClick={() =>
+                triggerActionClick('catat', () => {
+                  setShowAdminEntryForm((v) => !v);
+                  setShowDuesForm(false);
+                })
+              }
+              className={`w-full sm:w-auto min-h-[42px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+                clickedAction === 'catat' || showAdminEntryForm
+                  ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+              }`}
             >
               <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span>Catat Transaksi</span>
@@ -454,21 +489,25 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 w-full md:w-auto shrink-0">
           {rtSettings.bankAccountNumber && (
             <button
               type="button"
-              onClick={() => void handleCopyAccount()}
-              className="min-h-[38px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.50] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-normal text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+              onClick={() => triggerActionClick('copy', () => void handleCopyAccount())}
+              className={`flex-1 sm:flex-initial min-h-[42px] sm:min-h-[44px] px-3.5 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+                copiedBank || clickedAction === 'copy'
+                  ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+              }`}
             >
               {copiedBank ? (
                 <>
-                  <Check className="w-3.5 h-3.5 text-emerald-600" />
+                  <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-white shrink-0" />
                   <span>Disalin</span>
                 </>
               ) : (
                 <>
-                  <Copy className="w-3.5 h-3.5" />
+                  <Copy className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
                   <span>Salin Rekening</span>
                 </>
               )}

@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -167,6 +167,23 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   const [residentSearch, setResidentSearch] = useState('');
   const [sendingReminders, setSendingReminders] = useState(false);
   const [reminderFeedback, setReminderFeedback] = useState<string | null>(null);
+  const [clickedAction, setClickedAction] = useState<'csv' | 'print' | null>(null);
+  const clickTimerRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    return () => {
+      if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    };
+  }, []);
+
+  const triggerActionClick = (key: 'csv' | 'print', callback: () => void) => {
+    setClickedAction(key);
+    if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = window.setTimeout(() => {
+      setClickedAction(null);
+    }, 450);
+    callback();
+  };
 
   const monthTransactions = useMemo(
     () => transactions.filter((t) => t.billingMonth === selectedMonth),
@@ -357,20 +374,32 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             aria-label="Pilih bulan laporan"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="col-span-2 sm:w-auto min-h-[40px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+            className="col-span-2 sm:w-auto min-h-[42px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
           />
           <button
             type="button"
-            onClick={() => downloadMonthlyReportCSV(selectedMonth, monthTransactions, rtSettings.rtName)}
-            className="col-span-1 sm:w-auto min-h-[40px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+            onClick={() =>
+              triggerActionClick('csv', () =>
+                downloadMonthlyReportCSV(selectedMonth, monthTransactions, rtSettings.rtName)
+              )
+            }
+            className={`col-span-1 sm:w-auto min-h-[42px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+              clickedAction === 'csv'
+                ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+            }`}
           >
             <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Unduh CSV</span>
           </button>
           <button
             type="button"
-            onClick={() => window.print()}
-            className="col-span-1 sm:w-auto min-h-[40px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+            onClick={() => triggerActionClick('print', () => window.print())}
+            className={`col-span-1 sm:w-auto min-h-[42px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+              clickedAction === 'print'
+                ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+            }`}
           >
             <Printer className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Cetak / PDF</span>

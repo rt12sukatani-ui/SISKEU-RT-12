@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   AlertTriangle,
   ArrowDownLeft,
@@ -70,6 +70,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   onViewMyDues,
 }) => {
   const [copiedBank, setCopiedBank] = useState(false);
+  const [clickedAction, setClickedAction] = useState<'dues' | 'tutorial' | null>(null);
+  const clickTimerRef = useRef<number | null>(null);
   const [now, setNow] = useState<Date>(() => new Date());
   const [calendarCursor, setCalendarCursor] = useState<{ year: number; month: number }>(() => {
     const initial = new Date();
@@ -80,8 +82,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
     const timer = window.setInterval(() => {
       setNow(new Date());
     }, 1000);
-    return () => window.clearInterval(timer);
+    return () => {
+      window.clearInterval(timer);
+      if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    };
   }, []);
+
+  const triggerActionClick = (key: 'dues' | 'tutorial', callback: () => void) => {
+    setClickedAction(key);
+    if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
+    clickTimerRef.current = window.setTimeout(() => {
+      setClickedAction(null);
+    }, 450);
+    callback();
+  };
 
   const isPengurus = rbac.isPengurus;
   const loginRoleLabel = rbac.positionLabel;
@@ -493,12 +507,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="mt-3.5 sm:mt-5 flex items-center gap-2 sm:gap-3">
             <button
               type="button"
-              onClick={
-                isMyDuesSettled
-                  ? onViewMyDues || (() => onNavigate('kas'))
-                  : onQuickPayDues
+              onClick={() =>
+                triggerActionClick(
+                  'dues',
+                  isMyDuesSettled
+                    ? onViewMyDues || (() => onNavigate('kas'))
+                    : onQuickPayDues
+                )
               }
-              className="flex-1 min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+              className={`flex-1 min-h-[42px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+                clickedAction === 'dues'
+                  ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+              }`}
             >
               <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span>
@@ -511,8 +532,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </button>
             <button
               type="button"
-              onClick={onOpenTutorial}
-              className="min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+              onClick={() => triggerActionClick('tutorial', onOpenTutorial)}
+              className={`shrink-0 min-h-[42px] sm:min-h-[48px] px-3.5 sm:px-4 rounded-xl border font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 transition-all whitespace-nowrap cursor-pointer touch-manipulation select-none active:scale-[0.98] ${
+                clickedAction === 'tutorial'
+                  ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+              }`}
             >
               <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span>Panduan</span>
