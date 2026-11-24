@@ -39,6 +39,7 @@ import {
   RBAC_PERMISSION_META,
 } from '../utils/rbac';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { CancelButton } from './CancelButton';
 import { DownwardSelect } from './DownwardSelect';
 
 interface ResidentRegistryModalProps {
@@ -748,13 +749,12 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                 className="w-full p-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs font-mono"
               />
               <div className="flex justify-end gap-2">
-                <button
-                  type="button"
+                <CancelButton
                   onClick={() => setShowBulkImport(false)}
-                  className="min-h-[38px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                  className="min-h-[38px] px-3.5 rounded-xl text-xs"
                 >
                   Batal
-                </button>
+                </CancelButton>
                 <button
                   type="submit"
                   disabled={busy}
@@ -1084,13 +1084,12 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                             </div>
                           </div>
                           <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
+                            <CancelButton
                               onClick={() => setEditingDetailsId(null)}
-                              className="min-h-[34px] px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                              className="min-h-[34px] px-3 rounded-lg text-xs"
                             >
                               Batal
-                            </button>
+                            </CancelButton>
                             <button
                               type="button"
                               disabled={busy || !editFullName.trim() || !editHouseBlock.trim()}
@@ -1196,13 +1195,12 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                           )}
 
                           <div className="flex justify-end gap-2">
-                            <button
-                              type="button"
+                            <CancelButton
                               onClick={() => setEditingEntryId(null)}
-                              className="min-h-[34px] px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold cursor-pointer"
+                              className="min-h-[34px] px-3 rounded-lg text-xs"
                             >
                               Batal
-                            </button>
+                            </CancelButton>
                             <button
                               type="button"
                               disabled={busy}

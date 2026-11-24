@@ -476,14 +476,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </section>
 
         {/* Full-Height Right Panel: Modern Login Portal */}
-        <section className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between px-3.5 sm:px-8 lg:px-10 py-4 lg:py-6 gap-4">
-          <div className="flex-1 flex flex-col justify-start space-y-3 sm:space-y-5">
+        <section className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between px-3.5 sm:px-8 lg:px-10 py-3.5 sm:py-6 gap-3 sm:gap-4">
+          <div className="flex-1 flex flex-col justify-start space-y-2.5 sm:space-y-5">
             <div>
-              <h1 className="mt-0 font-display text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.2] text-slate-900 dark:text-slate-50 [text-wrap:balance]">
+              <h1 className="mt-0 font-display text-lg sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-snug sm:leading-[1.2] text-slate-900 dark:text-slate-50 [text-wrap:balance]">
                 Portal Sistem Keuangan &amp; Siaga Warga RT 12 / RW 20 Sukatani
               </h1>
 
-              <p className="mt-1.5 sm:mt-2.5 text-xs sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="mt-1 sm:mt-2.5 text-[11.5px] sm:text-base text-slate-600 dark:text-slate-300 leading-snug sm:leading-relaxed">
                 Pantau kas RT secara terbuka, iuran bulanan, cek laporan bulanan, dan akses layanan darurat.
               </p>
             </div>

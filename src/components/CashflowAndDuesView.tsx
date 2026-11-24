@@ -40,6 +40,7 @@ import {
   TRANSACTION_CATEGORY_GROUPS,
 } from '../utils/format';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { CancelButton } from './CancelButton';
 import { DownwardSelect } from './DownwardSelect';
 
 interface CashflowAndDuesViewProps {
@@ -113,7 +114,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   );
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedBank, setCopiedBank] = useState(false);
-  const [clickedAction, setClickedAction] = useState<'bayar' | 'catat' | 'copy' | null>(null);
+  const [clickedAction, setClickedAction] = useState<'bayar' | 'catat' | 'copy' | 'kirim' | 'camera' | 'gallery' | null>(null);
   const clickTimerRef = useRef<number | null>(null);
   const transactionsSectionRef = useRef<HTMLDivElement | null>(null);
 
@@ -123,7 +124,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
     };
   }, []);
 
-  const triggerActionClick = (key: 'bayar' | 'catat' | 'copy', callback: () => void) => {
+  const triggerActionClick = (key: 'bayar' | 'catat' | 'copy' | 'kirim' | 'camera' | 'gallery', callback: () => void) => {
     setClickedAction(key);
     if (clickTimerRef.current) window.clearTimeout(clickTimerRef.current);
     clickTimerRef.current = window.setTimeout(() => {
@@ -364,14 +365,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   };
 
   return (
-    <div className="space-y-4 sm:space-y-6">
+    <div className="space-y-3 sm:space-y-6">
       {/* Header & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-4">
         <div>
-          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-base sm:text-2xl font-extrabold tracking-tight leading-tight text-slate-900 dark:text-slate-100">
             Kas Warga & Verifikasi Iuran
           </h1>
-          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">
+          <p className="text-[11px] sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1 leading-snug">
             Unggah bukti transfer untuk verifikasi real-time · Catatan transaksi transparan
           </p>
         </div>
@@ -435,20 +436,20 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       )}
 
       {/* Family Tariff & Current Month Payment Status Banner */}
-      <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+      <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-2.5 sm:gap-4">
         <div className="space-y-0.5 sm:space-y-1">
-          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
-            Status Keluarga: {FAMILY_STATUS_LABELS[myFamilyStatus]} Tarif Wajib{' '}
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400 leading-snug">
+            Status Keluarga: {FAMILY_STATUS_LABELS[myFamilyStatus]} · Tarif Wajib{' '}
             <span className="font-mono-num text-slate-700 dark:text-slate-200">
               {formatRupiah(myRequiredTariff)}/bulan
             </span>
           </p>
           {(profile.familyStatus || 'umum') !== myFamilyStatus && (
-            <p className="text-[11px] sm:text-xs font-medium text-amber-700 dark:text-amber-400">
+            <p className="text-[11px] sm:text-xs font-medium text-amber-700 dark:text-amber-400 leading-snug">
               Perubahan ke {FAMILY_STATUS_LABELS[profile.familyStatus || 'umum']} berlaku mulai bulan berikutnya; iuran {formatMonthLabel(currentMonth)} tetap terkunci.
             </p>
           )}
-          <p className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
+          <p className="text-[13px] sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 leading-snug">
             {myDuesSummary.status === 'lunas'
               ? myPaidCoverage.streakMonthsCount > 1
                 ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas  ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
@@ -460,7 +461,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               : `Iuran ${formatMonthLabel(currentMonth)}: Belum Bayar (${formatRupiah(myRequiredTariff)})`}
           </p>
           {myDuesSummary.status === 'lunas' && myPaidCoverage.streakStartMonth && myPaidCoverage.streakEndMonth && (
-            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 leading-snug">
               Periode terbayar: {formatMonthLabel(myPaidCoverage.streakStartMonth)}
               {myPaidCoverage.streakEndMonth !== myPaidCoverage.streakStartMonth
                 ? ` – ${formatMonthLabel(myPaidCoverage.streakEndMonth)}`
@@ -473,17 +474,17 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             </p>
           )}
           {myDuesSummary.carryOverFromPrev > 0 && (
-            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 leading-snug">
               Termasuk saldo lebih bulan sebelumnya: {formatRupiah(myDuesSummary.carryOverFromPrev)}
             </p>
           )}
           {myDuesSummary.status === 'lunas' && myPaidCoverage.partialCarryOverForNext > 0 && (
-            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 leading-snug">
               Sisa saldo {formatRupiah(myPaidCoverage.partialCarryOverForNext)} otomatis menjadi saldo {formatMonthLabel(myPaidCoverage.nextUnpaidMonth)}
             </p>
           )}
           {rtSettings.bankAccountNumber && (
-            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 leading-snug">
               Rekening RT: {rtSettings.bankName || 'Bank'} <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-200">{rtSettings.bankAccountNumber}</span> an. {rtSettings.bankAccountHolder || 'Kas RT'}
             </p>
           )}
@@ -727,7 +728,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             </label>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full sm:w-auto">
-                <label className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-dashed border-slate-400 dark:border-slate-600 bg-slate-50/70 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <label
+                  onClick={() => triggerActionClick('camera', () => {})}
+                  className={`min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-dashed font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 cursor-pointer transition-all touch-manipulation select-none active:scale-[0.98] ${
+                    clickedAction === 'camera'
+                      ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                      : 'bg-white dark:bg-slate-800/40 border-slate-400 dark:border-slate-600 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+                  }`}
+                >
                   <Camera className="w-4 h-4 shrink-0" />
                   <span>{proofImageData ? 'Foto Ulang' : 'Ambil Foto'}</span>
                   <input
@@ -739,7 +747,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                   />
                 </label>
 
-                <label className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-dashed border-slate-400 dark:border-slate-600 bg-slate-50/70 dark:bg-slate-800/50 text-slate-800 dark:text-slate-200 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 cursor-pointer hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors">
+                <label
+                  onClick={() => triggerActionClick('gallery', () => {})}
+                  className={`min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-dashed font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 cursor-pointer transition-all touch-manipulation select-none active:scale-[0.98] ${
+                    clickedAction === 'gallery'
+                      ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                      : 'bg-white dark:bg-slate-800/40 border-slate-400 dark:border-slate-600 text-slate-900 dark:text-white hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 hover:text-white dark:hover:text-white active:bg-emerald-700 dark:active:bg-emerald-700 active:border-emerald-700 dark:active:border-emerald-700 active:text-white dark:active:text-white'
+                  }`}
+                >
                   <ImageIcon className="w-4 h-4 shrink-0" />
                   <span>{proofImageData ? 'Ganti Galeri' : 'Pilih Galeri'}</span>
                   <input
@@ -787,21 +802,25 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               </div>
 
               <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-end gap-2.5 sm:gap-3 shrink-0 pb-safe">
-                <button
-                  type="button"
+                <CancelButton
                   disabled={submitting}
                   onClick={() => {
                     setShowDuesForm(false);
                     onCloseInitialPaymentModal?.();
                   }}
-                  className="min-h-[44px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm cursor-pointer disabled:opacity-50"
+                  className="min-h-[44px] px-4 rounded-xl text-sm"
                 >
                   Batal
-                </button>
+                </CancelButton>
                 <button
                   type="submit"
                   disabled={submitting}
-                  className="min-h-[44px] px-5 sm:px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-sm cursor-pointer"
+                  onClick={() => triggerActionClick('kirim', () => {})}
+                  className={`min-h-[44px] px-5 sm:px-6 rounded-xl border text-sm font-semibold transition-all cursor-pointer touch-manipulation select-none enabled:active:scale-[0.98] disabled:opacity-55 ${
+                    clickedAction === 'kirim' || submitting
+                      ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                      : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white enabled:hover:bg-emerald-700 dark:enabled:hover:bg-emerald-700 enabled:hover:border-emerald-700 dark:enabled:hover:border-emerald-700 enabled:hover:text-white dark:enabled:hover:text-white enabled:active:bg-emerald-700 dark:enabled:active:bg-emerald-700 enabled:active:border-emerald-700 dark:enabled:active:border-emerald-700 enabled:active:text-white dark:enabled:active:text-white'
+                  }`}
                 >
                   {submitting ? 'Mengirim...' : 'Kirim Pembayaran'}
                 </button>
@@ -944,20 +963,20 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
       {/* Admin Real-Time Verification Queue */}
       {canManageKas && pendingList.length > 0 && (
-        <section className="rounded-3xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-5 sm:p-6 space-y-4">
-          <div className="flex items-center justify-between gap-3">
-            <div className="flex items-center gap-2.5">
-              <Clock className="w-5 h-5 text-amber-700 dark:text-amber-400" />
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+        <section className="rounded-2xl sm:rounded-3xl bg-amber-50/70 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-900 p-3.5 sm:p-6 space-y-2.5 sm:space-y-4">
+          <div className="flex items-center justify-between gap-2 sm:gap-3">
+            <div className="flex items-center gap-2 sm:gap-2.5">
+              <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 dark:text-amber-400 shrink-0" />
+              <h2 className="text-[13px] sm:text-base font-bold text-slate-900 dark:text-slate-100 leading-tight">
                 Antrean Verifikasi Admin ({pendingList.length})
               </h2>
             </div>
-            <span className="text-xs font-medium text-amber-800 dark:text-amber-300">
+            <span className="text-[10.5px] sm:text-xs font-medium text-amber-800 dark:text-amber-300 shrink-0">
               Pembaruan Real-Time
             </span>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-2.5 sm:gap-4">
             {pendingList.map((tx) => {
               const effectiveResident: ResidentPublic = residentMap.get(tx.residentUid) || {
                 uid: tx.residentUid,
@@ -1003,41 +1022,41 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               return (
                 <div
                   key={tx.id}
-                  className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 flex flex-col justify-between gap-4"
+                  className="rounded-xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-4 flex flex-col justify-between gap-2.5 sm:gap-4"
                 >
-                  <div className="flex items-start justify-between gap-3">
-                    <div>
-                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <div className="flex items-start justify-between gap-2.5 sm:gap-3">
+                    <div className="min-w-0">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
                         {tx.residentName} · {tx.houseBlock}
                       </p>
-                      <p className="text-xs text-slate-600 dark:text-slate-400 mt-0.5">
+                      <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-400 mt-0.5 leading-snug">
                         {tx.title} · {FAMILY_STATUS_LABELS[txFamily]} · {tx.paymentMethod.toUpperCase()}
                       </p>
-                      <p className="font-mono-num text-lg font-extrabold text-emerald-700 dark:text-emerald-400 mt-1.5 tabular-nums">
+                      <p className="font-mono-num text-base sm:text-lg font-extrabold text-emerald-700 dark:text-emerald-400 mt-1 sm:mt-1.5 tabular-nums leading-tight">
                         {formatRupiah(tx.amount)}
                       </p>
                       {willBeUnderpaid ? (
-                        <p className="text-xs font-bold text-amber-700 dark:text-amber-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-bold text-amber-700 dark:text-amber-400 mt-0.5 sm:mt-1 leading-snug">
                           Kurang Bayar (masih kurang {formatRupiah(ledgerAfter.shortfall)} dari tarif {formatRupiah(txTariff)})
                         </p>
                       ) : txPreview && txPreview.coveredCount > 1 && txPreview.endMonth ? (
-                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1 leading-snug">
                           Lunas {txPreview.coveredCount} Bulan ({formatMonthLabel(tx.billingMonth)} – {formatMonthLabel(txPreview.endMonth)})
                           {txPreview.remainderForNextMonth > 0
                             ? ` · Sisa ${formatRupiah(txPreview.remainderForNextMonth)} ke bulan berikutnya`
                             : ''}
                         </p>
                       ) : ledgerAfter.surplus > 0 ? (
-                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1 leading-snug">
                           Lunas · Lebih {formatRupiah(ledgerAfter.surplus)} menjadi saldo bulan berikutnya
                         </p>
                       ) : isSettlementTopUp ? (
-                        <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1 leading-snug">
                           Pelunasan bulan {formatMonthLabel(tx.billingMonth)} (status menjadi Lunas)
                         </p>
                       ) : null}
                       {tx.notes && (
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-1">
+                        <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1 leading-snug">
                           Catatan: {tx.notes}
                         </p>
                       )}
@@ -1052,7 +1071,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                         <img
                           src={tx.proofImageData}
                           alt={`Bukti ${tx.residentName}`}
-                          className="w-16 h-16 object-cover group-hover:scale-105 transition-transform"
+                          className="w-14 h-14 sm:w-16 sm:h-16 object-cover group-hover:scale-105 transition-transform"
                         />
                         <span className="sr-only">Perbesar bukti</span>
                       </button>
@@ -1117,7 +1136,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setFilterTab(tab.id)}
-              className={`min-h-[34px] sm:min-h-[42px] px-2.5 sm:px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+              className={`min-h-[32px] sm:min-h-[42px] px-2.5 sm:px-3.5 rounded-lg text-[11px] sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 filterTab === tab.id
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -1136,7 +1155,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={isPengurus ? 'Cari warga, blok, transaksi...' : 'Cari transaksi iuran saya...'}
             aria-label="Cari transaksi kas"
-            className="w-full min-h-[40px] sm:min-h-[44px] pl-9 sm:pl-10 pr-3 sm:pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+            className="w-full min-h-[38px] sm:min-h-[44px] pl-9 sm:pl-10 pr-3 sm:pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
           />
         </div>
       </div>
@@ -1145,8 +1164,8 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       <section className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {filteredTransactions.length === 0 ? (
-            <div className="p-10 text-center space-y-3">
-              <p className="text-sm text-slate-500 dark:text-slate-400">
+            <div className="p-6 sm:p-10 text-center space-y-2.5 sm:space-y-3">
+              <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                 {searchQuery
                   ? `Tidak ada transaksi yang cocok dengan "${searchQuery}".`
                   : 'Tidak ada transaksi pada kategori ini.'}
@@ -1155,7 +1174,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 <button
                   type="button"
                   onClick={() => setSearchQuery('')}
-                  className="min-h-[40px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
+                  className="min-h-[36px] sm:min-h-[40px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 cursor-pointer"
                 >
                   Reset Pencarian
                 </button>
@@ -1198,80 +1217,80 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               return (
                 <div
                   key={tx.id}
-                  className="p-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+                  className="px-3 py-2.5 sm:px-6 sm:py-4 flex items-start sm:items-center justify-between gap-2 sm:gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
                 >
-                  <div className="flex items-start gap-2.5 sm:gap-3.5 min-w-0">
+                  <div className="flex items-start gap-2 sm:gap-3.5 min-w-0 flex-1">
                     <div
-                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
+                      className={`w-7 h-7 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 mt-0.5 sm:mt-0 ${
                         isIncome
                           ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                           : 'bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400'
                       }`}
                     >
                       {isIncome ? (
-                        <ArrowDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <ArrowDownLeft className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                       ) : (
-                        <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
+                        <ArrowUpRight className="w-3.5 h-3.5 sm:w-5 sm:h-5" />
                       )}
                     </div>
-                    <div className="min-w-0">
-                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-snug">
                         {tx.title}
                       </p>
-                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-[10.5px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 leading-snug">
                         {tx.residentName} · {tx.houseBlock} · {getCategoryLabel(tx.category)} ·{' '}
                         {tx.paymentMethod.toUpperCase()} · {formatTimestamp(tx.createdAt)}
                       </p>
                       {txUnderpaid && txLedger && txLedger.shortfall > 0 && (
-                        <p className="text-[11px] sm:text-xs font-semibold text-amber-700 dark:text-amber-400 mt-0.5 sm:mt-1">
+                        <p className="text-[10.5px] sm:text-xs font-semibold text-amber-700 dark:text-amber-400 mt-0.5 leading-snug">
                           Tarif {FAMILY_STATUS_LABELS[txFamily]}: {formatRupiah(txTariff)} (Kurang Bayar {formatRupiah(txLedger.shortfall)})
                         </p>
                       )}
                       {isSettledMonth && txPreview && txPreview.coveredCount > 1 && txPreview.endMonth ? (
-                        <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1">
+                        <p className="text-[10.5px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 leading-snug">
                           Melunasi {txPreview.coveredCount} bulan ({formatMonthLabel(tx.billingMonth)} – {formatMonthLabel(txPreview.endMonth)})
                           {txPreview.remainderForNextMonth > 0
                             ? ` · sisa ${formatRupiah(txPreview.remainderForNextMonth)} ke bulan berikutnya`
                             : ''}
                         </p>
                       ) : isSettledMonth && txLedger && txLedger.surplus > 0 ? (
-                        <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1">
+                        <p className="text-[10.5px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 leading-snug">
                           Saldo lebih {formatRupiah(txLedger.surplus)} masuk ke bulan berikutnya
                         </p>
                       ) : null}
                       {tx.notes && (
-                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 mt-0.5 sm:mt-1">
+                        <p className="text-[10.5px] sm:text-xs text-slate-600 dark:text-slate-300 mt-0.5 leading-snug">
                           {tx.notes}
                         </p>
                       )}
                       {tx.status === 'rejected' && tx.rejectionReason && (
-                        <p className="text-[11px] sm:text-xs text-red-600 dark:text-red-400 mt-0.5 sm:mt-1 font-medium">
+                        <p className="text-[10.5px] sm:text-xs text-red-600 dark:text-red-400 mt-0.5 font-medium leading-snug">
                           Alasan ditolak: {tx.rejectionReason}
                         </p>
                       )}
                       {tx.isOfflinePending && (
-                        <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-400 mt-0.5 sm:mt-1 font-semibold">
+                        <p className="text-[10.5px] sm:text-xs text-amber-700 dark:text-amber-400 mt-0.5 font-semibold leading-snug">
                           Menunggu koneksi internet untuk sinkronisasi
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
+                  <div className="flex flex-col-reverse sm:flex-row items-end sm:items-center justify-end gap-1 sm:gap-3 shrink-0 ml-auto text-right">
                     {tx.proofImageData && (
                       <button
                         type="button"
                         onClick={() => setPreviewImage(tx.proofImageData || null)}
-                        className="min-h-[34px] sm:min-h-[44px] px-2.5 sm:px-3 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer"
+                        className="min-h-[28px] sm:min-h-[40px] px-2 sm:px-3 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-[10.5px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1 sm:gap-1.5 cursor-pointer whitespace-nowrap self-end sm:self-center"
                       >
-                        <Eye className="w-3.5 h-3.5" />
+                        <Eye className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                         <span>Lihat Bukti</span>
                       </button>
                     )}
 
-                    <div className="sm:text-right mr-auto sm:mr-0">
+                    <div className="w-full sm:w-auto flex flex-col items-end text-right">
                       <p
-                        className={`font-mono-num text-xs sm:text-base font-bold tabular-nums ${
+                        className={`w-full text-right whitespace-nowrap font-mono-num text-xs sm:text-base font-bold tabular-nums leading-tight ${
                           isIncome
                             ? 'text-emerald-700 dark:text-emerald-400'
                             : 'text-slate-900 dark:text-slate-100'
@@ -1281,7 +1300,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                         {formatRupiah(tx.amount)}
                       </p>
                       <p
-                        className={`text-[11px] sm:text-xs font-semibold mt-0.5 ${
+                        className={`w-full text-right text-[10.5px] sm:text-xs font-semibold mt-0.5 leading-tight ${
                           tx.status === 'rejected'
                             ? 'text-red-600 dark:text-red-400'
                             : tx.status === 'pending'
@@ -1371,13 +1390,12 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
             />
             <div className="flex justify-end gap-3">
-              <button
-                type="button"
+              <CancelButton
                 onClick={() => setRejectingTx(null)}
-                className="min-h-[44px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-sm font-semibold cursor-pointer"
+                className="min-h-[44px] px-4 rounded-xl text-sm"
               >
                 Batal
-              </button>
+              </CancelButton>
               <button
                 type="button"
                 onClick={() => {

@@ -3795,7 +3795,12 @@ export default function App() {
               <OnboardingTutorial
                 isOpen={tutorialOpen}
                 onClose={() => setTutorialOpen(false)}
-                onNavigate={setActiveTab}
+                onNavigate={(tab) => {
+                  setActiveTab(tab);
+                  setOpenPaymentModalOnKas(false);
+                  setKasInitialFilterTab('all');
+                  scrollPageToTop();
+                }}
               />
 
               <ProfileSettingsModal
@@ -3819,7 +3824,6 @@ export default function App() {
                 onUpdateBannerSlide={handleUpdateBannerSlide}
                 onMoveBannerSlide={handleMoveBannerSlide}
                 onDeleteBannerSlide={handleDeleteBannerSlide}
-                onOpenTutorial={() => setTutorialOpen(true)}
                 onLogout={handleLogout}
                 sheetInfo={sheetInfo}
                 isSyncing={isSyncing}

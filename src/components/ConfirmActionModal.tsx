@@ -1,6 +1,7 @@
 import React from 'react';
 import { AlertTriangle, FileSpreadsheet, X } from 'lucide-react';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { CancelButton } from './CancelButton';
 
 export interface ConfirmActionModalProps {
   isOpen: boolean;
@@ -96,14 +97,13 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
           )}
 
           <div className="flex items-center justify-end gap-2.5 pt-2">
-            <button
-              type="button"
+            <CancelButton
               disabled={busy}
               onClick={onCancel}
-              className="min-h-[44px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-50 dark:hover:bg-slate-800 text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 cursor-pointer disabled:opacity-50"
+              className="min-h-[44px] px-4 rounded-xl text-xs sm:text-sm"
             >
               {cancelLabel}
-            </button>
+            </CancelButton>
             <button
               type="button"
               disabled={busy}

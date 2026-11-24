@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState } from 'react';
 import {
   Accessibility,
+  AlertCircle,
   ArrowDown,
   ArrowUp,
   Bell,
-  BookOpen,
   Check,
+  CheckCircle2,
   Copy,
   Database,
   ExternalLink,
@@ -14,7 +15,6 @@ import {
   ImagePlus,
   Images,
   Link2,
-  LogOut,
   Moon,
   Pencil,
   RefreshCw,
@@ -51,6 +51,7 @@ import {
 } from '../utils/format';
 import { PENGURUS_POSITION_DESCRIPTIONS, RBAC_PERMISSION_META } from '../utils/rbac';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { CancelButton } from './CancelButton';
 import { DownwardSelect } from './DownwardSelect';
 import { PWAInstallButton } from './PWAInstallButton';
 
@@ -87,7 +88,6 @@ interface ProfileSettingsModalProps {
   ) => Promise<void>;
   onMoveBannerSlide?: (id: string, direction: 'up' | 'down') => Promise<void>;
   onDeleteBannerSlide?: (id: string) => Promise<void>;
-  onOpenTutorial: () => void;
   onLogout: () => Promise<void>;
   sheetInfo?: SheetDbInfo | null;
   isSyncing?: boolean;
@@ -101,6 +101,13 @@ interface ProfileSettingsModalProps {
 interface PendingLocalSlide {
   name: string;
   imageData: string;
+}
+
+interface SettingsPopupNotice {
+  id: number;
+  title: string;
+  message: string;
+  tone: 'success' | 'error';
 }
 
 export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
@@ -124,8 +131,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   onUpdateBannerSlide,
   onMoveBannerSlide,
   onDeleteBannerSlide,
-  onOpenTutorial,
-  onLogout,
+  onLogout: _onLogout,
   sheetInfo,
   isSyncing = false,
   isConnectingSheet = false,
@@ -152,7 +158,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const [phoneMed, setPhoneMed] = useState(rtSettings.emergencyPhoneMedical || '118');
 
   const [saving, setSaving] = useState(false);
-  const [feedback, setFeedback] = useState<string | null>(null);
+  const [savingUser, setSavingUser] = useState(false);
+  const [saveUserClicked, setSaveUserClicked] = useState(false);
+  const saveUserTimerRef = useRef<number | null>(null);
+  const [popupNotice, setPopupNotice] = useState<SettingsPopupNotice | null>(null);
+  const popupTimerRef = useRef<number | null>(null);
   const [pushStatus, setPushStatus] = useState<string>(() =>
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   );
@@ -171,6 +181,33 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const [sheetIdInput, setSheetIdInput] = useState('');
   const [copiedInvite, setCopiedInvite] = useState(false);
 
+  const showSettingsPopup = (
+    title: string,
+    message: string,
+    tone: 'success' | 'error' = 'success'
+  ) => {
+    if (popupTimerRef.current !== null) {
+      window.clearTimeout(popupTimerRef.current);
+    }
+    const nextId = Date.now();
+    setPopupNotice({ id: nextId, title, message, tone });
+    popupTimerRef.current = window.setTimeout(() => {
+      setPopupNotice((prev) => (prev?.id === nextId ? null : prev));
+      popupTimerRef.current = null;
+    }, 3600);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (popupTimerRef.current !== null) {
+        window.clearTimeout(popupTimerRef.current);
+      }
+      if (saveUserTimerRef.current !== null) {
+        window.clearTimeout(saveUserTimerRef.current);
+      }
+    };
+  }, []);
+
   useEffect(() => {
     if (isOpen) {
       setDisplayName(profile.displayName);
@@ -187,7 +224,8 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
       setBankHolder(rtSettings.bankAccountHolder || '');
       setPhoneRT(rtSettings.emergencyPhoneRT || '112');
       setPhoneMed(rtSettings.emergencyPhoneMedical || '118');
-      setFeedback(null);
+      setSaveUserClicked(false);
+      setPopupNotice(null);
       setSlideError(null);
       setEditingSlideId(null);
     }
@@ -209,11 +247,34 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     (entry) => entry.effectiveMonth > currentYm
   );
 
+  const handleToggleDarkModeClick = () => {
+    const next = !darkMode;
+    onToggleDarkMode();
+    showSettingsPopup(
+      next ? 'Mode Gelap Diaktifkan' : 'Mode Gelap Dinonaktifkan',
+      next ? 'Tampilan beralih ke tema gelap.' : 'Tampilan kembali ke tema terang.'
+    );
+  };
+
+  const handleToggleElderlyModeClick = () => {
+    const next = !elderlyMode;
+    onToggleElderlyMode();
+    showSettingsPopup(
+      next ? 'Mode Ramah Lansia Diaktifkan' : 'Mode Ramah Lansia Dinonaktifkan',
+      next
+        ? 'Ukuran teks & kontras disesuaikan agar lebih nyaman.'
+        : 'Ukuran tampilan kembali ke standar.'
+    );
+  };
+
   const handleEnablePush = async () => {
     if (pushStatus === 'granted' && pushEnabled) {
       setBrowserPushEnabled(false);
       setPushEnabled(false);
-      setFeedback('Notifikasi push dinonaktifkan di perangkat ini.');
+      showSettingsPopup(
+        'Push Notifikasi Dinonaktifkan',
+        'Notifikasi push di perangkat ini dimatikan.'
+      );
       return;
     }
 
@@ -222,19 +283,31 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     if (perm === 'granted') {
       setBrowserPushEnabled(true);
       setPushEnabled(true);
-      setFeedback('Notifikasi push aktif. Pengumuman dan notifikasi dari admin akan muncul otomatis.');
+      showSettingsPopup(
+        'Push Notifikasi Diaktifkan',
+        'Pengumuman dan notifikasi dari admin akan muncul otomatis.'
+      );
     } else if (perm === 'denied') {
       setPushEnabled(false);
-      setFeedback('Izin notifikasi diblokir browser. Aktifkan izin notifikasi di pengaturan browser Anda.');
+      showSettingsPopup(
+        'Izin Notifikasi Diblokir',
+        'Aktifkan izin notifikasi di pengaturan browser Anda.',
+        'error'
+      );
     } else {
       setPushEnabled(false);
+      showSettingsPopup(
+        'Push Notifikasi Belum Aktif',
+        'Browser belum mendukung atau izin notifikasi belum diberikan.',
+        'error'
+      );
     }
   };
 
   const handleSaveUser = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setFeedback(null);
+    setSavingUser(true);
     try {
       await onSaveProfile({
         displayName: displayName.trim() || profile.displayName,
@@ -242,22 +315,29 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
         residentStatus,
         familyStatus,
       });
-      setFeedback(
+      showSettingsPopup(
+        'Identitas Warga Diperbarui',
         isFamilyStatusChanging
-          ? `Profil diperbarui. Tarif ${FAMILY_STATUS_LABELS[familyStatus]} berlaku mulai ${formatMonthLabel(
+          ? `Tarif ${FAMILY_STATUS_LABELS[familyStatus]} berlaku mulai ${formatMonthLabel(
               effectiveChangeMonth
-            )}; riwayat pembayaran sebelumnya tetap terkunci.`
-          : 'Profil warga berhasil diperbarui.'
+            )}; riwayat sebelumnya tetap terkunci.`
+          : 'Nama lengkap, blok rumah, dan status warga berhasil disimpan.'
+      );
+    } catch (err) {
+      showSettingsPopup(
+        'Gagal Menyimpan Identitas',
+        err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan profil warga.',
+        'error'
       );
     } finally {
       setSaving(false);
+      setSavingUser(false);
     }
   };
 
   const handleSaveAdminConfig = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    setFeedback(null);
     try {
       await onSaveRtSettings({
         rtName: rtName.trim() || 'RT 12',
@@ -271,7 +351,16 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
         emergencyPhoneRT: phoneRT.trim(),
         emergencyPhoneMedical: phoneMed.trim(),
       });
-      setFeedback('Pengaturan Kas RT berhasil disimpan.');
+      showSettingsPopup(
+        'Pengaturan RT Disimpan',
+        'Identitas RT, nominal iuran, rekening, dan nomor darurat diperbarui.'
+      );
+    } catch (err) {
+      showSettingsPopup(
+        'Gagal Menyimpan Pengaturan RT',
+        err instanceof Error ? err.message : 'Terjadi kesalahan saat menyimpan pengaturan RT.',
+        'error'
+      );
     } finally {
       setSaving(false);
     }
@@ -293,10 +382,15 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
         });
       }
       setPendingSlides((prev) => [...prev, ...processed].slice(0, 8));
-    } catch (err) {
-      setSlideError(
-        err instanceof Error ? err.message : 'Gagal memproses foto dari penyimpanan lokal.'
+      showSettingsPopup(
+        'Foto Siap Diunggah',
+        `${processed.length} foto dipilih. Tekan Tambahkan Foto ke Slideshow untuk menyimpan.`
       );
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : 'Gagal memproses foto dari penyimpanan lokal.';
+      setSlideError(msg);
+      showSettingsPopup('Gagal Memproses Foto', msg, 'error');
     } finally {
       setSlideBusy(false);
       if (slideFileInputRef.current) {
@@ -311,7 +405,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
 
     setSlideBusy(true);
     setSlideError(null);
-    setFeedback(null);
     try {
       for (let i = 0; i < pendingSlides.length; i++) {
         const item = pendingSlides[i];
@@ -333,13 +426,14 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
       setPendingSlides([]);
       setSlideTitle('');
       setSlideSubtitle('');
-      setFeedback(
-        `${uploadedCount} foto kegiatan berhasil ditambahkan ke slideshow halaman login.`
+      showSettingsPopup(
+        'Slideshow Ditambahkan',
+        `${uploadedCount} foto kegiatan ditambahkan ke slideshow halaman login.`
       );
     } catch (err) {
-      setSlideError(
-        err instanceof Error ? err.message : 'Gagal menyimpan foto kegiatan ke cloud.'
-      );
+      const msg = err instanceof Error ? err.message : 'Gagal menyimpan foto kegiatan ke cloud.';
+      setSlideError(msg);
+      showSettingsPopup('Gagal Mengunggah Foto', msg, 'error');
     } finally {
       setSlideBusy(false);
     }
@@ -361,9 +455,14 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
         subtitle: editSubtitle.trim(),
       });
       setEditingSlideId(null);
-      setFeedback('Keterangan foto slideshow berhasil diperbarui.');
+      showSettingsPopup(
+        'Slideshow Diperbarui',
+        'Judul dan keterangan foto slideshow berhasil disimpan.'
+      );
     } catch (err) {
-      setSlideError(err instanceof Error ? err.message : 'Gagal memperbarui keterangan foto.');
+      const msg = err instanceof Error ? err.message : 'Gagal memperbarui keterangan foto.';
+      setSlideError(msg);
+      showSettingsPopup('Gagal Memperbarui Foto', msg, 'error');
     } finally {
       setSlideBusy(false);
     }
@@ -375,8 +474,14 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     setSlideError(null);
     try {
       await onMoveBannerSlide(id, direction);
+      showSettingsPopup(
+        'Urutan Slideshow Diubah',
+        `Foto berhasil digeser ke ${direction === 'up' ? 'atas' : 'bawah'}.`
+      );
     } catch (err) {
-      setSlideError(err instanceof Error ? err.message : 'Gagal mengubah urutan foto.');
+      const msg = err instanceof Error ? err.message : 'Gagal mengubah urutan foto.';
+      setSlideError(msg);
+      showSettingsPopup('Gagal Mengubah Urutan', msg, 'error');
     } finally {
       setSlideBusy(false);
     }
@@ -389,58 +494,90 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
     try {
       await onDeleteBannerSlide(id);
       if (editingSlideId === id) setEditingSlideId(null);
-      setFeedback('Foto kegiatan dihapus dari slideshow.');
+      showSettingsPopup(
+        'Foto Slideshow Dihapus',
+        'Foto kegiatan dihapus dari slideshow halaman login.'
+      );
     } catch (err) {
-      setSlideError(err instanceof Error ? err.message : 'Gagal menghapus foto.');
+      const msg = err instanceof Error ? err.message : 'Gagal menghapus foto.';
+      setSlideError(msg);
+      showSettingsPopup('Gagal Menghapus Foto', msg, 'error');
     } finally {
       setSlideBusy(false);
     }
   };
 
   return (
-    <div
-      role="dialog"
-      aria-modal="true"
-      aria-label="Pengaturan Akun dan Tampilan"
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain touch-none"
-    >
-      <div
-        onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-xl max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden touch-auto"
-      >
-        <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
-          <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
-        </div>
-
-        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
-          <div className="min-w-0">
-            <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
-              Pengaturan Akun & Aksesibilitas
-            </h2>
-            <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
-              {profile.username ? `@${profile.username}` : userEmail} ·{' '}
-              <span className="font-semibold text-emerald-700 dark:text-emerald-400">
-                {rbac.positionLabel}
-              </span>
-            </p>
+    <>
+      {popupNotice && (
+        <div
+          role="status"
+          aria-live="polite"
+          onClick={(e) => e.stopPropagation()}
+          className={`fixed top-3 right-3 left-3 sm:left-auto sm:top-5 sm:right-5 sm:w-[340px] z-[70] rounded-2xl px-3.5 py-3 shadow-2xl border flex items-start gap-2.5 transition-all ${
+            popupNotice.tone === 'error'
+              ? 'bg-red-600 text-white border-red-400/60'
+              : 'bg-slate-900/95 dark:bg-slate-800/95 text-white border-emerald-500/40'
+          }`}
+        >
+          {popupNotice.tone === 'error' ? (
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-red-100" />
+          ) : (
+            <CheckCircle2 className="w-4 h-4 shrink-0 mt-0.5 text-emerald-400" />
+          )}
+          <div className="flex-1 min-w-0">
+            <p className="text-xs font-bold leading-snug">{popupNotice.title}</p>
+            <p className="text-[11px] leading-snug opacity-90 mt-0.5">{popupNotice.message}</p>
           </div>
           <button
             type="button"
-            onClick={onClose}
-            aria-label="Tutup pengaturan"
-            className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
+            onClick={() => setPopupNotice(null)}
+            aria-label="Tutup notifikasi pengaturan"
+            className="min-h-[28px] min-w-[28px] flex items-center justify-center rounded-lg hover:bg-white/15 shrink-0 cursor-pointer"
           >
-            <X className="w-5 h-5" />
+            <X className="w-3.5 h-3.5" />
           </button>
         </div>
+      )}
 
-        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
-          {feedback && (
-            <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3.5 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
-              {feedback}
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-label="Pengaturan Akun dan Tampilan"
+        onClick={onClose}
+        className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain touch-none"
+      >
+        <div
+          onClick={(e) => e.stopPropagation()}
+          className="w-full sm:max-w-xl max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden touch-auto"
+        >
+          <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
+            <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
+          </div>
+
+          <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
+            <div className="min-w-0">
+              <h2 className="text-base sm:text-lg font-bold text-slate-900 dark:text-slate-100 truncate">
+                Pengaturan Akun & Aksesibilitas
+              </h2>
+              <p className="text-xs text-slate-500 dark:text-slate-400 truncate">
+                {profile.username ? `@${profile.username}` : userEmail} ·{' '}
+                <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                  {rbac.positionLabel}
+                </span>
+              </p>
             </div>
-          )}
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Tutup pengaturan"
+              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 shrink-0 cursor-pointer"
+            >
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
 
           {rbac.isPengurus && rbac.position !== 'warga' && (
             <div className="rounded-2xl bg-emerald-50/70 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-900 p-4 space-y-2.5">
@@ -487,7 +624,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               <button
                 type="button"
-                onClick={onToggleDarkMode}
+                onClick={handleToggleDarkModeClick}
                 aria-pressed={darkMode}
                 className={`w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   darkMode
@@ -514,7 +651,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
 
               <button
                 type="button"
-                onClick={onToggleElderlyMode}
+                onClick={handleToggleElderlyModeClick}
                 aria-pressed={elderlyMode}
                 className={`w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   elderlyMode
@@ -543,7 +680,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                 type="button"
                 onClick={() => void handleEnablePush()}
                 aria-pressed={pushStatus === 'granted' && pushEnabled}
-                className={`w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                className={`sm:col-span-2 w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   pushStatus === 'granted' && pushEnabled
                     ? 'border-emerald-700 bg-emerald-700 hover:bg-emerald-800 text-white'
                     : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -567,23 +704,6 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                   }`}
                 >
                   {pushStatus === 'granted' && pushEnabled ? 'Aktif' : 'Nonaktif'}
-                </span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  onClose();
-                  onOpenTutorial();
-                }}
-                className="w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
-              >
-                <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
-                  <BookOpen className="w-4 h-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
-                  <span className="truncate">Ulangi Tutorial</span>
-                </span>
-                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
-                  Buka
                 </span>
               </button>
             </div>
@@ -685,7 +805,20 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             <button
               type="submit"
               disabled={saving}
-              className="min-h-[44px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white text-sm font-semibold cursor-pointer"
+              onClick={() => {
+                setSaveUserClicked(true);
+                if (saveUserTimerRef.current !== null) {
+                  window.clearTimeout(saveUserTimerRef.current);
+                }
+                saveUserTimerRef.current = window.setTimeout(() => {
+                  setSaveUserClicked(false);
+                }, 450);
+              }}
+              className={`min-h-[44px] px-5 rounded-xl border text-sm font-semibold transition-all cursor-pointer touch-manipulation select-none enabled:active:scale-[0.98] disabled:opacity-55 ${
+                saveUserClicked || savingUser
+                  ? 'bg-emerald-700 border-emerald-700 text-white shadow-sm'
+                  : 'bg-white dark:bg-slate-800/40 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white enabled:hover:bg-emerald-700 dark:enabled:hover:bg-emerald-700 enabled:hover:border-emerald-700 dark:enabled:hover:border-emerald-700 enabled:hover:text-white dark:enabled:hover:text-white enabled:active:bg-emerald-700 dark:enabled:active:bg-emerald-700 enabled:active:border-emerald-700 dark:enabled:active:border-emerald-700 enabled:active:text-white dark:enabled:active:text-white'
+              }`}
             >
               Simpan Identitas Warga
             </button>
@@ -1032,14 +1165,13 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                               >
                                 <Check className="w-4 h-4" />
                               </button>
-                              <button
-                                type="button"
+                              <CancelButton
                                 onClick={() => setEditingSlideId(null)}
                                 aria-label="Batal ubah"
-                                className="min-h-[40px] min-w-[40px] rounded-xl border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 flex items-center justify-center hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer"
+                                className="min-h-[40px] min-w-[40px] rounded-xl"
                               >
                                 <X className="w-4 h-4" />
-                              </button>
+                              </CancelButton>
                             </>
                           ) : (
                             <>
@@ -1136,7 +1268,23 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                       <button
                         type="button"
                         disabled={isConnectingSheet}
-                        onClick={() => void onCreateSpreadsheet()}
+                        onClick={async () => {
+                          try {
+                            await onCreateSpreadsheet();
+                            showSettingsPopup(
+                              'Spreadsheet Baru Dibuat',
+                              'Database Google Spreadsheet baru siap digunakan.'
+                            );
+                          } catch (err) {
+                            showSettingsPopup(
+                              'Gagal Membuat Spreadsheet',
+                              err instanceof Error
+                                ? err.message
+                                : 'Terjadi kesalahan saat membuat Spreadsheet.',
+                              'error'
+                            );
+                          }
+                        }}
                         className="w-full min-h-[42px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white text-xs font-bold inline-flex items-center justify-center gap-2 cursor-pointer"
                       >
                         <FolderPlus className="w-4 h-4 shrink-0" />
@@ -1161,8 +1309,22 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                           type="button"
                           disabled={isConnectingSheet || !sheetIdInput.trim()}
                           onClick={async () => {
-                            await onConnectSpreadsheetById(sheetIdInput);
-                            setSheetIdInput('');
+                            try {
+                              await onConnectSpreadsheetById(sheetIdInput);
+                              setSheetIdInput('');
+                              showSettingsPopup(
+                                'Spreadsheet Terhubung',
+                                'Database Google Spreadsheet berhasil dihubungkan.'
+                              );
+                            } catch (err) {
+                              showSettingsPopup(
+                                'Gagal Menghubungkan Spreadsheet',
+                                err instanceof Error
+                                  ? err.message
+                                  : 'Periksa kembali URL atau ID Spreadsheet.',
+                                'error'
+                              );
+                            }
                           }}
                           className="min-h-[40px] px-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 text-xs font-bold inline-flex items-center gap-1.5 shrink-0 disabled:opacity-50 cursor-pointer"
                         >
@@ -1179,7 +1341,13 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                     <button
                       type="button"
                       disabled={isSyncing}
-                      onClick={onSyncNow}
+                      onClick={() => {
+                        onSyncNow();
+                        showSettingsPopup(
+                          'Sinkronisasi Spreadsheet',
+                          'Memperbarui data terbaru dari Google Spreadsheet.'
+                        );
+                      }}
                       className="min-h-[38px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer disabled:opacity-50"
                     >
                       <RefreshCw className={`w-3.5 h-3.5 ${isSyncing ? 'animate-spin' : ''}`} />
@@ -1197,8 +1365,16 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                           await navigator.clipboard.writeText(inviteUrl);
                           setCopiedInvite(true);
                           window.setTimeout(() => setCopiedInvite(false), 3000);
+                          showSettingsPopup(
+                            'Link Terhubung Disalin',
+                            'Tautan koneksi otomatis berhasil disalin ke papan klip.'
+                          );
                         } catch {
-                          setFeedback('Browser menolak salin otomatis.');
+                          showSettingsPopup(
+                            'Gagal Menyalin Link',
+                            'Browser menolak salin otomatis ke papan klip.',
+                            'error'
+                          );
                         }
                       }}
                       className="min-h-[38px] px-3.5 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/70 dark:bg-emerald-950/40 hover:bg-emerald-100 dark:hover:bg-emerald-950 text-emerald-800 dark:text-emerald-300 text-xs font-semibold inline-flex items-center gap-1.5 cursor-pointer"
@@ -1219,7 +1395,23 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                   {onDisconnectGoogle && (
                     <button
                       type="button"
-                      onClick={() => void onDisconnectGoogle()}
+                      onClick={async () => {
+                        try {
+                          await onDisconnectGoogle();
+                          showSettingsPopup(
+                            'Koneksi Database Diputus',
+                            'Koneksi Google Spreadsheet telah diputuskan.'
+                          );
+                        } catch (err) {
+                          showSettingsPopup(
+                            'Gagal Memutus Koneksi',
+                            err instanceof Error
+                              ? err.message
+                              : 'Terjadi kesalahan saat memutus koneksi.',
+                            'error'
+                          );
+                        }
+                      }}
                       className="min-h-[38px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 hover:bg-slate-100 dark:hover:bg-slate-800 text-xs font-semibold text-slate-600 dark:text-slate-300 cursor-pointer"
                     >
                       Putuskan Koneksi Database
@@ -1230,8 +1422,9 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             </div>
           )}
 
+          </div>
         </div>
       </div>
-    </div>
+    </>
   );
 };

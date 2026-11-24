@@ -12,6 +12,7 @@ import {
 import { compressBannerSlideImage } from '../lib/crypto';
 import type { BannerSlide } from '../types';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { CancelButton } from './CancelButton';
 
 interface StagedSlide {
   localId: string;
@@ -394,13 +395,12 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
                                 <Check className="w-3.5 h-3.5" />
                                 <span>Simpan</span>
                               </button>
-                              <button
-                                type="button"
+                              <CancelButton
                                 onClick={() => setEditingId(null)}
-                                className="min-h-[36px] px-3 rounded-lg border border-slate-300 dark:border-slate-700 text-xs font-semibold"
+                                className="min-h-[36px] px-3 rounded-lg text-xs"
                               >
                                 Batal
-                              </button>
+                              </CancelButton>
                             </div>
                           </div>
                         ) : (

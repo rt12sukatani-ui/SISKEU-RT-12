@@ -53,7 +53,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('beranda')}
-            className="font-display text-[13px] sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 min-w-0 truncate text-left cursor-pointer hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+            className="font-display text-xs sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 min-w-0 truncate text-left cursor-pointer hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
           >
             SISKEU RT 12/RW 20 SUKATANI
           </button>
