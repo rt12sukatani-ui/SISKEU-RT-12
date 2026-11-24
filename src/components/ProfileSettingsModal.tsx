@@ -863,7 +863,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                     <input
                       type="text"
                       maxLength={80}
-                      placeholder="Contoh: Kerja Bakti Blok A & B"
+                      placeholder="Kerja Bakti Blok A & B"
                       value={slideTitle}
                       onChange={(e) => setSlideTitle(e.target.value)}
                       className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
@@ -876,7 +876,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                     <input
                       type="text"
                       maxLength={160}
-                      placeholder="Contoh: Minggu pagi bersama warga RT 12"
+                      placeholder="Minggu pagi bersama warga RT 12"
                       value={slideSubtitle}
                       onChange={(e) => setSlideSubtitle(e.target.value)}
                       className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"

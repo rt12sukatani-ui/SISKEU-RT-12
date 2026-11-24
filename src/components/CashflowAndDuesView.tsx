@@ -620,7 +620,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 inputMode="numeric"
                 value={amount}
                 onChange={(e) => setAmount(formatNominalInput(e.target.value))}
-                placeholder="Contoh: 120.000"
+                placeholder="120.000"
                 required
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono-num"
               />
@@ -728,7 +728,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             <input
               type="text"
               maxLength={250}
-              placeholder="Contoh: Transfer dari rekening atas nama Budi"
+              placeholder="Transfer dari rekening atas nama Budi"
               value={notes}
               onChange={(e) => setNotes(e.target.value)}
               className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
@@ -832,7 +832,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 type="text"
                 required
                 maxLength={110}
-                placeholder="Contoh: Honor petugas kebersihan & angkut sampah"
+                placeholder="Honor petugas kebersihan & angkut sampah"
                 value={adminTitle}
                 onChange={(e) => setAdminTitle(e.target.value)}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
@@ -844,7 +844,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 type="text"
                 inputMode="numeric"
                 required
-                placeholder="Contoh: 10.000"
+                placeholder="10.000"
                 value={adminAmount}
                 onChange={(e) => setAdminAmount(formatNominalInput(e.target.value))}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-mono-num"
@@ -1312,7 +1312,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             <input
               type="text"
               maxLength={180}
-              placeholder="Contoh: Foto buram / nominal tidak sesuai mutasi rekening"
+              placeholder="Foto buram / nominal tidak sesuai mutasi rekening"
               value={rejectReason}
               onChange={(e) => setRejectReason(e.target.value)}
               className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"

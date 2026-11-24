@@ -631,7 +631,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                       type="text"
                       value={fullName}
                       onChange={(e) => setFullName(e.target.value)}
-                      placeholder="Contoh: Budi Santoso"
+                      placeholder="Budi Santoso"
                       className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                     />
                   </div>
@@ -821,7 +821,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                           type="text"
                           value={houseBlock}
                           onChange={(e) => setHouseBlock(e.target.value)}
-                          placeholder="Contoh: FF2/5"
+                          placeholder="FF2/5"
                           className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                         />
                       </div>
@@ -834,7 +834,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                             type="text"
                             value={username}
                             onChange={(e) => setUsername(e.target.value)}
-                            placeholder="Contoh: budi_ff2"
+                            placeholder="budi_ff2"
                             autoComplete="username"
                             className="w-full min-h-[40px] pl-9 pr-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
                           />

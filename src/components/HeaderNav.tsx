@@ -109,11 +109,10 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
             <button
               type="button"
               onClick={onOpenSettings}
-              aria-label="Pengaturan & Profil Warga"
-              className="min-h-[44px] min-w-[44px] sm:px-3.5 rounded-xl bg-slate-900 dark:bg-slate-100 text-white dark:text-slate-900 hover:bg-slate-800 dark:hover:bg-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap shrink-0 transition-colors cursor-pointer"
+              aria-label="Pengaturan"
+              className="min-h-[44px] min-w-[44px] rounded-xl bg-transparent border-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer"
             >
               <Settings className="w-4 h-4 shrink-0" />
-              <span className="hidden sm:inline">Setup</span>
             </button>
           </div>
         </div>

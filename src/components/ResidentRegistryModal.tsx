@@ -561,7 +561,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                   type="text"
                   required
                   maxLength={75}
-                  placeholder="Contoh: Firman Mahameru"
+                  placeholder="Firman Mahameru"
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
                   className="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"

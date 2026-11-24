@@ -188,7 +188,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
               type="text"
               required
               maxLength={110}
-              placeholder="Contoh: Jadwal Posyandu Lansia & Kerja Bakti Minggu Ini"
+              placeholder="Jadwal Posyandu Lansia & Kerja Bakti Minggu Ini"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"

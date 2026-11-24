@@ -285,7 +285,7 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
                         <input
                           type="text"
                           maxLength={80}
-                          placeholder="Label atas (contoh: Sistem Terpadu Warga)"
+                          placeholder="Label atas (Sistem Terpadu Warga)"
                           value={item.title}
                           onChange={(e) => {
                             const val = e.target.value;
@@ -300,7 +300,7 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
                         <input
                           type="text"
                           maxLength={160}
-                          placeholder="Keterangan slide (contoh: Kerja Bakti Mingguan RT 12)"
+                          placeholder="Keterangan slide (Kerja Bakti Mingguan RT 12)"
                           value={item.subtitle}
                           onChange={(e) => {
                             const val = e.target.value;

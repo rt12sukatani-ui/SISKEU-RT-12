@@ -277,7 +277,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                 <input
                   type="text"
                   maxLength={250}
-                  placeholder="Contoh: Sesak napas mendadak, butuh ambulans segera"
+                  placeholder="Sesak napas mendadak, butuh ambulans segera"
                   value={sosNote}
                   onChange={(e) => setSosNote(e.target.value)}
                   className="w-full min-h-[44px] px-3 rounded-xl border border-red-200 dark:border-red-800 bg-white dark:bg-slate-900 text-sm"
@@ -607,7 +607,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                   <input
                     type="text"
                     maxLength={20}
-                    placeholder="Contoh: ****-****-****-1234"
+                    placeholder="****-****-****-1234"
                     value={nikMasked}
                     onChange={(e) => setNikMasked(e.target.value)}
                     className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
@@ -664,7 +664,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                   <input
                     type="text"
                     maxLength={100}
-                    placeholder="Contoh: BPJS Kesehatan · Puskesmas Kec."
+                    placeholder="BPJS Kesehatan · Puskesmas Kec."
                     value={insuranceProvider}
                     onChange={(e) => setInsuranceProvider(e.target.value)}
                     className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
@@ -677,7 +677,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                 <input
                   type="text"
                   maxLength={150}
-                  placeholder="Contoh: Alergi penisilin, atau Tidak ada"
+                  placeholder="Alergi penisilin, atau Tidak ada"
                   value={allergies}
                   onChange={(e) => setAllergies(e.target.value)}
                   className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
@@ -690,7 +690,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                   <input
                     type="text"
                     maxLength={150}
-                    placeholder="Contoh: Hipertensi, Diabetes, Asma"
+                    placeholder="Hipertensi, Diabetes, Asma"
                     value={chronicConditions}
                     onChange={(e) => setChronicConditions(e.target.value)}
                     className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
@@ -701,7 +701,7 @@ export const EmergencyAndHealthView: React.FC<EmergencyAndHealthViewProps> = ({
                   <input
                     type="text"
                     maxLength={150}
-                    placeholder="Contoh: Amlodipine 5mg pagi"
+                    placeholder="Amlodipine 5mg pagi"
                     value={medications}
                     onChange={(e) => setMedications(e.target.value)}
                     className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
