@@ -316,7 +316,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             {!emblemFailed ? (
               <img
                 src={appEmblemImg}
-                alt="Logo RT12/RW20 SUKATANI"
+                alt="Logo RT 12/RW 20 SUKATANI"
                 referrerPolicy="no-referrer"
                 onError={() => setEmblemFailed(true)}
                 className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
@@ -328,7 +328,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             )}
             <div className="min-w-0">
               <span className="font-display text-xs sm:text-base font-extrabold tracking-tight block truncate">
-                RT12/RW20 SUKATANI
+                RT 12/RW 20 SUKATANI
               </span>
               <span className="text-[11px] text-slate-500 dark:text-slate-400 hidden sm:block truncate">
                 Sistem Keuangan &amp; Siaga Warga
