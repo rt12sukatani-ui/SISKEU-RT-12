@@ -38,17 +38,17 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
       onClick={() => {
         if (!busy) onCancel();
       }}
-      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain touch-none"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-md rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+        className="w-full sm:max-w-md max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden touch-auto"
       >
-        <div className="sm:hidden pt-3 pb-1 flex justify-center">
+        <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
           <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
         </div>
 
-        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-3 shrink-0">
           <div className="flex items-center gap-2.5">
             <div
               className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
@@ -79,7 +79,7 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
           </button>
         </div>
 
-        <div className="p-4 sm:p-6 pb-safe space-y-4">
+        <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y p-4 sm:p-6 pb-safe space-y-4">
           <p className="text-sm text-slate-700 dark:text-slate-300 leading-relaxed">
             {description}
           </p>

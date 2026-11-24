@@ -40,6 +40,7 @@ function lockBodyScroll(): void {
       paddingRight: body.style.paddingRight,
     };
 
+    html.classList.add('modal-open');
     html.style.overflow = 'hidden';
     html.style.overscrollBehavior = 'none';
 
@@ -66,6 +67,8 @@ function unlockBodyScroll(): void {
 
   const html = document.documentElement;
   const body = document.body;
+
+  html.classList.remove('modal-open');
 
   if (savedHtmlStyles) {
     html.style.overflow = savedHtmlStyles.overflow;

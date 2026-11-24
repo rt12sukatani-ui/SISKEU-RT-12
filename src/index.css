@@ -26,6 +26,13 @@
     font-size: 18px;
   }
 
+  input[type="month"],
+  input[type="date"] {
+    max-width: 100%;
+    min-width: 0;
+    box-sizing: border-box;
+  }
+
   input[type="month"]::-webkit-calendar-picker-indicator,
   input[type="date"]::-webkit-calendar-picker-indicator {
     cursor: pointer;
@@ -73,6 +80,16 @@ body {
 .no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
+}
+
+html.modal-open,
+html.modal-open body {
+  overflow: hidden !important;
+  overscroll-behavior: none !important;
+}
+
+html.modal-open [data-mobile-bottom-nav] {
+  display: none !important;
 }
 
 @media print {

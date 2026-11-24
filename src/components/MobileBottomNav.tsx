@@ -31,10 +31,11 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
 }) => {
   return (
     <nav
+      data-mobile-bottom-nav="true"
       aria-label="Navigasi bawah ponsel"
       className="lg:hidden fixed bottom-0 left-0 right-0 z-40 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 pb-safe overflow-hidden touch-manipulation print:hidden"
     >
-      <div className="grid grid-cols-4 items-center h-16">
+      <div className="grid grid-cols-4 items-center h-14">
         {TABS.map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -55,8 +56,8 @@ export const MobileBottomNav: React.FC<MobileBottomNavProps> = ({
                   className="absolute top-0 left-1/2 -translate-x-1/2 w-8 h-0.5 rounded-full bg-emerald-700 dark:bg-emerald-400"
                 />
               )}
-              <Icon className="w-5 h-5 shrink-0" />
-              <span className="text-[10px] sm:text-[11px] font-semibold tracking-tight mt-1 whitespace-nowrap truncate max-w-full">
+              <Icon className="w-4 h-4 shrink-0" />
+              <span className="text-[10px] font-semibold tracking-tight mt-0.5 whitespace-nowrap truncate max-w-full">
                 {tab.label}
               </span>
             </button>

@@ -48,12 +48,12 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
   return (
     <>
       <header className="sticky top-0 z-30 bg-white/90 dark:bg-slate-900/90 backdrop-blur-md border-b border-slate-200/90 dark:border-slate-800 print:hidden">
-        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-14 lg:h-16 flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
+        <div className="max-w-6xl mx-auto px-3 sm:px-6 h-12 sm:h-14 lg:h-16 flex items-center justify-between gap-2 sm:gap-4 lg:gap-8">
           {/* Zone 1: Single-line Brand Wordmark */}
           <button
             type="button"
             onClick={() => onNavigate('beranda')}
-            className="font-display text-sm sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 min-w-0 truncate text-left cursor-pointer hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
+            className="font-display text-[13px] sm:text-lg font-extrabold tracking-tight text-slate-900 dark:text-slate-100 min-w-0 truncate text-left cursor-pointer hover:text-emerald-700 dark:hover:text-emerald-400 transition-colors"
           >
             SISKEU RT 12/RW 20 SUKATANI
           </button>
@@ -80,37 +80,37 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           </nav>
 
           {/* Zone 3: Single Action Cluster (Logout + Notifications + Account/Mode) */}
-          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-0.5 sm:gap-2 shrink-0">
             <button
               type="button"
-              onClick={() => void onLogout()}
-              aria-label="Keluar dari akun"
-              title="Keluar"
-              className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border-0 outline-none focus:outline-none text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+              onClick={onOpenSettings}
+              aria-label="Pengaturan"
+              className="min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] rounded-xl bg-transparent border-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer"
             >
-              <LogOut className="w-4 h-4 shrink-0" />
-              <span className="hidden md:inline"></span>
+              <Settings className="w-4 h-4 shrink-0" />
             </button>
             <button
               type="button"
               onClick={() => setNotifOpen(true)}
               aria-label={`Buka notifikasi (${unreadCount} belum dibaca)`}
-              className="relative min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+              className="relative min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
             >
-              <Bell className="w-5 h-5" />
+              <Bell className="w-4 h-4 sm:w-5 sm:h-5" />
               {unreadCount > 0 && (
-                <span className="absolute top-1.5 right-1.5 min-w-[18px] h-[18px] px-1 rounded-full bg-emerald-700 text-white text-[10px] font-bold flex items-center justify-center tabular-nums">
+                <span className="absolute top-1 right-1 sm:top-1.5 sm:right-1.5 min-w-[16px] sm:min-w-[18px] h-[16px] sm:h-[18px] px-1 rounded-full bg-emerald-700 text-white text-[9px] sm:text-[10px] font-bold flex items-center justify-center tabular-nums">
                   {unreadCount > 9 ? '9+' : unreadCount}
                 </span>
               )}
             </button>
             <button
               type="button"
-              onClick={onOpenSettings}
-              aria-label="Pengaturan"
-              className="min-h-[44px] min-w-[44px] rounded-xl bg-transparent border-0 text-slate-700 dark:text-slate-200 hover:bg-slate-100/80 dark:hover:bg-slate-800/80 inline-flex items-center justify-center shrink-0 transition-colors cursor-pointer"
+              onClick={() => void onLogout()}
+              aria-label="Keluar dari akun"
+              title="Keluar"
+              className="relative min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl border-0 outline-none focus:outline-none text-red-600 dark:text-red-500 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
             >
-              <Settings className="w-4 h-4 shrink-0" />
+              <LogOut className="w-4 h-4 shrink-0" />
+              <span className="hidden md:inline"></span>
             </button>
           </div>
         </div>
@@ -122,17 +122,17 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           aria-modal="true"
           aria-label="Daftar Notifikasi"
           onClick={() => setNotifOpen(false)}
-          className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-end bg-black/50 backdrop-blur-xs sm:p-4 overscroll-contain"
+          className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-end bg-black/50 backdrop-blur-xs sm:p-4 overscroll-contain touch-none"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-md max-h-[82vh] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+            className="w-full sm:max-w-md max-h-[82dvh] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden touch-auto"
           >
-            <div className="sm:hidden pt-3 pb-1 flex justify-center">
+            <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
               <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
             </div>
 
-            <div className="px-4 sm:px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="px-4 sm:px-5 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-2 shrink-0">
               <div className="min-w-0">
                 <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
                   Notifikasi Warga
@@ -163,7 +163,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto overscroll-contain pb-safe divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y pb-safe divide-y divide-slate-100 dark:divide-slate-800">
               {notifications.length === 0 ? (
                 <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
                   Belum ada notifikasi baru saat ini.

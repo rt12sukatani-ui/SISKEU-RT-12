@@ -3385,7 +3385,7 @@ export default function App() {
           ).length;
 
           return (
-            <div className="min-h-dvh bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20 lg:pb-8 overflow-x-clip">
+            <div className="min-h-dvh bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-16 lg:pb-8 overflow-x-clip">
               <HeaderNav
                 activeTab={activeTab}
                 onNavigate={(tab) => {
@@ -3431,7 +3431,7 @@ export default function App() {
 
               {/* Offline / Pending Sync Notice */}
               {(!isOnline || offlineQueueCount > 0) && (
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 print:hidden">
+                <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 print:hidden">
                   <div className="rounded-xl bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 px-4 py-3 flex items-center justify-between gap-3 text-xs sm:text-sm text-amber-900 dark:text-amber-200">
                     <div className="flex items-center gap-2.5">
                       <WifiOff className="w-4 h-4 shrink-0" />
@@ -3457,7 +3457,7 @@ export default function App() {
 
               {/* Non-blocking New User Interactive Tutorial Banner */}
               {showNewUserBanner && (
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 print:hidden">
+                <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 print:hidden">
                   <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
                     <div className="flex items-start gap-3">
                       <BookOpen className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
@@ -3499,7 +3499,7 @@ export default function App() {
 
               {/* Admin Database Setup Panel (only after Admin login when no Spreadsheet exists) */}
               {!sheetInfo && (
-                <div className="max-w-6xl mx-auto px-4 sm:px-6 pt-4 print:hidden">
+                <div className="max-w-6xl mx-auto px-3 sm:px-6 pt-3 sm:pt-4 print:hidden">
                   {rbac.isFullAdmin ? (
                     <div className="rounded-2xl bg-emerald-50/90 dark:bg-emerald-950/40 border border-emerald-300 dark:border-emerald-800 p-4 sm:p-5 space-y-3.5 shadow-xs">
                       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -3561,7 +3561,7 @@ export default function App() {
                 </div>
               )}
 
-              <main className="max-w-6xl mx-auto px-4 sm:px-6 py-6 sm:py-8">
+              <main className="max-w-6xl mx-auto px-3 sm:px-6 py-3.5 sm:py-8">
                 <motion.div
                   key={activeTab}
                   initial={{ opacity: 0, y: 6 }}

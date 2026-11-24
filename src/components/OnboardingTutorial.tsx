@@ -90,11 +90,11 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
       aria-modal="true"
       aria-labelledby="tutorial-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 overscroll-contain"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 overscroll-contain touch-none"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-lg rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-2xl"
+        className="w-full sm:max-w-lg max-h-[90dvh] overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-safe shadow-2xl"
       >
         <div className="sm:hidden pb-3 flex justify-center">
           <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />

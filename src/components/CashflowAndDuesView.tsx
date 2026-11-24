@@ -347,19 +347,19 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header & Action Buttons */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
             Kas Warga & Verifikasi Iuran
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">
             Unggah bukti transfer untuk verifikasi real-time · Catatan transaksi transparan
           </p>
         </div>
 
-        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 sm:gap-3">
+        <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2 sm:gap-3">
           <button
             type="button"
             onClick={() => {
@@ -371,9 +371,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               setShowDuesForm(true);
               setShowAdminEntryForm(false);
             }}
-            className="flex-1 min-h-[48px] px-4 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+            className="flex-1 min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
           >
-            <Wallet className="w-4 h-4 shrink-0" />
+            <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
             <span>Bayar Iuran</span>
           </button>
 
@@ -384,9 +384,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 setShowAdminEntryForm((v) => !v);
                 setShowDuesForm(false);
               }}
-              className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
+              className="min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
             >
-              <Plus className="w-4 h-4 shrink-0" />
+              <Plus className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span>Catat Transaksi</span>
             </button>
           )}
@@ -394,26 +394,26 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       </div>
 
       {formSuccess && (
-        <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-4 text-sm font-medium text-emerald-900 dark:text-emerald-200">
+        <div className="rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3 sm:p-4 text-xs sm:text-sm font-medium text-emerald-900 dark:text-emerald-200">
           {formSuccess}
         </div>
       )}
 
       {/* Family Tariff & Current Month Payment Status Banner */}
-      <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
-          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
+      <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3.5 sm:p-6 flex flex-col md:flex-row md:items-center justify-between gap-3 sm:gap-4">
+        <div className="space-y-0.5 sm:space-y-1">
+          <p className="text-[11px] sm:text-xs font-semibold text-slate-500 dark:text-slate-400">
             Status Keluarga: {FAMILY_STATUS_LABELS[myFamilyStatus]} Tarif Wajib{' '}
             <span className="font-mono-num text-slate-700 dark:text-slate-200">
               {formatRupiah(myRequiredTariff)}/bulan
             </span>
           </p>
           {(profile.familyStatus || 'umum') !== myFamilyStatus && (
-            <p className="text-xs font-medium text-amber-700 dark:text-amber-400">
+            <p className="text-[11px] sm:text-xs font-medium text-amber-700 dark:text-amber-400">
               Perubahan ke {FAMILY_STATUS_LABELS[profile.familyStatus || 'umum']} berlaku mulai bulan berikutnya; iuran {formatMonthLabel(currentMonth)} tetap terkunci.
             </p>
           )}
-          <p className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
+          <p className="text-sm sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
             {myDuesSummary.status === 'lunas'
               ? myPaidCoverage.streakMonthsCount > 1
                 ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas  ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
@@ -425,7 +425,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               : `Iuran ${formatMonthLabel(currentMonth)}: Belum Bayar (${formatRupiah(myRequiredTariff)})`}
           </p>
           {myDuesSummary.status === 'lunas' && myPaidCoverage.streakStartMonth && myPaidCoverage.streakEndMonth && (
-            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               Periode terbayar: {formatMonthLabel(myPaidCoverage.streakStartMonth)}
               {myPaidCoverage.streakEndMonth !== myPaidCoverage.streakStartMonth
                 ? ` – ${formatMonthLabel(myPaidCoverage.streakEndMonth)}`
@@ -438,28 +438,28 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             </p>
           )}
           {myDuesSummary.carryOverFromPrev > 0 && (
-            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               Termasuk saldo lebih bulan sebelumnya: {formatRupiah(myDuesSummary.carryOverFromPrev)}
             </p>
           )}
           {myDuesSummary.status === 'lunas' && myPaidCoverage.partialCarryOverForNext > 0 && (
-            <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">
+            <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400">
               Sisa saldo {formatRupiah(myPaidCoverage.partialCarryOverForNext)} otomatis menjadi saldo {formatMonthLabel(myPaidCoverage.nextUnpaidMonth)}
             </p>
           )}
           {rtSettings.bankAccountNumber && (
-            <p className="text-xs text-slate-500 dark:text-slate-400">
+            <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
               Rekening RT: {rtSettings.bankName || 'Bank'} <span className="font-mono-num font-semibold text-slate-700 dark:text-slate-200">{rtSettings.bankAccountNumber}</span> an. {rtSettings.bankAccountHolder || 'Kas RT'}
             </p>
           )}
         </div>
 
-        <div className="flex flex-wrap items-center gap-2.5 shrink-0">
+        <div className="flex flex-wrap items-center gap-2 shrink-0">
           {rtSettings.bankAccountNumber && (
             <button
               type="button"
               onClick={() => void handleCopyAccount()}
-              className="min-h-[44px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              className="min-h-[38px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
             >
               {copiedBank ? (
                 <>
@@ -485,7 +485,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 setShowDuesForm(true);
                 setShowAdminEntryForm(false);
               }}
-              className="min-h-[44px] px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer"
+              className="min-h-[38px] sm:min-h-[44px] px-3.5 sm:px-4 rounded-xl bg-amber-600 hover:bg-amber-700 text-white text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer"
             >
               Lunasi Kekurangan ({formatRupiah(myDuesSummary.shortfall)})
             </button>
@@ -505,11 +505,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               onCloseInitialPaymentModal?.();
             }
           }}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain touch-none"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-2xl max-h-[92dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+            className="w-full sm:max-w-2xl max-h-[92dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden touch-auto"
           >
             <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
               <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
@@ -540,8 +540,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
             <form
               onSubmit={(e) => void handleDuesSubmit(e)}
-              className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-safe space-y-5"
+              className="flex-1 min-h-0 flex flex-col overflow-hidden"
             >
+              <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y p-4 sm:p-5 space-y-4">
               {formError && (
                 <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-sm text-red-700 dark:text-red-300">
                   {formError}
@@ -554,8 +555,8 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             </div>
           )}
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            <div>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3.5 sm:gap-4">
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 Mulai Bulan Tagihan
               </label>
@@ -574,11 +575,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                   setAmount(formatNominalInput(nextTarget.totalAmount));
                 }}
                 required
-                className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
+                className="w-full max-w-full min-w-0 min-h-[46px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 Periode Pembayaran
               </label>
@@ -616,7 +617,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 {selectedMonthSummary.shortfall > 0 && selectedMonthSummary.shortfall < selectedMonthSummary.tariff && periodMonths === 1
                   ? `Kurang Bayar ${formatRupiah(selectedMonthSummary.shortfall)}`
@@ -629,11 +630,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 onChange={(e) => setAmount(formatNominalInput(e.target.value))}
                 placeholder="120.000"
                 required
-                className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono-num"
+                className="w-full min-w-0 min-h-[46px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono-num"
               />
             </div>
 
-            <div>
+            <div className="min-w-0">
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 Metode Pembayaran
               </label>
@@ -645,7 +646,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                   { value: 'transfer', label: 'Transfer' },
                   { value: 'tunai', label: 'Tunai' },
                 ]}
-                className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
+                className="w-full min-h-[46px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
               />
             </div>
           </div>
@@ -744,26 +745,28 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             />
           </div>
 
-          <div className="flex justify-end gap-3 pt-1">
-            <button
-              type="button"
-              disabled={submitting}
-              onClick={() => {
-                setShowDuesForm(false);
-                onCloseInitialPaymentModal?.();
-              }}
-              className="min-h-[48px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm cursor-pointer disabled:opacity-50"
-            >
-              Batal
-            </button>
-            <button
-              type="submit"
-              disabled={submitting}
-              className="min-h-[48px] px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-sm cursor-pointer"
-            >
-              {submitting ? 'Mengirim...' : 'Kirim Pembayaran'}
-            </button>
-          </div>
+              </div>
+
+              <div className="px-4 sm:px-6 py-3 sm:py-3.5 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex justify-end gap-2.5 sm:gap-3 shrink-0 pb-safe">
+                <button
+                  type="button"
+                  disabled={submitting}
+                  onClick={() => {
+                    setShowDuesForm(false);
+                    onCloseInitialPaymentModal?.();
+                  }}
+                  className="min-h-[44px] px-4 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200 font-semibold text-sm cursor-pointer disabled:opacity-50"
+                >
+                  Batal
+                </button>
+                <button
+                  type="submit"
+                  disabled={submitting}
+                  className="min-h-[44px] px-5 sm:px-6 rounded-xl bg-emerald-700 hover:bg-emerald-800 disabled:opacity-50 text-white font-semibold text-sm cursor-pointer"
+                >
+                  {submitting ? 'Mengirim...' : 'Kirim Pembayaran'}
+                </button>
+              </div>
             </form>
           </div>
         </div>
@@ -1021,9 +1024,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                     <button
                       type="button"
                       onClick={() => void onAdminVerifyTransaction(tx, 'approved')}
-                      className="flex-1 min-h-[44px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="flex-1 min-h-[38px] sm:min-h-[44px] px-3 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <Check className="w-4 h-4" />
+                      <Check className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>
                         {willBeUnderpaid
                           ? 'Verifikasi (Kurang Bayar)'
@@ -1038,9 +1041,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                         setRejectingTx(tx);
                         setRejectReason('');
                       }}
-                      className="flex-1 min-h-[44px] px-3 rounded-xl border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
+                      className="flex-1 min-h-[38px] sm:min-h-[44px] px-3 rounded-xl border border-red-300 dark:border-red-800 text-red-700 dark:text-red-300 hover:bg-red-50 dark:hover:bg-red-950/40 font-semibold text-xs inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer"
                     >
-                      <XCircle className="w-4 h-4" />
+                      <XCircle className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                       <span>Tolak</span>
                     </button>
                   </div>
@@ -1054,9 +1057,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       {/* Search + Segmented Filter Bar */}
       <div
         ref={transactionsSectionRef}
-        className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 scroll-mt-20"
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3 scroll-mt-20"
       >
-        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
+        <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
           {(isPengurus
             ? ([
                 { id: 'all', label: 'Semua Transaksi' },
@@ -1075,7 +1078,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               key={tab.id}
               type="button"
               onClick={() => setFilterTab(tab.id)}
-              className={`min-h-[42px] px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
+              className={`min-h-[34px] sm:min-h-[42px] px-2.5 sm:px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap shrink-0 transition-colors cursor-pointer ${
                 filterTab === tab.id
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -1087,20 +1090,20 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
         </div>
 
         <div className="relative w-full lg:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder={isPengurus ? 'Cari warga, blok, transaksi...' : 'Cari transaksi iuran saya...'}
             aria-label="Cari transaksi kas"
-            className="w-full min-h-[44px] pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+            className="w-full min-h-[40px] sm:min-h-[44px] pl-9 sm:pl-10 pr-3 sm:pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
           />
         </div>
       </div>
 
       {/* Transaction Ledger List */}
-      <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+      <section className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           {filteredTransactions.length === 0 ? (
             <div className="p-10 text-center space-y-3">
@@ -1156,71 +1159,71 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               return (
                 <div
                   key={tx.id}
-                  className="p-4 sm:px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+                  className="p-3 sm:px-6 sm:py-4 flex flex-col sm:flex-row sm:items-center justify-between gap-2 sm:gap-3 hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
                 >
-                  <div className="flex items-start gap-3.5 min-w-0">
+                  <div className="flex items-start gap-2.5 sm:gap-3.5 min-w-0">
                     <div
-                      className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
+                      className={`w-8 h-8 sm:w-10 sm:h-10 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
                         isIncome
                           ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                           : 'bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400'
                       }`}
                     >
                       {isIncome ? (
-                        <ArrowDownLeft className="w-5 h-5" />
+                        <ArrowDownLeft className="w-4 h-4 sm:w-5 sm:h-5" />
                       ) : (
-                        <ArrowUpRight className="w-5 h-5" />
+                        <ArrowUpRight className="w-4 h-4 sm:w-5 sm:h-5" />
                       )}
                     </div>
                     <div className="min-w-0">
-                      <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                      <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
                         {tx.title}
                       </p>
-                      <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                      <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5">
                         {tx.residentName} · {tx.houseBlock} · {getCategoryLabel(tx.category)} ·{' '}
                         {tx.paymentMethod.toUpperCase()} · {formatTimestamp(tx.createdAt)}
                       </p>
                       {txUnderpaid && txLedger && txLedger.shortfall > 0 && (
-                        <p className="text-xs font-semibold text-amber-700 dark:text-amber-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-semibold text-amber-700 dark:text-amber-400 mt-0.5 sm:mt-1">
                           Tarif {FAMILY_STATUS_LABELS[txFamily]}: {formatRupiah(txTariff)} (Kurang Bayar {formatRupiah(txLedger.shortfall)})
                         </p>
                       )}
                       {isSettledMonth && txPreview && txPreview.coveredCount > 1 && txPreview.endMonth ? (
-                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1">
                           Melunasi {txPreview.coveredCount} bulan ({formatMonthLabel(tx.billingMonth)} – {formatMonthLabel(txPreview.endMonth)})
                           {txPreview.remainderForNextMonth > 0
                             ? ` · sisa ${formatRupiah(txPreview.remainderForNextMonth)} ke bulan berikutnya`
                             : ''}
                         </p>
                       ) : isSettledMonth && txLedger && txLedger.surplus > 0 ? (
-                        <p className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-1">
+                        <p className="text-[11px] sm:text-xs font-semibold text-emerald-700 dark:text-emerald-400 mt-0.5 sm:mt-1">
                           Saldo lebih {formatRupiah(txLedger.surplus)} masuk ke bulan berikutnya
                         </p>
                       ) : null}
                       {tx.notes && (
-                        <p className="text-xs text-slate-600 dark:text-slate-300 mt-1">
+                        <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 mt-0.5 sm:mt-1">
                           {tx.notes}
                         </p>
                       )}
                       {tx.status === 'rejected' && tx.rejectionReason && (
-                        <p className="text-xs text-red-600 dark:text-red-400 mt-1 font-medium">
+                        <p className="text-[11px] sm:text-xs text-red-600 dark:text-red-400 mt-0.5 sm:mt-1 font-medium">
                           Alasan ditolak: {tx.rejectionReason}
                         </p>
                       )}
                       {tx.isOfflinePending && (
-                        <p className="text-xs text-amber-700 dark:text-amber-400 mt-1 font-semibold">
+                        <p className="text-[11px] sm:text-xs text-amber-700 dark:text-amber-400 mt-0.5 sm:mt-1 font-semibold">
                           Menunggu koneksi internet untuk sinkronisasi
                         </p>
                       )}
                     </div>
                   </div>
 
-                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2.5 sm:gap-3 w-full sm:w-auto shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
+                  <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 w-full sm:w-auto shrink-0 pt-1.5 sm:pt-0 border-t sm:border-t-0 border-slate-100 dark:border-slate-800/80">
                     {tx.proofImageData && (
                       <button
                         type="button"
                         onClick={() => setPreviewImage(tx.proofImageData || null)}
-                        className="min-h-[44px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer"
+                        className="min-h-[34px] sm:min-h-[44px] px-2.5 sm:px-3 rounded-lg sm:rounded-xl border border-slate-200 dark:border-slate-700 text-[11px] sm:text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer"
                       >
                         <Eye className="w-3.5 h-3.5" />
                         <span>Lihat Bukti</span>
@@ -1229,7 +1232,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
                     <div className="sm:text-right mr-auto sm:mr-0">
                       <p
-                        className={`font-mono-num text-sm sm:text-base font-bold tabular-nums ${
+                        className={`font-mono-num text-xs sm:text-base font-bold tabular-nums ${
                           isIncome
                             ? 'text-emerald-700 dark:text-emerald-400'
                             : 'text-slate-900 dark:text-slate-100'
@@ -1239,7 +1242,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                         {formatRupiah(tx.amount)}
                       </p>
                       <p
-                        className={`text-xs font-semibold mt-0.5 ${
+                        className={`text-[11px] sm:text-xs font-semibold mt-0.5 ${
                           tx.status === 'rejected'
                             ? 'text-red-600 dark:text-red-400'
                             : tx.status === 'pending'
@@ -1278,11 +1281,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Pratinjau foto bukti pembayaran"
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overscroll-contain"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overscroll-contain touch-none"
           onClick={() => setPreviewImage(null)}
         >
           <div
-            className="max-w-lg w-full rounded-3xl bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 shadow-2xl"
+            className="max-w-lg w-full rounded-3xl bg-white dark:bg-slate-900 p-4 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden touch-auto"
             onClick={(e) => e.stopPropagation()}
           >
             <div className="flex items-center justify-between mb-3 px-1">
@@ -1311,9 +1314,9 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain touch-none"
         >
-          <div className="max-w-md w-full rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl">
+          <div className="max-w-md w-full rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 pb-safe space-y-4 shadow-2xl overflow-hidden touch-auto">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
               Tolak Bukti Pembayaran
             </h3>

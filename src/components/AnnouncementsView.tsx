@@ -109,13 +109,13 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
+          <h1 className="text-lg sm:text-2xl font-extrabold tracking-tight text-slate-900 dark:text-slate-100">
             Pengumuman & Kabar Lingkungan RT
           </h1>
-          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
+          <p className="text-xs sm:text-sm text-slate-600 dark:text-slate-400 mt-0.5 sm:mt-1">
             Pembaruan informasi warga secara real-time dengan notifikasi langsung
           </p>
         </div>
@@ -124,7 +124,7 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           <button
             type="button"
             onClick={openCreateComposer}
-            className="w-full sm:w-auto min-h-[48px] px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
+            className="w-full sm:w-auto min-h-[40px] sm:min-h-[48px] px-4 sm:px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-1.5 sm:gap-2 whitespace-nowrap transition-colors cursor-pointer"
           >
             <Plus className="w-4 h-4 shrink-0" />
             <span>Buat Pengumuman</span>
@@ -245,14 +245,14 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
       )}
 
       {/* Filter tabs & search */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
-        <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
+      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-2 sm:gap-3">
+        <div className="flex items-center gap-1 sm:gap-1.5 p-1 sm:p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
           {CATEGORY_OPTIONS.map((cat) => (
             <button
               key={cat.id}
               type="button"
               onClick={() => setFilterCat(cat.id)}
-              className={`shrink-0 min-h-[42px] px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
+              className={`shrink-0 min-h-[34px] sm:min-h-[42px] px-2.5 sm:px-3.5 rounded-lg text-xs sm:text-sm font-semibold whitespace-nowrap transition-colors cursor-pointer ${
                 filterCat === cat.id
                   ? 'bg-white dark:bg-slate-800 text-slate-900 dark:text-white shadow-xs'
                   : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
@@ -264,21 +264,21 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
         </div>
 
         <div className="relative w-full lg:w-72">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+          <Search className="w-4 h-4 text-slate-400 absolute left-3 sm:left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Cari pengumuman..."
             aria-label="Cari pengumuman"
-            className="w-full min-h-[44px] pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+            className="w-full min-h-[40px] sm:min-h-[44px] pl-9 sm:pl-10 pr-3 sm:pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
           />
         </div>
       </div>
 
-      <div className="space-y-4">
+      <div className="space-y-3 sm:space-y-4">
         {visibleList.length === 0 ? (
-          <div className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-10 text-center text-sm text-slate-500 dark:text-slate-400">
+          <div className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-8 sm:p-10 text-center text-xs sm:text-sm text-slate-500 dark:text-slate-400">
             {searchQuery
               ? `Tidak ada pengumuman yang cocok dengan "${searchQuery}".`
               : 'Belum ada pengumuman pada kategori ini.'}
@@ -287,16 +287,16 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           visibleList.map((item) => (
             <article
               key={item.id}
-              className={`rounded-3xl bg-white dark:bg-slate-900 border p-4 sm:p-6 transition-colors ${
+              className={`rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border p-3.5 sm:p-6 transition-colors ${
                 item.priority === 'urgent'
                   ? 'border-red-200 dark:border-red-900/80'
                   : 'border-slate-200 dark:border-slate-800'
               }`}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex flex-wrap items-center gap-2 text-xs text-slate-500 dark:text-slate-400">
+              <div className="flex items-start justify-between gap-2.5 sm:gap-4">
+                <div className="flex flex-wrap items-center gap-1.5 sm:gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                   <Megaphone
-                    className={`w-4 h-4 shrink-0 ${
+                    className={`w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0 ${
                       item.priority === 'urgent'
                         ? 'text-red-600 dark:text-red-400'
                         : 'text-emerald-700 dark:text-emerald-400'
@@ -318,36 +318,36 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
                 </div>
 
                 {canManageAnnouncements && (
-                  <div className="flex items-center gap-1 shrink-0">
+                  <div className="flex items-center gap-0.5 sm:gap-1 shrink-0">
                     <button
                       type="button"
                       onClick={() => openEditComposer(item)}
                       aria-label="Edit pengumuman"
                       title="Edit pengumuman"
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
+                      className="min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl text-slate-500 hover:text-emerald-700 hover:bg-emerald-50 dark:hover:bg-emerald-950/40 transition-colors cursor-pointer"
                     >
-                      <Pencil className="w-4 h-4" />
+                      <Pencil className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                     <button
                       type="button"
                       onClick={() => void onDeleteAnnouncement(item.id)}
                       aria-label="Hapus pengumuman"
                       title="Hapus pengumuman"
-                      className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
+                      className="min-h-[36px] min-w-[36px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl text-slate-400 hover:text-red-600 hover:bg-red-50 dark:hover:bg-red-950/40 transition-colors cursor-pointer"
                     >
-                      <Trash2 className="w-4 h-4" />
+                      <Trash2 className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                     </button>
                   </div>
                 )}
               </div>
 
-              <h2 className="mt-2.5 text-lg font-extrabold text-slate-900 dark:text-slate-100 [text-wrap:balance]">
+              <h2 className="mt-1.5 sm:mt-2.5 text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100 [text-wrap:balance]">
                 {item.title}
               </h2>
-              <p className="mt-2 text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line max-w-3xl">
+              <p className="mt-1.5 sm:mt-2 text-xs sm:text-sm text-slate-700 dark:text-slate-300 leading-relaxed whitespace-pre-line max-w-3xl">
                 {item.body}
               </p>
-              <p className="mt-4 pt-3 border-t border-slate-100 dark:border-slate-800 text-xs text-slate-500 dark:text-slate-400">
+              <p className="mt-3 sm:mt-4 pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-slate-800 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
                 Diterbitkan oleh <span className="font-semibold text-slate-700 dark:text-slate-300">{item.authorName}</span>
               </p>
             </article>

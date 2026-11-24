@@ -17,11 +17,11 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
       <button
         type="button"
         onClick={() => void install()}
-        className={`inline-flex items-center justify-center gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold transition-colors whitespace-nowrap shrink-0 ${
-          compact ? 'min-h-[44px] px-3 text-xs' : 'min-h-[48px] px-4 py-2.5 text-sm'
+        className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold transition-colors whitespace-nowrap shrink-0 ${
+          compact ? 'min-h-[38px] sm:min-h-[44px] px-2.5 sm:px-3 text-[11px] sm:text-xs' : 'min-h-[40px] sm:min-h-[48px] px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm'
         }`}
       >
-        <Download className="w-4 h-4 shrink-0" />
+        <Download className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
         <span>Pasang Aplikasi</span>
       </button>
     );
@@ -33,17 +33,17 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
         <button
           type="button"
           onClick={() => setShowIOSGuide(true)}
-          className={`inline-flex items-center justify-center gap-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors whitespace-nowrap shrink-0 ${
-            compact ? 'min-h-[44px] px-3 text-xs' : 'min-h-[48px] px-4 py-2.5 text-sm'
+          className={`inline-flex items-center justify-center gap-1.5 sm:gap-2 rounded-xl border border-slate-300 dark:border-slate-700 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 font-medium transition-colors whitespace-nowrap shrink-0 ${
+            compact ? 'min-h-[38px] sm:min-h-[44px] px-2.5 sm:px-3 text-[11px] sm:text-xs' : 'min-h-[40px] sm:min-h-[48px] px-3.5 sm:px-4 py-2 sm:py-2.5 text-xs sm:text-sm'
           }`}
         >
-          <Share className="w-4 h-4 shrink-0" />
+          <Share className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
           <span>Pasang di iPhone</span>
         </button>
 
         {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overscroll-contain">
-            <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overscroll-contain touch-none">
+            <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xl overflow-hidden touch-auto">
               <div className="flex items-center justify-between gap-4">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">
                   Pasang di iPhone / iPad

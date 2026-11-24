@@ -313,18 +313,18 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   return (
     <div className="min-h-dvh w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-x-clip">
       <header className="w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-20">
-        <div className="w-full px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
-          <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
+        <div className="w-full px-3 sm:px-6 lg:px-8 h-12 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
             {!emblemFailed ? (
               <img
                 src={appEmblemImg}
                 alt="Logo RT 12/RW 20 SUKATANI"
                 referrerPolicy="no-referrer"
                 onError={() => setEmblemFailed(true)}
-                className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
+                className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl object-cover shrink-0 border border-slate-200 dark:border-slate-700"
               />
             ) : (
-              <div className="w-8 h-8 sm:w-9 sm:h-9 rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
+              <div className="w-7 h-7 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl bg-emerald-700 text-white flex items-center justify-center font-bold text-xs shrink-0">
                 RT
               </div>
             )}
@@ -338,14 +338,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
           </div>
 
-          <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <PWAInstallButton compact />
             <button
               type="button"
               onClick={onToggleElderlyMode}
               aria-pressed={elderlyMode}
               aria-label="Mode Teks Besar"
-              className={`min-h-[44px] px-2.5 sm:px-3.5 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
+              className={`min-h-[38px] sm:min-h-[44px] px-2 sm:px-3.5 rounded-xl border text-xs font-semibold inline-flex items-center gap-1.5 transition-colors whitespace-nowrap shrink-0 cursor-pointer ${
                 elderlyMode
                   ? 'bg-emerald-700 text-white border-emerald-700'
                   : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
@@ -358,7 +358,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               type="button"
               onClick={onToggleDarkMode}
               aria-label={darkMode ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
-              className="min-h-[44px] min-w-[44px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+              className="min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
             >
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>
@@ -471,14 +471,14 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
         </section>
 
         {/* Full-Height Right Panel: Modern Login Portal */}
-        <section className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between px-4 sm:px-8 lg:px-10 py-5 lg:py-6 gap-5">
-          <div className="flex-1 flex flex-col justify-start space-y-4 sm:space-y-5">
+        <section className="lg:col-span-5 xl:col-span-4 bg-white dark:bg-slate-900 border-t lg:border-t-0 lg:border-l border-slate-200 dark:border-slate-800 flex flex-col justify-between px-3.5 sm:px-8 lg:px-10 py-4 lg:py-6 gap-4">
+          <div className="flex-1 flex flex-col justify-start space-y-3 sm:space-y-5">
             <div>
-              <h1 className="mt-0 font-display text-2xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.2] text-slate-900 dark:text-slate-50 [text-wrap:balance]">
+              <h1 className="mt-0 font-display text-xl sm:text-3xl lg:text-4xl font-extrabold tracking-tight leading-[1.2] text-slate-900 dark:text-slate-50 [text-wrap:balance]">
                 Portal Sistem Keuangan &amp; Siaga Warga RT 12 / RW 20 Sukatani
               </h1>
 
-              <p className="mt-2.5 text-sm sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
+              <p className="mt-1.5 sm:mt-2.5 text-xs sm:text-base text-slate-600 dark:text-slate-300 leading-relaxed">
                 Pantau kas RT secara terbuka, iuran bulanan, cek laporan bulanan, dan akses layanan darurat.
               </p>
             </div>
@@ -614,7 +614,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             </div>
 
             {/* Form Login Akun / Daftar Akun / Bootstrap Ketua RT */}
-            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-4 sm:p-5 space-y-4">
+            <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-slate-50/70 dark:bg-slate-950/40 p-3.5 sm:p-5 space-y-3 sm:space-y-4">
               {showBootstrapFirstAdmin ? (
                 <form onSubmit={handleSubmitBootstrapAdmin} className="space-y-3.5">
                   <div className="flex items-center gap-2 text-emerald-700 dark:text-emerald-400">
@@ -714,11 +714,11 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
               ) : (
                 <>
                   {/* Mode Switcher: Login Akun / Daftar Akun */}
-                  <div className="grid grid-cols-2 gap-1.5 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90">
+                  <div className="grid grid-cols-2 gap-1 p-1 rounded-xl bg-slate-200/80 dark:bg-slate-800/90">
                     <button
                       type="button"
                       onClick={() => handleSwitchMode('login')}
-                      className={`min-h-[42px] px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      className={`min-h-[38px] sm:min-h-[42px] px-2.5 sm:px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                         authMode === 'login'
                           ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -730,7 +730,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                     <button
                       type="button"
                       onClick={() => handleSwitchMode('register')}
-                      className={`min-h-[42px] px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
+                      className={`min-h-[38px] sm:min-h-[42px] px-2.5 sm:px-3 rounded-lg text-xs font-bold inline-flex items-center justify-center gap-1.5 transition-colors cursor-pointer ${
                         authMode === 'register'
                           ? 'bg-white dark:bg-slate-900 text-emerald-700 dark:text-emerald-400 shadow-xs'
                           : 'text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
@@ -902,8 +902,8 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       </main>
 
       {loginPopupData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 overscroll-contain">
-          <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xl space-y-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 overscroll-contain touch-none">
+          <div className="w-full max-w-sm max-h-[90dvh] overflow-y-auto overflow-x-hidden no-scrollbar overscroll-contain touch-pan-y rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xl space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>
                 <h3 className="text-base font-extrabold text-slate-900 dark:text-slate-100">

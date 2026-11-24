@@ -225,22 +225,22 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3.5 sm:space-y-6">
       {/* Top Account Role + Today Date & Live Clock Strip */}
-      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-4 sm:px-5 py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-3">
-        <div className="flex flex-wrap items-center gap-2.5">
-          <span className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
+      <div className="rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 px-3 sm:px-5 py-2.5 sm:py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-1.5 sm:gap-3">
+        <div className="flex flex-wrap items-center gap-2">
+          <span className="text-[11px] sm:text-sm font-semibold text-slate-900 dark:text-slate-100">
             {rtSettings.rtName}/{rtSettings.rwName} · {rtSettings.kelurahan}
           </span>
         </div>
 
-        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 text-xs sm:text-sm">
+        <div className="flex flex-wrap items-center justify-between sm:justify-end gap-2 sm:gap-3 text-[11px] sm:text-sm">
           <div className="inline-flex items-center gap-1.5 font-semibold text-slate-700 dark:text-slate-200">
-            <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+            <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
             <span className="capitalize">{formattedTodayDate}</span>
           </div>
-          <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono-num text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
-            <Clock className="w-3.5 h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
+          <div className="inline-flex items-center gap-1 px-2 py-0.5 sm:px-2.5 sm:py-1 rounded-lg bg-slate-100 dark:bg-slate-800 font-mono-num text-[11px] sm:text-xs font-bold text-slate-900 dark:text-slate-100 tabular-nums shrink-0">
+            <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 text-emerald-700 dark:text-emerald-400 shrink-0" />
             <span>{formattedTodayTime}</span>
           </div>
         </div>
@@ -248,16 +248,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Active Emergency Banner if any */}
       {activeEmergencies.length > 0 && (
-        <div className="rounded-2xl bg-red-600 text-white p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-3.5 sm:gap-4 shadow-sm">
-          <div className="flex items-start gap-3">
-            <div className="w-10 h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
-              <AlertTriangle className="w-5 h-5" />
+        <div className="rounded-2xl bg-red-600 text-white p-3 sm:p-5 flex flex-col sm:flex-row sm:items-center justify-between gap-2.5 sm:gap-4 shadow-sm">
+          <div className="flex items-start gap-2.5 sm:gap-3">
+            <div className="w-8 h-8 sm:w-10 sm:h-10 rounded-xl bg-white/15 flex items-center justify-center shrink-0">
+              <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5" />
             </div>
             <div className="min-w-0">
-              <h2 className="text-sm sm:text-base font-bold">
+              <h2 className="text-xs sm:text-base font-bold">
                 {activeEmergencies.length} Sinyal Darurat Aktif di Lingkungan
               </h2>
-              <p className="text-xs sm:text-sm text-red-100 mt-0.5 leading-relaxed">
+              <p className="text-[11px] sm:text-sm text-red-100 mt-0.5 leading-relaxed">
                 {activeEmergencies[0].reporterName} ({activeEmergencies[0].houseBlock}) ·{' '}
                 {activeEmergencies[0].emergencyType.toUpperCase()} —{' '}
                 {activeEmergencies[0].description || 'Membutuhkan bantuan segera'}
@@ -268,20 +268,20 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       )}
 
       {/* Dominant Visual Anchor: Architectural Emerald Treasury + Resident Dues Status */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6 items-stretch">
-        <section className="lg:col-span-7 relative overflow-hidden rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 dark:from-emerald-950 dark:via-emerald-900 dark:to-slate-900 text-white p-5 sm:p-7 flex flex-col justify-between border border-emerald-700/70 dark:border-emerald-800">
-          <div className="flex items-start justify-between gap-3 sm:gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-6 items-stretch">
+        <section className="lg:col-span-7 relative overflow-hidden rounded-2xl sm:rounded-3xl bg-gradient-to-br from-emerald-900 via-emerald-800 to-teal-900 dark:from-emerald-950 dark:via-emerald-900 dark:to-slate-900 text-white p-4 sm:p-7 flex flex-col justify-between border border-emerald-700/70 dark:border-emerald-800">
+          <div className="flex items-start justify-between gap-2.5 sm:gap-4">
             <div className="min-w-0">
-              <p className="mt-1 sm:mt-4 text-xs sm:text-sm font-medium text-emerald-100">Total Saldo Kas RT</p>
-              <p className="mt-1 font-mono-num text-2xl sm:text-[2.4rem] font-extrabold tracking-tight leading-none tabular-nums break-words">
+              <p className="mt-0.5 sm:mt-4 text-[11px] sm:text-sm font-medium text-emerald-100">Total Saldo Kas RT</p>
+              <p className="mt-1 font-mono-num text-xl sm:text-[2.4rem] font-extrabold tracking-tight leading-none tabular-nums break-words">
                 {formatRupiah(netBalance)}
               </p>
             </div>
 
             {/* SVG Circular Collection Progress Meter */}
             <div className="shrink-0 flex flex-col items-center">
-              <div className="relative w-16 h-16 flex items-center justify-center">
-                <svg className="w-16 h-16 -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
+              <div className="relative w-14 h-14 sm:w-16 sm:h-16 flex items-center justify-center">
+                <svg className="w-14 h-14 sm:w-16 sm:h-16 -rotate-90" viewBox="0 0 64 64" aria-hidden="true">
                   <circle
                     cx="32"
                     cy="32"
@@ -307,49 +307,49 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   {paymentProgressPct}%
                 </span>
               </div>
-              <span className="mt-1 text-[11px] font-medium text-emerald-200 whitespace-nowrap">
+              <span className="mt-1 text-[10px] sm:text-[11px] font-medium text-emerald-200 whitespace-nowrap">
                 Lunas Bulan Ini
               </span>
             </div>
           </div>
 
-          <div className="mt-8 pt-5 border-t border-white/15">
-            <span className="block mb-3 text-sm font-semibold text-white">Total:</span>
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="mt-4 sm:mt-8 pt-3.5 sm:pt-5 border-t border-white/15">
+            <span className="block mb-2 sm:mb-3 text-xs sm:text-sm font-semibold text-white">Total:</span>
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5 sm:gap-4">
             <div>
-            <div className="flex items-center gap-1.5 text-xs text-emerald-200">
-              <Wallet className="w-3.5 h-3.5 shrink-0" />
-              <span>
+            <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-200">
+              <Wallet className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
+              <span className="truncate">
                 {`Iuran RT ${new Date(`${currentMonth}-01`)
                   .toLocaleDateString('id-ID', { month: 'short', year: '2-digit' })
                   .toUpperCase()}`}
               </span>
             </div>
-              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
+              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums">
                 {formatRupiah(totalMonthlyDues)}
               </p>
             </div>
             <div>
-              <div className="flex items-center gap-1.5 text-xs text-emerald-200">
-                <ArrowDownLeft className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
-                <span>Pemasukan Lain</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-200">
+                <ArrowDownLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-emerald-400" />
+                <span className="truncate">Pemasukan Lain</span>
               </div>
-              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
+              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums">
                 {formatRupiah(totalIncome)}
               </p>
             </div>
             <div>
-              <div className="flex items-center gap-1.5 text-xs text-emerald-200">
-                <ArrowUpRight className="w-3.5 h-3.5 shrink-0 text-red-400" />
-                <span>Pengeluaran</span>
+              <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-200">
+                <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-red-400" />
+                <span className="truncate">Pengeluaran</span>
               </div>
-              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
+              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums">
                 {formatRupiah(totalExpense)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-emerald-200 text-right">Partisipasi</p>
-              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums text-right">
+              <p className="text-[11px] sm:text-xs text-emerald-200 text-right">Partisipasi</p>
+              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums text-right">
                 {paidResidentsCount}/{totalResidentsCount} KK
               </p>
             </div>
@@ -358,33 +358,33 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
         </section>
 
         {/* Resident Monthly Dues Reminder & Quick Action */}
-        <section className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 sm:p-6 flex flex-col justify-between">
+        <section className="lg:col-span-5 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6 flex flex-col justify-between">
           <div>
-            <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="flex items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
               <span className="font-semibold">
                 Iuran {formatMonthLabel(currentMonth)}
               </span>
             </div>
-            <div className="mt-1.5 flex items-center justify-between gap-3">
-              <h2 className="text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight min-w-0 truncate">
+            <div className="mt-1 sm:mt-1.5 flex items-center justify-between gap-2 sm:gap-3">
+              <h2 className="text-base sm:text-xl font-extrabold text-slate-900 dark:text-slate-100 tracking-tight min-w-0 truncate">
                 {profile.displayName}
               </h2>
               <span
-                className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-bold border shrink-0 ${
+                className={`inline-flex items-center gap-1 sm:gap-1.5 px-2 sm:px-3 py-0.5 sm:py-1 rounded-full text-[11px] sm:text-xs font-bold border shrink-0 ${
                   isPengurus
                     ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-800 dark:text-emerald-300 border-emerald-200 dark:border-emerald-800'
                     : 'bg-sky-50 dark:bg-sky-950/60 text-sky-800 dark:text-sky-300 border-sky-200 dark:border-sky-800'
                 }`}
               >
                 {isPengurus ? (
-                  <ShieldCheck className="w-3.5 h-3.5 shrink-0" />
+                  <ShieldCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                 ) : (
-                  <UserCheck className="w-3.5 h-3.5 shrink-0" />
+                  <UserCheck className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
                 )}
                 <span>{loginRoleLabel}</span>
               </span>
             </div>
-            <div className="mt-0.5 flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
+            <div className="mt-0.5 flex items-center justify-between gap-2 text-[11px] sm:text-xs text-slate-500 dark:text-slate-400">
               <span className="font-medium">{profile.houseBlock}</span>
               <span className="font-medium shrink-0 text-right">
                 {myFamilyLabel}
@@ -392,15 +392,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
 
             {myDuesSummary.status === 'lunas' ? (
-              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 p-4">
-                <CheckCircle2 className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
+              <div className="mt-3 sm:mt-4 flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800/80 p-3 sm:p-4">
+                <CheckCircle2 className="w-4 h-4 sm:w-5 sm:h-5 text-emerald-700 dark:text-emerald-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-emerald-900 dark:text-emerald-200">
+                  <p className="text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-200">
                     {myPaidCoverage.streakMonthsCount > 1
                       ? `Iuran Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
                       : `Iuran Bulan Ini Sudah Lunas (${myPaidCoverage.totalPaidMonths} Bulan Terbayar)`}
                   </p>
-                  <p className="text-xs text-emerald-800 dark:text-emerald-300 mt-1 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-300 mt-0.5 sm:mt-1 leading-relaxed">
                     {myPaidCoverage.streakMonthsCount > 1 &&
                     myPaidCoverage.streakStartMonth &&
                     myPaidCoverage.streakEndMonth ? (
@@ -436,13 +436,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             ) : myDuesSummary.status === 'kurang_bayar' ? (
-              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 p-4">
-                <AlertTriangle className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="mt-3 sm:mt-4 flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 p-3 sm:p-4">
+                <AlertTriangle className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div className="flex-1">
-                  <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                  <p className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
                     Status Pembayaran: Kurang Bayar
                   </p>
-                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 mt-0.5 sm:mt-1 leading-relaxed">
                     Tarif {formatRupiah(myDuesSummary.tariff)}
                     {myDuesSummary.carryOverFromPrev > 0
                       ? ` (terpotong saldo bulan lalu ${formatRupiah(myDuesSummary.carryOverFromPrev)})`
@@ -453,13 +453,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             ) : myDuesSummary.status === 'menunggu' ? (
-              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 p-4">
-                <Clock className="w-5 h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
+              <div className="mt-3 sm:mt-4 flex items-start gap-2.5 sm:gap-3 rounded-xl sm:rounded-2xl bg-amber-50 dark:bg-amber-950/40 border border-amber-200 dark:border-amber-800/80 p-3 sm:p-4">
+                <Clock className="w-4 h-4 sm:w-5 sm:h-5 text-amber-700 dark:text-amber-400 shrink-0 mt-0.5" />
                 <div>
-                  <p className="text-sm font-bold text-amber-900 dark:text-amber-200">
+                  <p className="text-xs sm:text-sm font-bold text-amber-900 dark:text-amber-200">
                     Menunggu Verifikasi Admin
                   </p>
-                  <p className="text-xs text-amber-800 dark:text-amber-300 mt-1 leading-relaxed">
+                  <p className="text-[11px] sm:text-xs text-amber-800 dark:text-amber-300 mt-0.5 sm:mt-1 leading-relaxed">
                     Bukti pembayaran {formatRupiah(myDuesSummary.pendingPaid)}
                     {myPendingPreview && myPendingPreview.coveredCount > 1 && myPendingPreview.endMonth
                       ? ` (periode ${myPendingPreview.coveredCount} bulan: ${formatMonthLabel(currentMonth)} – ${formatMonthLabel(myPendingPreview.endMonth)})`
@@ -469,16 +469,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
               </div>
             ) : (
-              <div className="mt-4 rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 p-4 space-y-2.5">
+              <div className="mt-3 sm:mt-4 rounded-xl sm:rounded-2xl bg-slate-50 dark:bg-slate-800/60 border border-slate-200 dark:border-slate-700/80 p-3 sm:p-4 space-y-1.5 sm:space-y-2.5">
                 <div className="flex items-center justify-between gap-2">
-                  <p className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                  <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
                     Tagihan Bulan Ini
                   </p>
-                  <span className="font-mono-num text-base font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums">
+                  <span className="font-mono-num text-sm sm:text-base font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums">
                     {formatRupiah(myDuesSummary.tariff)}
                   </span>
                 </div>
-                <p className="text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
+                <p className="text-[11px] sm:text-xs text-slate-600 dark:text-slate-300 leading-relaxed">
                   Jatuh tempo setiap tanggal {rtSettings.dueDayOfMonth} 
                   <br />
                   Transfer ke{' '}
@@ -490,7 +490,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             )}
           </div>
 
-          <div className="mt-5 flex flex-wrap gap-3">
+          <div className="mt-3.5 sm:mt-5 flex items-center gap-2 sm:gap-3">
             <button
               type="button"
               onClick={
@@ -498,9 +498,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   ? onViewMyDues || (() => onNavigate('kas'))
                   : onQuickPayDues
               }
-              className="flex-1 min-h-[48px] px-4 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+              className="flex-1 min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
             >
-              <Wallet className="w-4 h-4 shrink-0" />
+              <Wallet className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span>
                 {isMyDuesSettled
                   ? 'Lihat Iuran Saya'
@@ -512,9 +512,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <button
               type="button"
               onClick={onOpenTutorial}
-              className="min-h-[48px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 font-semibold text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
+              className="min-h-[40px] sm:min-h-[48px] px-3 sm:px-4 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.99] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
             >
-              <BookOpen className="w-4 h-4 shrink-0" />
+              <BookOpen className="w-3.5 h-3.5 sm:w-4 sm:h-4 shrink-0" />
               <span>Panduan</span>
             </button>
           </div>
@@ -523,43 +523,43 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
       {/* Elderly-Friendly Quick Menu Grid */}
       <section aria-label="Menu Cepat">
-        <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+        <div className="flex flex-wrap items-center justify-between gap-2 sm:gap-4 mb-2 sm:mb-3">
+          <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
             Menu Cepat
           </h2>
           {rbac.canManageKas && pendingVerificationCount > 0 && (
             <button
               type="button"
               onClick={() => onNavigate('kas')}
-              className="min-h-[36px] px-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
+              className="min-h-[32px] sm:min-h-[36px] px-2.5 sm:px-3 rounded-lg bg-amber-50 dark:bg-amber-950/50 border border-amber-200 dark:border-amber-800 text-[11px] sm:text-xs font-bold text-amber-800 dark:text-amber-300 hover:bg-amber-100 dark:hover:bg-amber-900/50 inline-flex items-center gap-1 sm:gap-1.5 transition-colors cursor-pointer"
             >
-              <Clock className="w-3.5 h-3.5 shrink-0" />
+              <Clock className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
               <span>{pendingVerificationCount} bukti menunggu verifikasi</span>
-              <ChevronRight className="w-3.5 h-3.5 shrink-0" />
+              <ChevronRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" />
             </button>
           )}
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-stretch">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-2.5 sm:gap-4 items-stretch">
           {/* Unified Horizontal Pengumuman Card */}
           <button
             type="button"
             onClick={() => onNavigate('pengumuman')}
-            className="lg:col-span-7 group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex items-center justify-between gap-3.5 sm:gap-4 cursor-pointer"
+            className="lg:col-span-7 group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex items-center justify-between gap-3 sm:gap-4 cursor-pointer"
           >
-            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                <Megaphone className="w-5 h-5" />
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                <Megaphone className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
 
               <div className="min-w-0 flex-1">
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
-                  <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                <div className="flex flex-wrap items-center gap-x-1.5 sm:gap-x-2 gap-y-0.5">
+                  <h2 className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100">
                     Pengumuman
                   </h2>
                   {latestAnnouncements[0] && (
                     <span
-                      className={`text-[11px] ${
+                      className={`text-[10px] sm:text-[11px] ${
                         latestAnnouncements[0].priority === 'urgent'
                           ? 'font-bold text-red-600 dark:text-red-400'
                           : 'font-semibold text-emerald-700 dark:text-emerald-400'
@@ -572,7 +572,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 </div>
 
                 {latestAnnouncements.length === 0 ? (
-                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                     Tidak ada pengumuman.
                   </p>
                 ) : (
@@ -580,7 +580,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     <p className="mt-0.5 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
                       {latestAnnouncements[0].title}
                     </p>
-                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                    <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
                       {latestAnnouncements[0].body}
                     </p>
                   </>
@@ -593,17 +593,17 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <button
             type="button"
             onClick={() => onNavigate('laporan')}
-            className="lg:col-span-5 group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex items-center justify-between gap-3.5 sm:gap-4 cursor-pointer"
+            className="lg:col-span-5 group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex items-center justify-between gap-3 sm:gap-4 cursor-pointer"
           >
-            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
-              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
-                <FileBarChart2 className="w-5 h-5" />
+            <div className="flex items-center gap-3 sm:gap-4 min-w-0 flex-1">
+              <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                <FileBarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
               </div>
               <div className="min-w-0 flex-1">
-                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
                   Laporan Kas
                 </p>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                   Rekap pemasukan, pengeluaran &amp; status iuran bulanan
                 </p>
               </div>
@@ -614,16 +614,16 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </section>
 
       {/* Two-Column Recent Activity & Announcements */}
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 sm:gap-6">
-        <section className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-          <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-            <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-6">
+        <section className="lg:col-span-7 rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+          <div className="px-3.5 sm:px-6 py-2.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+            <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100">
               Mutasi Kas Terbaru
             </h2>
             <button
               type="button"
               onClick={() => onNavigate('kas')}
-              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[44px] inline-flex items-center gap-1 cursor-pointer"
+              className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[36px] sm:min-h-[44px] inline-flex items-center gap-1 cursor-pointer"
             >
               <span>Lihat Semua</span>
               <ChevronRight className="w-3.5 h-3.5" />
@@ -631,8 +631,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
           <div className="divide-y divide-slate-100 dark:divide-slate-800">
             {recentTx.length === 0 ? (
-              <div className="p-8 text-center space-y-3">
-                <p className="text-sm text-slate-500 dark:text-slate-400">
+              <div className="p-6 sm:p-8 text-center space-y-2 sm:space-y-3">
+                <p className="text-xs sm:text-sm text-slate-500 dark:text-slate-400">
                   Belum ada transaksi kas tercatat bulan ini.
                 </p>
               </div>
@@ -662,27 +662,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 return (
                   <div
                     key={tx.id}
-                    className="px-4 sm:px-6 py-3.5 flex items-center justify-between gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
+                    className="px-3.5 sm:px-6 py-2.5 sm:py-3.5 flex items-center justify-between gap-2.5 sm:gap-3 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors"
                   >
-                    <div className="flex items-center gap-3.5 min-w-0">
+                    <div className="flex items-center gap-2.5 sm:gap-3.5 min-w-0">
                       <div
-                        className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
+                        className={`w-8 h-8 sm:w-9 sm:h-9 rounded-lg sm:rounded-xl flex items-center justify-center shrink-0 ${
                           isIncome
                             ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
                             : 'bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400'
                         }`}
                       >
                         {isIncome ? (
-                          <ArrowDownLeft className="w-4 h-4" />
+                          <ArrowDownLeft className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         ) : (
-                          <ArrowUpRight className="w-4 h-4" />
+                          <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4" />
                         )}
                       </div>
                       <div className="min-w-0">
-                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
+                        <p className="text-xs sm:text-sm font-semibold text-slate-900 dark:text-slate-100 truncate">
                           {tx.title}
                         </p>
-                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                        <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
                           {tx.residentName} · {tx.houseBlock} · {getCategoryLabel(tx.category)} ·{' '}
                           {tx.status === 'rejected'
                             ? 'Ditolak'
@@ -699,7 +699,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       </div>
                     </div>
                     <p
-                      className={`font-mono-num text-sm font-bold tabular-nums shrink-0 ${
+                      className={`font-mono-num text-xs sm:text-sm font-bold tabular-nums shrink-0 ${
                         isIncome
                           ? 'text-emerald-700 dark:text-emerald-400'
                           : 'text-slate-900 dark:text-slate-100'
@@ -715,19 +715,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           </div>
         </section>
 
-        <div className="lg:col-span-5 space-y-6">
+        <div className="lg:col-span-5 space-y-3.5 sm:space-y-6">
           {/* Today's Calendar & Live Time Card */}
           <section
             aria-label="Kalender dan Waktu Hari Ini"
-            className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden"
+            className="rounded-2xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden"
           >
-            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
+            <div className="px-3.5 sm:px-6 py-2.5 sm:py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between gap-2">
               <div className="min-w-0">
-                <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                  <CalendarDays className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
+                <h2 className="text-sm sm:text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-1.5 sm:gap-2">
+                  <CalendarDays className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
                   <span>Kalender & Waktu</span>
                 </h2>
-                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 capitalize truncate">
+                <p className="text-[11px] sm:text-xs text-slate-500 dark:text-slate-400 mt-0.5 capitalize truncate">
                   {formattedTodayDate} · <span className="font-mono-num font-semibold">{formattedTodayTime}</span>
                 </p>
               </div>
@@ -736,7 +736,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   <button
                     type="button"
                     onClick={handleResetCalendarToday}
-                    className="min-h-[36px] px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
+                    className="min-h-[32px] sm:min-h-[36px] px-2 sm:px-2.5 rounded-lg text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-50 dark:bg-emerald-950/50 hover:bg-emerald-100 dark:hover:bg-emerald-900/50 transition-colors cursor-pointer"
                   >
                     Hari Ini
                   </button>
@@ -745,7 +745,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   onClick={handlePrevCalendarMonth}
                   aria-label="Bulan sebelumnya"
-                  className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="min-h-[34px] min-w-[34px] sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <ChevronLeft className="w-4 h-4" />
                 </button>
@@ -753,14 +753,14 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   type="button"
                   onClick={handleNextCalendarMonth}
                   aria-label="Bulan berikutnya"
-                  className="min-h-[40px] min-w-[40px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
+                  className="min-h-[34px] min-w-[34px] sm:min-h-[40px] sm:min-w-[40px] flex items-center justify-center rounded-lg text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer"
                 >
                   <ChevronRight className="w-4 h-4" />
                 </button>
               </div>
             </div>
 
-            <div className="p-4 sm:p-5">
+            <div className="p-3 sm:p-5">
               <p className="text-xs font-bold text-slate-700 dark:text-slate-200 capitalize mb-3">
                 {calendarMonthLabel}
               </p>
@@ -771,9 +771,9 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   </div>
                 ))}
               </div>
-              <div className="grid grid-cols-7 gap-1 text-center text-xs">
+              <div className="grid grid-cols-7 gap-1 text-center text-[11px] sm:text-xs">
                 {Array.from({ length: leadingEmptyDays }).map((_, idx) => (
-                  <div key={`empty-${idx}`} className="h-8" />
+                  <div key={`empty-${idx}`} className="h-7 sm:h-8" />
                 ))}
                 {Array.from({ length: daysInCalendarMonth }).map((_, idx) => {
                   const dayNum = idx + 1;
@@ -790,7 +790,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           ? `Jatuh tempo iuran RT (tgl ${rtSettings.dueDayOfMonth})`
                           : undefined
                       }
-                      className={`h-8 rounded-lg flex flex-col items-center justify-center font-mono-num tabular-nums relative ${
+                      className={`h-7 sm:h-8 rounded-lg flex flex-col items-center justify-center font-mono-num tabular-nums relative ${
                         isToday
                           ? 'bg-emerald-700 text-white font-extrabold shadow-xs'
                           : isDueDay
@@ -803,7 +803,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   );
                 })}
               </div>
-              <div className="mt-3 pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
+              <div className="mt-2.5 sm:mt-3 pt-2.5 sm:pt-3 border-t border-slate-100 dark:border-slate-800 flex items-center justify-between text-[11px] text-slate-500 dark:text-slate-400">
                 <span className="inline-flex items-center gap-1.5">
                   <span className="w-2.5 h-2.5 rounded-xs bg-emerald-700 inline-block" />
                   Hari ini
