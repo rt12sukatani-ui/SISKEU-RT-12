@@ -5,7 +5,6 @@ import {
   Bell,
   BookOpen,
   CheckCircle2,
-  HeartPulse,
   ShieldAlert,
   Wallet,
   X,
@@ -48,14 +47,6 @@ const TUTORIAL_STEPS: {
     tip: 'Aktifkan notifikasi agar pengingat iuran dan kabar warga langsung muncul di layar ponsel.',
     targetTab: 'pengumuman',
     icon: Bell,
-  },
-  {
-    title: '4. Tombol Darurat SOS & Profil Kesehatan',
-    description:
-      'Dalam kondisi gawat darurat (medis, keamanan, atau kebakaran), buka menu Darurat lalu tekan tombol SOS satu ketukan. Ringkasan golongan darah, alergi, dan kontak keluarga otomatis terkirim ke pengurus dan tim medis.',
-    tip: 'Data kesehatan Anda dienkripsi dengan AES-256-GCM dan tersimpan aman di perangkat untuk akses darurat meski tanpa sinyal.',
-    targetTab: 'darurat',
-    icon: HeartPulse,
   },
 ];
 

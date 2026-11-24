@@ -66,7 +66,7 @@ export type NotificationType =
   | 'emergency'
   | 'announcement';
 
-export type AppTab = 'beranda' | 'kas' | 'laporan' | 'pengumuman' | 'darurat';
+export type AppTab = 'beranda' | 'kas' | 'laporan' | 'pengumuman';
 
 export interface AdminRoleRecord {
   uid: string;

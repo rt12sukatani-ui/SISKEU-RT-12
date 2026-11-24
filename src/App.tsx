@@ -13,7 +13,6 @@ import { motion } from 'motion/react';
 import { AnnouncementsView } from './components/AnnouncementsView';
 import { CashflowAndDuesView } from './components/CashflowAndDuesView';
 import { DashboardView } from './components/DashboardView';
-import { EmergencyAndHealthView } from './components/EmergencyAndHealthView';
 import { HeaderNav } from './components/HeaderNav';
 import { LoginScreen } from './components/LoginScreen';
 import { MobileBottomNav } from './components/MobileBottomNav';
@@ -3616,23 +3615,6 @@ export default function App() {
                       onPublishAnnouncement={handlePublishAnnouncement}
                       onUpdateAnnouncement={handleUpdateAnnouncement}
                       onDeleteAnnouncement={handleDeleteAnnouncement}
-                    />
-                  )}
-
-                  {activeTab === 'darurat' && (
-                    <EmergencyAndHealthView
-                      profile={profile}
-                      canManageEmergencies={rbac.canManageEmergencies}
-                      isOnline={isOnline}
-                      rtSettings={rtSettings}
-                      emergencies={mergedEmergencies}
-                      privateProfile={privateProfile}
-                      healthProfile={healthProfile}
-                      onTriggerSOS={handleTriggerSOS}
-                      onUpdateEmergencyStatus={handleUpdateEmergencyStatus}
-                      onUpdateEmergencyDetails={handleUpdateEmergencyDetails}
-                      onDeleteEmergency={handleDeleteEmergency}
-                      onSaveEncryptedHealthAndProfile={handleSaveEncryptedHealthAndProfile}
                     />
                   )}
                 </motion.div>

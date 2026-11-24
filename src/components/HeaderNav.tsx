@@ -27,7 +27,6 @@ const NAV_ITEMS: { id: AppTab; label: string }[] = [
   { id: 'kas', label: 'Kas & Iuran' },
   { id: 'laporan', label: 'Laporan' },
   { id: 'pengumuman', label: 'Pengumuman' },
-  { id: 'darurat', label: 'Darurat' },
 ];
 
 export const HeaderNav: React.FC<HeaderNavProps> = ({
@@ -68,14 +67,11 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
                   onClick={() => onNavigate(item.id)}
                   className={`min-h-[44px] px-1 text-sm font-semibold whitespace-nowrap shrink-0 border-b-2 transition-colors cursor-pointer ${
                     isActive
-                      ? item.id === 'darurat'
-                        ? 'border-red-600 text-red-600 dark:text-red-400 dark:border-red-400'
-                        : 'border-emerald-700 text-emerald-700 dark:text-emerald-400 dark:border-emerald-400'
+                      ? 'border-emerald-700 text-emerald-700 dark:text-emerald-400 dark:border-emerald-400'
                       : 'border-transparent text-slate-600 dark:text-slate-300 hover:text-slate-900 dark:hover:text-white'
                   }`}
                 >
                   {item.label}
-                  {item.id === 'darurat' && activeEmergencyCount > 0 ? ` (${activeEmergencyCount})` : ''}
                 </button>
               );
             })}

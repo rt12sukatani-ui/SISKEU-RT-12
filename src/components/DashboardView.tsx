@@ -12,9 +12,7 @@ import {
   Clock,
   Copy,
   FileBarChart2,
-  HeartPulse,
   Megaphone,
-  ShieldAlert,
   ShieldCheck,
   UserCheck,
   Wallet,
@@ -266,13 +264,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </p>
             </div>
           </div>
-          <button
-            type="button"
-            onClick={() => onNavigate('darurat')}
-            className="min-h-[44px] px-4 rounded-xl bg-white text-red-700 font-bold text-sm hover:bg-red-50 transition-colors whitespace-nowrap shrink-0 cursor-pointer"
-          >
-            Lihat Detail Darurat
-          </button>
         </div>
       )}
 
@@ -598,62 +589,27 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
           </button>
 
-          {/* Compact Group: Laporan Kas, Lapor Darurat SOS, Profil Kesehatan */}
-          <div className="lg:col-span-5 grid grid-cols-3 gap-2.5 sm:gap-3">
-            <button
-              type="button"
-              onClick={() => onNavigate('laporan')}
-              className="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <FileBarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
+          {/* Laporan Kas Quick Card */}
+          <button
+            type="button"
+            onClick={() => onNavigate('laporan')}
+            className="lg:col-span-5 group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex items-center justify-between gap-3.5 sm:gap-4 cursor-pointer"
+          >
+            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                <FileBarChart2 className="w-5 h-5" />
               </div>
-              <div className="mt-2.5 min-w-0">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+              <div className="min-w-0 flex-1">
+                <p className="text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
                   Laporan Kas
                 </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  Rekap bulanan
+                <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  Rekap pemasukan, pengeluaran &amp; status iuran bulanan
                 </p>
               </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigate('darurat')}
-              className="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform">
-                <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <div className="mt-2.5 min-w-0">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                  Darurat SOS
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  Bantuan cepat
-                </p>
-              </div>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => onNavigate('darurat')}
-              className="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
-            >
-              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-                <HeartPulse className="w-4 h-4 sm:w-5 sm:h-5" />
-              </div>
-              <div className="mt-2.5 min-w-0">
-                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
-                  Kesehatan
-                </p>
-                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                  Siaga medis
-                </p>
-              </div>
-            </button>
-          </div>
+            </div>
+            <ChevronRight className="w-4 h-4 text-slate-400 group-hover:text-emerald-600 shrink-0 transition-colors" />
+          </button>
         </div>
       </section>
 
