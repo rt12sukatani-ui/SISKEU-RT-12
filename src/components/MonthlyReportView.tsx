@@ -427,7 +427,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             </p>
             <ArrowUpRight className="w-3.5 h-3.5 sm:w-4 sm:h-4 text-red-600 dark:text-red-400" />
           </div>
-          <p className="mt-1 sm:mt-2.5 font-mono-num text-lg sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tabular-nums">
+          <p className="mt-1 sm:mt-2.5 font-mono-num text-lg sm:text-3xl font-extrabold text-red-600 dark:text-red-400 tabular-nums">
             {formatRupiah(monthExpense)}
           </p>
         </div>

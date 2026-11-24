@@ -357,7 +357,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <ArrowUpRight className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-red-400" />
                 <span className="truncate">Pengeluaran</span>
               </div>
-              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums">
+              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums text-red-600 dark:text-red-400">
                 {formatRupiah(totalExpense)}
               </p>
             </div>
