@@ -330,11 +330,11 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
               </p>
             </div>
             <div>
-              <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-200">
+              <div className="flex items-center justify-end sm:justify-start gap-1 sm:gap-1.5 text-[11px] sm:text-xs text-emerald-200">
                 <ArrowDownLeft className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0 text-emerald-400" />
                 <span className="truncate">Pemasukan Lain</span>
               </div>
-              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums">
+              <p className="mt-0.5 sm:mt-1 font-mono-num text-xs sm:text-sm font-bold tabular-nums text-right sm:text-left">
                 {formatRupiah(totalIncome)}
               </p>
             </div>
