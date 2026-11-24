@@ -47,6 +47,7 @@ import {
   announcementToRow,
   appendSheetRows,
   BUILTIN_SHEETS_WEBAPP_URL,
+  clearCachedSheetData,
   clearSavedSpreadsheetId,
   clearSavedWebAppUrl,
   clearVerifiedSession,
@@ -59,14 +60,19 @@ import {
   extractSpreadsheetId,
   extractWebAppUrl,
   fetchAllSheetTables,
+  fetchWebAppSnapshotAndInfo,
   findAppDatabaseSpreadsheet,
   generateRecordId,
+  getCachedSheetInfo,
+  getCachedSheetSnapshot,
   getDefaultWebAppUrl,
   getSavedSpreadsheetId,
   getSavedVerifiedSession,
   notificationToRow,
   privateDataToRow,
   registryEntryToRow,
+  saveCachedSheetInfo,
+  saveCachedSheetSnapshot,
   saveVerifiedSession,
   settingsToRow,
   SheetsAuthExpiredError,
@@ -76,6 +82,7 @@ import {
   upsertSheetRowsByKey,
   userAccountToRow,
   userProfileToRow,
+  type SheetSnapshotData,
 } from './lib/sheetsDb';
 import type {
   AdminRoleRecord,
@@ -274,8 +281,117 @@ function checkRegistryVerification(
   return { ok: true, entry: matched };
 }
 
+function buildInstantHydration() {
+  const savedSession = getSavedVerifiedSession();
+  const cachedInfo = getCachedSheetInfo();
+  const cachedSnap = getCachedSheetSnapshot();
+
+  const initialSheetInfo: SheetDbInfo | null =
+    cachedInfo ||
+    (savedSession?.webAppUrl
+      ? {
+          mode: 'webapp',
+          spreadsheetId: savedSession.spreadsheetId || 'apps_script_db',
+          spreadsheetTitle: 'DATABASE_SISKEU_RT12_RW20',
+          spreadsheetUrl: savedSession.spreadsheetId
+            ? `https://docs.google.com/spreadsheets/d/${savedSession.spreadsheetId}/edit`
+            : '',
+          webAppUrl: savedSession.webAppUrl,
+        }
+      : null);
+
+  let initialUser: AppUserSession | null = null;
+  let initialProfile: ResidentPublic | null = null;
+  let initialAdmin: AdminRoleRecord | null = null;
+
+  if (savedSession) {
+    const normUser = normalizeUsername(savedSession.username);
+    const matchedReg = cachedSnap?.registryEntries.find(
+      (r) =>
+        (savedSession.registryId && r.registryId === savedSession.registryId) ||
+        (r.claimedUid && r.claimedUid === savedSession.uid)
+    );
+    const matchedProf = cachedSnap?.users.find((u) => u.uid === savedSession.uid) || null;
+    const matchedAdmin = cachedSnap?.admins.find((a) => a.uid === savedSession.uid) || null;
+    const isPengurus = (matchedReg?.role || savedSession.role) === 'pengurus';
+    const effectivePos: PengurusPosition = isPengurus
+      ? matchedReg?.pengurusPosition ||
+        matchedProf?.pengurusPosition ||
+        (matchedAdmin?.role && matchedAdmin.role !== 'admin' ? matchedAdmin.role : 'ketua_rt')
+      : 'pengurus_lain';
+    const effectivePerms = isPengurus
+      ? normalizePengurusPermissions(
+          effectivePos,
+          matchedReg?.permissions || matchedProf?.permissions
+        )
+      : undefined;
+    const nowIso = savedSession.verifiedAtIso || new Date().toISOString();
+
+    initialUser = {
+      uid: savedSession.uid,
+      email: usernameToAuthEmail(normUser),
+      displayName: matchedReg?.fullName || matchedProf?.displayName || savedSession.displayName,
+      username: normUser,
+      role: matchedReg?.role || savedSession.role,
+    };
+
+    initialProfile = {
+      ...(matchedProf || {
+        uid: savedSession.uid,
+        elderlyMode: false,
+        communityId: 'rt_warga',
+        createdAt: nowIso,
+      }),
+      uid: savedSession.uid,
+      username: normUser,
+      accountRole: matchedReg?.role || savedSession.role,
+      ...(isPengurus ? { pengurusPosition: effectivePos, permissions: effectivePerms } : {}),
+      registryId: matchedReg?.registryId || savedSession.registryId || matchedProf?.registryId,
+      displayName: matchedReg?.fullName || matchedProf?.displayName || savedSession.displayName,
+      houseBlock: matchedReg?.houseBlock || matchedProf?.houseBlock || '-',
+      residentStatus: isPengurus
+        ? 'pengurus'
+        : matchedReg?.residentStatus || matchedProf?.residentStatus || 'tetap',
+      familyStatus: matchedReg?.familyStatus || matchedProf?.familyStatus || 'umum',
+      familyStatusLog: matchedProf?.familyStatusLog?.length
+        ? matchedProf.familyStatusLog
+        : [`${getCurrentYearMonth()}:${matchedReg?.familyStatus || 'umum'}`],
+      verificationStatus: 'verified',
+      elderlyMode: matchedProf?.elderlyMode ?? false,
+      communityId: matchedProf?.communityId || 'rt_warga',
+      updatedAt: matchedProf?.updatedAt || nowIso,
+    };
+
+    initialAdmin = isPengurus
+      ? matchedAdmin || {
+          uid: savedSession.uid,
+          email: usernameToAuthEmail(normUser),
+          name: initialProfile.displayName,
+          role: effectivePos,
+          permissions: effectivePerms,
+          registryId: initialProfile.registryId,
+          createdAt: nowIso,
+        }
+      : null;
+  }
+
+  return {
+    savedSession,
+    initialSheetInfo,
+    cachedSnap,
+    initialUser,
+    initialProfile,
+    initialAdmin,
+  };
+}
+
 export default function App() {
   const isOnline = useOnlineStatus();
+  const initialHydrationRef = useRef<ReturnType<typeof buildInstantHydration> | null>(null);
+  if (!initialHydrationRef.current) {
+    initialHydrationRef.current = buildInstantHydration();
+  }
+  const initialData = initialHydrationRef.current;
 
   const [darkMode, setDarkMode] = useState<boolean>(() => {
     return localStorage.getItem('kaswarga_dark_mode') === 'true';
@@ -285,38 +401,69 @@ export default function App() {
   });
 
   // Google Workspace OAuth & Spreadsheet connection state
-  const [authReady, setAuthReady] = useState(false);
-  const [googleConnected, setGoogleConnected] = useState(false);
-  const [googleUserEmail, setGoogleUserEmail] = useState<string | null>(null);
+  const [googleConnected, setGoogleConnected] = useState(() => Boolean(initialData.initialSheetInfo));
+  const [googleUserEmail, setGoogleUserEmail] = useState<string | null>(() =>
+    initialData.initialSheetInfo?.mode === 'webapp' ? 'Google Spreadsheet (Apps Script)' : null
+  );
   const [googleDisplayName, setGoogleDisplayName] = useState<string | null>(null);
   const [googleUid, setGoogleUid] = useState<string | null>(null);
-  const [sheetInfo, setSheetInfo] = useState<SheetDbInfo | null>(null);
-  const [hasSyncedSheetOnce, setHasSyncedSheetOnce] = useState(false);
+  const [sheetInfo, setSheetInfo] = useState<SheetDbInfo | null>(initialData.initialSheetInfo);
+  const [hasSyncedSheetOnce, setHasSyncedSheetOnce] = useState(() => Boolean(initialData.cachedSnap));
   const [isConnectingSheet, setIsConnectingSheet] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
   // Active SISKEU RT user session (Warga / Pengurus)
-  const [currentUser, setCurrentUser] = useState<AppUserSession | null>(null);
+  const [currentUser, setCurrentUser] = useState<AppUserSession | null>(initialData.initialUser);
   const [isLoggingIn, setIsLoggingIn] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
 
   const [isBootstrappedAdminUser, setIsBootstrappedAdminUser] = useState(false);
-  const [adminRecord, setAdminRecord] = useState<AdminRoleRecord | null>(null);
-  const [profile, setProfile] = useState<ResidentPublic | null>(null);
+  const [adminRecord, setAdminRecord] = useState<AdminRoleRecord | null>(initialData.initialAdmin);
+  const [profile, setProfile] = useState<ResidentPublic | null>(initialData.initialProfile);
   const [privateProfile, setPrivateProfile] = useState<PrivateProfileData>(DEFAULT_PRIVATE_PROFILE);
   const [healthProfile, setHealthProfile] = useState<PrivateHealthData>(DEFAULT_HEALTH_PROFILE);
 
   // Spreadsheet database tables cached in state
-  const [rtSettings, setRtSettings] = useState<RtSettings>(DEFAULT_RT_SETTINGS);
-  const [residents, setResidents] = useState<ResidentPublic[]>([]);
-  const [registryEntries, setRegistryEntries] = useState<ResidentRegistryEntry[]>([]);
-  const [userAccounts, setUserAccounts] = useState<UserAccountLookup[]>([]);
-  const [adminRecords, setAdminRecords] = useState<AdminRoleRecord[]>([]);
-  const [privateDataRecords, setPrivateDataRecords] = useState<PrivateDataRecord[]>([]);
-  const [transactions, setTransactions] = useState<KasTransaction[]>([]);
-  const [announcements, setAnnouncements] = useState<Announcement[]>([]);
-  const [emergencies, setEmergencies] = useState<EmergencyAlert[]>([]);
-  const [allNotifications, setAllNotifications] = useState<UserNotification[]>([]);
+  const [rtSettings, setRtSettings] = useState<RtSettings>(
+    () => initialData.cachedSnap?.rtSettings || DEFAULT_RT_SETTINGS
+  );
+  const [residents, setResidents] = useState<ResidentPublic[]>(
+    () =>
+      initialData.cachedSnap
+        ? [...initialData.cachedSnap.users].sort((a, b) =>
+            a.houseBlock.localeCompare(b.houseBlock)
+          )
+        : []
+  );
+  const [registryEntries, setRegistryEntries] = useState<ResidentRegistryEntry[]>(
+    () =>
+      initialData.cachedSnap
+        ? [...initialData.cachedSnap.registryEntries].sort((a, b) =>
+            a.houseBlock.localeCompare(b.houseBlock)
+          )
+        : []
+  );
+  const [userAccounts, setUserAccounts] = useState<UserAccountLookup[]>(
+    () => initialData.cachedSnap?.userAccounts || []
+  );
+  const [adminRecords, setAdminRecords] = useState<AdminRoleRecord[]>(
+    () => initialData.cachedSnap?.admins || []
+  );
+  const [privateDataRecords, setPrivateDataRecords] = useState<PrivateDataRecord[]>(
+    () => initialData.cachedSnap?.privateData || []
+  );
+  const [transactions, setTransactions] = useState<KasTransaction[]>(
+    () => (initialData.cachedSnap ? sortByCreatedAtDesc(initialData.cachedSnap.transactions) : [])
+  );
+  const [announcements, setAnnouncements] = useState<Announcement[]>(
+    () => (initialData.cachedSnap ? sortByCreatedAtDesc(initialData.cachedSnap.announcements) : [])
+  );
+  const [emergencies, setEmergencies] = useState<EmergencyAlert[]>(
+    () => (initialData.cachedSnap ? sortByCreatedAtDesc(initialData.cachedSnap.emergencies) : [])
+  );
+  const [allNotifications, setAllNotifications] = useState<UserNotification[]>(
+    () => (initialData.cachedSnap ? sortByCreatedAtDesc(initialData.cachedSnap.notifications) : [])
+  );
   const [bannerSlides, setBannerSlides] = useState<BannerSlide[]>(() => getCachedBannerSlides());
 
   const [activeTab, setActiveTab] = useState<AppTab>('beranda');
@@ -347,7 +494,9 @@ export default function App() {
   const notifications = useMemo(() => {
     if (!currentUser) return [];
     return sortByCreatedAtDesc(
-      allNotifications.filter((n) => n.targetUid === currentUser.uid)
+      allNotifications.filter(
+        (n) => n.targetUid === currentUser.uid && n.type !== 'emergency'
+      )
     );
   }, [allNotifications, currentUser]);
 
@@ -387,9 +536,11 @@ export default function App() {
     scrollPageToTop();
   }, [activeTab, scrollPageToTop]);
 
-  const showToast = useCallback((title: string, body: string, urgent = false) => {
+  const showToast = useCallback((title: string, body: string, urgent = false, sendPush = false) => {
     setLiveToast({ title, body, urgent });
-    sendBrowserPush(title, body);
+    if (sendPush) {
+      sendBrowserPush(title, body);
+    }
     window.setTimeout(() => {
       setLiveToast((prev) => (prev?.title === title && prev?.body === body ? null : prev));
     }, 6500);
@@ -426,9 +577,95 @@ export default function App() {
     };
   }, [sheetInfo?.mode, sheetInfo?.spreadsheetId, sheetInfo?.webAppUrl]);
 
+  const applySnapshotToState = useCallback(
+    (snap: SheetSnapshotData) => {
+      if (snap.rtSettings) setRtSettings(snap.rtSettings);
+      setRegistryEntries(
+        [...snap.registryEntries].sort((a, b) => a.houseBlock.localeCompare(b.houseBlock))
+      );
+      setUserAccounts(snap.userAccounts);
+      setResidents([...snap.users].sort((a, b) => a.houseBlock.localeCompare(b.houseBlock)));
+      setAdminRecords(snap.admins);
+      setPrivateDataRecords(snap.privateData);
+      setTransactions(sortByCreatedAtDesc(snap.transactions));
+
+      const sortedAnnouncements = sortByCreatedAtDesc(snap.announcements);
+      if (initialAnnouncementIdsRef.current === null) {
+        initialAnnouncementIdsRef.current = new Set(sortedAnnouncements.map((a) => a.id));
+      } else {
+        const newest = sortedAnnouncements.find(
+          (a) => !initialAnnouncementIdsRef.current?.has(a.id)
+        );
+        if (newest) {
+          initialAnnouncementIdsRef.current.add(newest.id);
+          showToast(
+            `Pengumuman RT: ${newest.title}`,
+            newest.body.slice(0, 120),
+            newest.priority === 'urgent',
+            true
+          );
+        }
+      }
+      setAnnouncements(sortedAnnouncements);
+
+      const sortedEmergencies = sortByCreatedAtDesc(snap.emergencies);
+      if (initialEmergencyIdsRef.current === null) {
+        initialEmergencyIdsRef.current = new Set(sortedEmergencies.map((e) => e.id));
+      } else {
+        const newest = sortedEmergencies.find(
+          (e) => e.status === 'active' && !initialEmergencyIdsRef.current?.has(e.id)
+        );
+        if (newest) {
+          initialEmergencyIdsRef.current.add(newest.id);
+          showToast(
+            `DARURAT ${newest.emergencyType.toUpperCase()}: ${newest.houseBlock}`,
+            `${newest.reporterName}: ${newest.description || 'Butuh bantuan segera!'}`,
+            true,
+            false
+          );
+        }
+      }
+      setEmergencies(sortedEmergencies);
+
+      const sortedNotifs = sortByCreatedAtDesc(snap.notifications);
+      if (currentUser) {
+        const myNotifs = sortedNotifs.filter(
+          (n) => n.targetUid === currentUser.uid && n.type !== 'emergency'
+        );
+        if (initialNotificationIdsRef.current === null) {
+          initialNotificationIdsRef.current = new Set(myNotifs.map((n) => n.id));
+        } else {
+          const newest = myNotifs.find(
+            (n) => !n.isRead && !initialNotificationIdsRef.current?.has(n.id)
+          );
+          if (newest) {
+            initialNotificationIdsRef.current.add(newest.id);
+            showToast(newest.title, newest.message, false, true);
+          }
+        }
+      }
+      setAllNotifications(sortedNotifs);
+
+      setBannerSlides(snap.slides);
+      saveCachedBannerSlides(snap.slides);
+      saveCachedSheetSnapshot(snap);
+      setHasSyncedSheetOnce(true);
+      setSheetInfo((prev) =>
+        prev
+          ? {
+              ...prev,
+              lastSyncedAtIso: new Date().toISOString(),
+            }
+          : prev
+      );
+    },
+    [currentUser, showToast]
+  );
+
   const ensureDefaultSpreadsheetConnected = useCallback(async (): Promise<{
     conn: SheetConnection;
     info: SheetDbInfo;
+    snap?: SheetSnapshotData;
   } | null> => {
     const existingConn = getActiveSheetConnection();
     if (existingConn && sheetInfo) {
@@ -436,15 +673,17 @@ export default function App() {
     }
     const candidateUrl = getDefaultWebAppUrl() || BUILTIN_SHEETS_WEBAPP_URL;
     let info: SheetDbInfo;
+    let snapshot: SheetSnapshotData;
     try {
-      info = await connectWebAppAndEnsureSchema(candidateUrl, DEFAULT_RT_SETTINGS);
+      const res = await fetchWebAppSnapshotAndInfo(candidateUrl, DEFAULT_RT_SETTINGS);
+      info = res.info;
+      snapshot = res.snapshot;
     } catch (err) {
       if (candidateUrl !== BUILTIN_SHEETS_WEBAPP_URL) {
         clearSavedWebAppUrl();
-        info = await connectWebAppAndEnsureSchema(
-          BUILTIN_SHEETS_WEBAPP_URL,
-          DEFAULT_RT_SETTINGS
-        );
+        const res = await fetchWebAppSnapshotAndInfo(BUILTIN_SHEETS_WEBAPP_URL, DEFAULT_RT_SETTINGS);
+        info = res.info;
+        snapshot = res.snapshot;
       } else {
         throw err;
       }
@@ -457,8 +696,9 @@ export default function App() {
     setSheetInfo(info);
     setGoogleConnected(true);
     setGoogleUserEmail('Google Spreadsheet (Apps Script)');
-    return { conn, info };
-  }, [getActiveSheetConnection, sheetInfo]);
+    applySnapshotToState(snapshot);
+    return { conn, info, snap: snapshot };
+  }, [applySnapshotToState, getActiveSheetConnection, sheetInfo]);
 
   const requireActiveSheet = useCallback((): SheetConnection | null => {
     if (!sheetInfo?.spreadsheetId) {
@@ -510,82 +750,7 @@ export default function App() {
       if (!silent) setIsSyncing(true);
       try {
         const snap = await fetchAllSheetTables(conn);
-
-        if (snap.rtSettings) setRtSettings(snap.rtSettings);
-        setRegistryEntries(
-          [...snap.registryEntries].sort((a, b) => a.houseBlock.localeCompare(b.houseBlock))
-        );
-        setUserAccounts(snap.userAccounts);
-        setResidents([...snap.users].sort((a, b) => a.houseBlock.localeCompare(b.houseBlock)));
-        setAdminRecords(snap.admins);
-        setPrivateDataRecords(snap.privateData);
-        setTransactions(sortByCreatedAtDesc(snap.transactions));
-
-        const sortedAnnouncements = sortByCreatedAtDesc(snap.announcements);
-        if (initialAnnouncementIdsRef.current === null) {
-          initialAnnouncementIdsRef.current = new Set(sortedAnnouncements.map((a) => a.id));
-        } else {
-          const newest = sortedAnnouncements.find(
-            (a) => !initialAnnouncementIdsRef.current?.has(a.id)
-          );
-          if (newest) {
-            initialAnnouncementIdsRef.current.add(newest.id);
-            showToast(
-              `Pengumuman RT: ${newest.title}`,
-              newest.body.slice(0, 120),
-              newest.priority === 'urgent'
-            );
-          }
-        }
-        setAnnouncements(sortedAnnouncements);
-
-        const sortedEmergencies = sortByCreatedAtDesc(snap.emergencies);
-        if (initialEmergencyIdsRef.current === null) {
-          initialEmergencyIdsRef.current = new Set(sortedEmergencies.map((e) => e.id));
-        } else {
-          const newest = sortedEmergencies.find(
-            (e) => e.status === 'active' && !initialEmergencyIdsRef.current?.has(e.id)
-          );
-          if (newest) {
-            initialEmergencyIdsRef.current.add(newest.id);
-            showToast(
-              `DARURAT ${newest.emergencyType.toUpperCase()}: ${newest.houseBlock}`,
-              `${newest.reporterName}: ${newest.description || 'Butuh bantuan segera!'}`,
-              true
-            );
-          }
-        }
-        setEmergencies(sortedEmergencies);
-
-        const sortedNotifs = sortByCreatedAtDesc(snap.notifications);
-        if (currentUser) {
-          const myNotifs = sortedNotifs.filter((n) => n.targetUid === currentUser.uid);
-          if (initialNotificationIdsRef.current === null) {
-            initialNotificationIdsRef.current = new Set(myNotifs.map((n) => n.id));
-          } else {
-            const newest = myNotifs.find(
-              (n) => !n.isRead && !initialNotificationIdsRef.current?.has(n.id)
-            );
-            if (newest) {
-              initialNotificationIdsRef.current.add(newest.id);
-              showToast(newest.title, newest.message, newest.type === 'emergency');
-            }
-          }
-        }
-        setAllNotifications(sortedNotifs);
-
-        setBannerSlides(snap.slides);
-        saveCachedBannerSlides(snap.slides);
-        setHasSyncedSheetOnce(true);
-        setSheetInfo((prev) =>
-          prev
-            ? {
-                ...prev,
-                lastSyncedAtIso: new Date().toISOString(),
-              }
-            : prev
-        );
-
+        applySnapshotToState(snap);
         return snap;
       } catch (err) {
         if (err instanceof SheetsAuthExpiredError) {
@@ -602,7 +767,7 @@ export default function App() {
         if (!silent) setIsSyncing(false);
       }
     },
-    [getActiveSheetConnection, currentUser, showToast, handleExpiredToken]
+    [applySnapshotToState, getActiveSheetConnection, handleExpiredToken]
   );
 
   // Sync active user profile/admin changes from fresh sheet snapshots
@@ -664,7 +829,7 @@ export default function App() {
     };
   }, [currentUser, privateDataRecords]);
 
-  // Auto-connect Google Spreadsheet on startup & automatically restore/verify saved user against database
+  // Auto-connect & silently sync Google Spreadsheet in a single round-trip in the background
   useEffect(() => {
     const urlFromLink = extractAndSaveWebAppUrlFromLocation();
     const savedSession = getSavedVerifiedSession();
@@ -674,27 +839,20 @@ export default function App() {
       getDefaultWebAppUrl() ||
       BUILTIN_SHEETS_WEBAPP_URL;
 
-    // Jika belum ada sesi tersimpan, langsung tampilkan portal login sambil menghubungkan database di latar
-    if (!savedSession) {
-      setAuthReady(true);
-    }
-
     if (!startupWebAppUrl || !isOnline) {
-      setAuthReady(true);
       return;
     }
 
     let cancelled = false;
     void (async () => {
-      setIsConnectingSheet(true);
       try {
-        let info: SheetDbInfo;
+        let result: { info: SheetDbInfo; snapshot: SheetSnapshotData };
         try {
-          info = await connectWebAppAndEnsureSchema(startupWebAppUrl, DEFAULT_RT_SETTINGS);
+          result = await fetchWebAppSnapshotAndInfo(startupWebAppUrl, DEFAULT_RT_SETTINGS);
         } catch (err) {
           if (startupWebAppUrl !== BUILTIN_SHEETS_WEBAPP_URL) {
             clearSavedWebAppUrl();
-            info = await connectWebAppAndEnsureSchema(
+            result = await fetchWebAppSnapshotAndInfo(
               BUILTIN_SHEETS_WEBAPP_URL,
               DEFAULT_RT_SETTINGS
             );
@@ -703,28 +861,12 @@ export default function App() {
           }
         }
         if (cancelled) return;
+        const { info, snapshot: snap } = result;
         setSheetInfo(info);
         setGoogleConnected(true);
         setGoogleUserEmail('Google Spreadsheet (Apps Script)');
+        applySnapshotToState(snap);
 
-        const snap = await refreshSpreadsheetData(
-          {
-            mode: 'webapp',
-            spreadsheetId: info.spreadsheetId,
-            webAppUrl: info.webAppUrl,
-          },
-          true
-        );
-
-        if (cancelled) return;
-        if (!snap) {
-          setSheetInfo(null);
-          setHasSyncedSheetOnce(false);
-          setLoginError(
-            'Koneksi database tercapai, tetapi gagal memuat isi tabel Google Spreadsheet. Silakan klik "Hubungkan Database".'
-          );
-          return;
-        }
         if (!savedSession) return;
 
         const normUser = normalizeUsername(savedSession.username);
@@ -735,6 +877,9 @@ export default function App() {
         );
         if (!accData) {
           clearVerifiedSession();
+          setCurrentUser(null);
+          setProfile(null);
+          setAdminRecord(null);
           return;
         }
 
@@ -750,6 +895,9 @@ export default function App() {
 
         if (!dbCheck.ok) {
           clearVerifiedSession();
+          setCurrentUser(null);
+          setProfile(null);
+          setAdminRecord(null);
           setLoginError(dbCheck.reason);
           return;
         }
@@ -825,9 +973,8 @@ export default function App() {
           spreadsheetId: info.spreadsheetId,
           verifiedAtIso: savedSession.verifiedAtIso,
         });
-        initialNotificationIdsRef.current = null;
       } catch (err) {
-        if (!cancelled) {
+        if (!cancelled && !initialData.initialSheetInfo) {
           setSheetInfo(null);
           setHasSyncedSheetOnce(false);
           setLoginError(
@@ -835,11 +982,6 @@ export default function App() {
               ? err.message
               : 'Gagal menghubungkan ke Database Google Spreadsheet. Klik "Hubungkan Database" untuk mencoba lagi.'
           );
-        }
-      } finally {
-        if (!cancelled) {
-          setIsConnectingSheet(false);
-          setAuthReady(true);
         }
       }
     })();
@@ -927,6 +1069,7 @@ export default function App() {
         }
 
         setSheetInfo(info);
+        saveCachedSheetInfo(info);
         setGoogleConnected(true);
         setGoogleUserEmail('Google Spreadsheet (Apps Script)');
 
@@ -979,6 +1122,7 @@ export default function App() {
         try {
           const info = await connectAndEnsureSchema(accessToken, savedId, DEFAULT_RT_SETTINGS);
           setSheetInfo(info);
+          saveCachedSheetInfo(info);
           await refreshSpreadsheetData(
             { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken },
             true
@@ -997,6 +1141,7 @@ export default function App() {
           DEFAULT_RT_SETTINGS
         );
         setSheetInfo(info);
+        saveCachedSheetInfo(info);
         await refreshSpreadsheetData(
           { mode: 'oauth', spreadsheetId: info.spreadsheetId, accessToken },
           true
@@ -1015,6 +1160,7 @@ export default function App() {
     setSettingsOpen(false);
     setRegistryOpen(false);
     clearVerifiedSession();
+    clearCachedSheetData();
     clearSavedWebAppUrl();
     clearSavedSpreadsheetId();
     await googleWorkspaceSignOut();
@@ -1276,7 +1422,17 @@ export default function App() {
         return;
       }
 
-      const freshSnap = await refreshSpreadsheetData(conn, true);
+      const cachedMatch = userAccounts.find(
+        (a) => normalizeUsername(a.username) === normalizedUsername
+      );
+      const canUseCachedFastLogin =
+        cachedMatch?.passwordHash && registryEntries.length > 0
+          ? await verifyPassword(data.password, cachedMatch.passwordHash)
+          : false;
+
+      const freshSnap =
+        ensured.snap ||
+        (canUseCachedFastLogin ? null : await refreshSpreadsheetData(conn, true));
       const activeAccounts = freshSnap?.userAccounts || userAccounts;
       const activeUsers = freshSnap?.users || residents;
       const activeAdmins = freshSnap?.admins || adminRecords;
@@ -1299,10 +1455,16 @@ export default function App() {
         return;
       }
 
-      const passwordValid = await verifyPassword(data.password, accData.passwordHash);
+      const passwordValid = canUseCachedFastLogin
+        ? true
+        : await verifyPassword(data.password, accData.passwordHash);
       if (!passwordValid) {
         setLoginError('Username atau sandi salah. Silakan periksa kembali.');
         return;
+      }
+
+      if (canUseCachedFastLogin && !freshSnap) {
+        void refreshSpreadsheetData(conn, true);
       }
 
       let userProf = activeUsers.find((u) => u.uid === accData.uid) || null;
@@ -3303,24 +3465,6 @@ export default function App() {
     }
   };
 
-  if (!authReady) {
-    return (
-      <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 p-6 overflow-x-clip">
-        <div className="text-center space-y-3">
-          <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-700 text-white flex items-center justify-center font-display font-extrabold text-base">
-            RT
-          </div>
-          <p className="font-display text-lg font-extrabold text-slate-900 dark:text-slate-100">
-            SISKEU RT 12/RW 20 SUKATANI
-          </p>
-          <p className="text-sm text-slate-500 dark:text-slate-400">
-            Menyiapkan Database...
-          </p>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <>
       {!currentUser || !profile ? (
@@ -3328,7 +3472,7 @@ export default function App() {
           googleConnected={googleConnected}
           googleUserEmail={googleUserEmail}
           sheetInfo={sheetInfo}
-          isConnectingSheet={isConnectingSheet || isSyncing}
+          isConnectingSheet={isConnectingSheet}
           isDatabaseEmpty={
             Boolean(sheetInfo?.spreadsheetId) &&
             hasSyncedSheetOnce &&

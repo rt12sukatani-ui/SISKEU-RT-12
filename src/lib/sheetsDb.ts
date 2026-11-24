@@ -35,6 +35,8 @@ const LEGACY_SPREADSHEET_TITLE = 'SISKEU_RT12_RW20_DATABASE';
 const SAVED_SPREADSHEET_ID_KEY = 'siskeu_rt12_spreadsheet_id_v1';
 const SAVED_WEBAPP_URL_KEY = 'siskeu_rt12_webapp_url_v1';
 const SAVED_VERIFIED_SESSION_KEY = 'siskeu_rt12_verified_session_v1';
+const SAVED_SHEET_INFO_CACHE_KEY = 'siskeu_rt12_sheet_info_cache_v1';
+const SAVED_SNAPSHOT_CACHE_KEY = 'siskeu_rt12_snapshot_cache_v1';
 const CHUNK_SIZE = 45000;
 
 export const SHEET_TABS = {
@@ -362,6 +364,94 @@ export function clearVerifiedSession(): void {
     localStorage.removeItem(SAVED_VERIFIED_SESSION_KEY);
   } catch {
     // Ignore storage errors
+  }
+}
+
+export function getCachedSheetInfo(): SheetDbInfo | null {
+  try {
+    const raw = localStorage.getItem(SAVED_SHEET_INFO_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SheetDbInfo>;
+    if (!parsed || !parsed.spreadsheetId || !parsed.mode) return null;
+    return {
+      mode: parsed.mode === 'oauth' ? 'oauth' : 'webapp',
+      spreadsheetId: parsed.spreadsheetId,
+      spreadsheetTitle: parsed.spreadsheetTitle || DEFAULT_SPREADSHEET_TITLE,
+      spreadsheetUrl:
+        parsed.spreadsheetUrl ||
+        `https://docs.google.com/spreadsheets/d/${parsed.spreadsheetId}/edit`,
+      webAppUrl: parsed.webAppUrl,
+      lastSyncedAtIso: parsed.lastSyncedAtIso,
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveCachedSheetInfo(info: SheetDbInfo): void {
+  try {
+    localStorage.setItem(SAVED_SHEET_INFO_CACHE_KEY, JSON.stringify(info));
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function clearCachedSheetData(): void {
+  try {
+    localStorage.removeItem(SAVED_SHEET_INFO_CACHE_KEY);
+    localStorage.removeItem(SAVED_SNAPSHOT_CACHE_KEY);
+  } catch {
+    // Ignore storage errors
+  }
+}
+
+export function getCachedSheetSnapshot(): SheetSnapshotData | null {
+  try {
+    const raw = localStorage.getItem(SAVED_SNAPSHOT_CACHE_KEY);
+    if (!raw) return null;
+    const parsed = JSON.parse(raw) as Partial<SheetSnapshotData>;
+    if (!parsed || typeof parsed !== 'object') return null;
+    return {
+      rtSettings: parsed.rtSettings ?? null,
+      registryEntries: Array.isArray(parsed.registryEntries) ? parsed.registryEntries : [],
+      userAccounts: Array.isArray(parsed.userAccounts) ? parsed.userAccounts : [],
+      users: Array.isArray(parsed.users) ? parsed.users : [],
+      admins: Array.isArray(parsed.admins) ? parsed.admins : [],
+      privateData: Array.isArray(parsed.privateData) ? parsed.privateData : [],
+      transactions: Array.isArray(parsed.transactions) ? parsed.transactions : [],
+      announcements: Array.isArray(parsed.announcements) ? parsed.announcements : [],
+      emergencies: Array.isArray(parsed.emergencies) ? parsed.emergencies : [],
+      notifications: Array.isArray(parsed.notifications) ? parsed.notifications : [],
+      slides: Array.isArray(parsed.slides) ? parsed.slides : [],
+    };
+  } catch {
+    return null;
+  }
+}
+
+export function saveCachedSheetSnapshot(snap: SheetSnapshotData): void {
+  // Store lightweight copy (slides already cached in kaswarga_banner_slides_v1)
+  const lightweight: SheetSnapshotData = {
+    ...snap,
+    slides: [],
+  };
+  try {
+    localStorage.setItem(SAVED_SNAPSHOT_CACHE_KEY, JSON.stringify(lightweight));
+  } catch {
+    // If quota exceeded due to proof images, strip inline base64 images and retry
+    try {
+      const compact: SheetSnapshotData = {
+        ...lightweight,
+        transactions: lightweight.transactions.map((t) =>
+          t.proofImageData && t.proofImageData.length > 512
+            ? { ...t, proofImageData: '' }
+            : t
+        ),
+      };
+      localStorage.setItem(SAVED_SNAPSHOT_CACHE_KEY, JSON.stringify(compact));
+    } catch {
+      // Ignore storage quota errors
+    }
   }
 }
 
@@ -967,56 +1057,9 @@ function rowsToObjects(values?: string[][]): Record<string, string>[] {
   return out;
 }
 
-export async function fetchAllSheetTables(
-  conn: SheetConnection
-): Promise<SheetSnapshotData> {
-  const dedupKey =
-    conn.mode === 'webapp'
-      ? `webapp:${conn.webAppUrl || ''}`
-      : `oauth:${conn.spreadsheetId}`;
-  const inFlight = inFlightFetches.get(dedupKey);
-  if (inFlight) return inFlight;
-
-  const task = (async (): Promise<SheetSnapshotData> => {
-    const allTabs = Object.values(SHEET_TABS);
-    const byTab = new Map<SheetTabName, Record<string, string>[]>();
-
-    if (conn.mode === 'webapp') {
-      if (!conn.webAppUrl) {
-        throw new Error('URL Web App Apps Script belum terhubung.');
-      }
-      const res = await webAppPost<{
-        ok: boolean;
-        tables?: Record<string, string[][]>;
-      }>(conn.webAppUrl, {
-        action: 'fetchAll',
-        tabs: allTabs,
-      });
-      allTabs.forEach((tab) => {
-        byTab.set(tab, rowsToObjects(res.tables?.[tab]));
-      });
-    } else {
-    if (!conn.accessToken) {
-      throw new SheetsAuthExpiredError();
-    }
-    const rangesParam = allTabs
-      .map((tab) => `ranges=${encodeURIComponent(`${tab}!A1:Z`)}`)
-      .join('&');
-
-    const res = await googleFetch<{
-      valueRanges?: Array<{ values?: string[][] }>;
-    }>(
-      `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
-        conn.spreadsheetId
-      )}/values:batchGet?${rangesParam}`,
-      conn.accessToken
-    );
-
-    allTabs.forEach((tab, idx) => {
-      byTab.set(tab, rowsToObjects(res.valueRanges?.[idx]?.values));
-    });
-  }
-
+function parseTablesToSnapshot(
+  byTab: Map<SheetTabName, Record<string, string>[]>
+): SheetSnapshotData {
   // 1. Pengaturan (Settings)
   const settingsRows = byTab.get(SHEET_TABS.SETTINGS) || [];
   const rtConfigRow =
@@ -1303,19 +1346,136 @@ export async function fetchAllSheetTables(
     .filter((s) => Boolean(s.id))
     .sort((a, b) => (a.sortOrder ?? 0) - (b.sortOrder ?? 0));
 
-    return {
-      rtSettings,
-      registryEntries,
-      userAccounts,
-      users,
-      admins,
-      privateData,
-      transactions,
-      announcements,
-      emergencies,
-      notifications,
-      slides,
-    };
+  return {
+    rtSettings,
+    registryEntries,
+    userAccounts,
+    users,
+    admins,
+    privateData,
+    transactions,
+    announcements,
+    emergencies,
+    notifications,
+    slides,
+  };
+}
+
+export async function fetchWebAppSnapshotAndInfo(
+  rawUrl: string,
+  defaultSettings: RtSettings
+): Promise<{ info: SheetDbInfo; snapshot: SheetSnapshotData }> {
+  const candidate = (rawUrl || '').trim() || getDefaultWebAppUrl();
+  const webAppUrl = extractWebAppUrl(candidate);
+  if (!webAppUrl) {
+    throw new Error(
+      'URL Web App Google Apps Script tidak valid. Pastikan berawalan https://script.google.com/macros/s/... dan berakhiran /exec.'
+    );
+  }
+
+  const allTabs = Object.values(SHEET_TABS);
+  const nowIso = new Date().toISOString();
+  const res = await webAppPost<{
+    ok: boolean;
+    spreadsheetId?: string;
+    spreadsheetTitle?: string;
+    spreadsheetUrl?: string;
+    tables?: Record<string, string[][]>;
+  }>(webAppUrl, {
+    action: 'fetchAll',
+    tabs: allTabs,
+  });
+
+  const hasAnyRows = allTabs.some((tab) => (res.tables?.[tab]?.length || 0) > 0);
+  if (!hasAnyRows) {
+    const info = await connectWebAppAndEnsureSchema(webAppUrl, defaultSettings, {
+      forceSchema: true,
+    });
+    const snapshot = await fetchAllSheetTables({
+      mode: 'webapp',
+      spreadsheetId: info.spreadsheetId,
+      webAppUrl: info.webAppUrl,
+    });
+    saveCachedSheetInfo(info);
+    return { info, snapshot };
+  }
+
+  const byTab = new Map<SheetTabName, Record<string, string>[]>();
+  allTabs.forEach((tab) => {
+    byTab.set(tab, rowsToObjects(res.tables?.[tab]));
+  });
+
+  const spreadsheetId = res.spreadsheetId || getSavedSpreadsheetId() || 'apps_script_db';
+  const info: SheetDbInfo = {
+    mode: 'webapp',
+    spreadsheetId,
+    spreadsheetTitle: res.spreadsheetTitle || DEFAULT_SPREADSHEET_TITLE,
+    spreadsheetUrl:
+      res.spreadsheetUrl ||
+      `https://docs.google.com/spreadsheets/d/${spreadsheetId}/edit`,
+    webAppUrl,
+    lastSyncedAtIso: nowIso,
+  };
+
+  ensuredSchemaUrls.add(webAppUrl);
+  saveWebAppUrl(webAppUrl);
+  saveCachedSheetInfo(info);
+
+  const snapshot = parseTablesToSnapshot(byTab);
+  return { info, snapshot };
+}
+
+export async function fetchAllSheetTables(
+  conn: SheetConnection
+): Promise<SheetSnapshotData> {
+  const dedupKey =
+    conn.mode === 'webapp'
+      ? `webapp:${conn.webAppUrl || ''}`
+      : `oauth:${conn.spreadsheetId}`;
+  const inFlight = inFlightFetches.get(dedupKey);
+  if (inFlight) return inFlight;
+
+  const task = (async (): Promise<SheetSnapshotData> => {
+    const allTabs = Object.values(SHEET_TABS);
+    const byTab = new Map<SheetTabName, Record<string, string>[]>();
+
+    if (conn.mode === 'webapp') {
+      if (!conn.webAppUrl) {
+        throw new Error('URL Web App Apps Script belum terhubung.');
+      }
+      const res = await webAppPost<{
+        ok: boolean;
+        tables?: Record<string, string[][]>;
+      }>(conn.webAppUrl, {
+        action: 'fetchAll',
+        tabs: allTabs,
+      });
+      allTabs.forEach((tab) => {
+        byTab.set(tab, rowsToObjects(res.tables?.[tab]));
+      });
+    } else {
+      if (!conn.accessToken) {
+        throw new SheetsAuthExpiredError();
+      }
+      const rangesParam = allTabs
+        .map((tab) => `ranges=${encodeURIComponent(`${tab}!A1:Z`)}`)
+        .join('&');
+
+      const res = await googleFetch<{
+        valueRanges?: Array<{ values?: string[][] }>;
+      }>(
+        `https://sheets.googleapis.com/v4/spreadsheets/${encodeURIComponent(
+          conn.spreadsheetId
+        )}/values:batchGet?${rangesParam}`,
+        conn.accessToken
+      );
+
+      allTabs.forEach((tab, idx) => {
+        byTab.set(tab, rowsToObjects(res.valueRanges?.[idx]?.values));
+      });
+    }
+
+    return parseTablesToSnapshot(byTab);
   })().finally(() => {
     inFlightFetches.delete(dedupKey);
   });

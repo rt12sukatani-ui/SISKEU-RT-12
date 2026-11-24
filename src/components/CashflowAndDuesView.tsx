@@ -459,7 +459,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             <button
               type="button"
               onClick={() => void handleCopyAccount()}
-              className="min-h-[38px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 whitespace-nowrap cursor-pointer"
+              className="min-h-[38px] sm:min-h-[44px] px-3 sm:px-3.5 rounded-xl bg-transparent border border-slate-300 dark:border-slate-700 hover:bg-emerald-700 dark:hover:bg-emerald-700 hover:border-emerald-700 dark:hover:border-emerald-700 active:scale-[0.50] text-slate-900 dark:text-white hover:text-white dark:hover:text-white font-normal text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
             >
               {copiedBank ? (
                 <>

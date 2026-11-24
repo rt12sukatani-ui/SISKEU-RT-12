@@ -357,8 +357,13 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
             <button
               type="button"
               onClick={onToggleDarkMode}
+              aria-pressed={darkMode}
               aria-label={darkMode ? 'Aktifkan mode terang' : 'Aktifkan mode gelap'}
-              className="min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors shrink-0 cursor-pointer"
+              className={`min-h-[38px] min-w-[38px] sm:min-h-[44px] sm:min-w-[44px] flex items-center justify-center rounded-xl border transition-colors shrink-0 cursor-pointer ${
+                darkMode
+                  ? 'bg-emerald-700 hover:bg-emerald-800 text-white border-emerald-700'
+                  : 'border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800'
+              }`}
             >
               {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
             </button>

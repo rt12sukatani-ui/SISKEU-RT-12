@@ -397,7 +397,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <div>
                   <p className="text-xs sm:text-sm font-bold text-emerald-900 dark:text-emerald-200">
                     {myPaidCoverage.streakMonthsCount > 1
-                      ? `Iuran Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
+                      ? `Iuran Lunas  ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
                       : `Iuran Bulan Ini Sudah Lunas (${myPaidCoverage.totalPaidMonths} Bulan Terbayar)`}
                   </p>
                   <p className="text-[11px] sm:text-xs text-emerald-800 dark:text-emerald-300 mt-0.5 sm:mt-1 leading-relaxed">

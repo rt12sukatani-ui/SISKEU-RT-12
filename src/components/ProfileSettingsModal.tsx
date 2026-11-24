@@ -43,9 +43,11 @@ import {
   getCurrentYearMonth,
   getEffectiveFamilyStatusChangeMonth,
   getRequiredTariff,
+  isBrowserPushEnabled,
   parseFamilyStatusLog,
   parseNominalInput,
   requestBrowserPushPermission,
+  setBrowserPushEnabled,
 } from '../utils/format';
 import { PENGURUS_POSITION_DESCRIPTIONS, RBAC_PERMISSION_META } from '../utils/rbac';
 import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
@@ -154,6 +156,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const [pushStatus, setPushStatus] = useState<string>(() =>
     typeof Notification !== 'undefined' ? Notification.permission : 'unsupported'
   );
+  const [pushEnabled, setPushEnabled] = useState<boolean>(() => isBrowserPushEnabled());
 
   // Admin Slideshow state
   const slideFileInputRef = useRef<HTMLInputElement | null>(null);
@@ -207,10 +210,24 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   );
 
   const handleEnablePush = async () => {
+    if (pushStatus === 'granted' && pushEnabled) {
+      setBrowserPushEnabled(false);
+      setPushEnabled(false);
+      setFeedback('Notifikasi push dinonaktifkan di perangkat ini.');
+      return;
+    }
+
     const perm = await requestBrowserPushPermission();
     setPushStatus(perm);
     if (perm === 'granted') {
-      setFeedback('Notifikasi push aktif. Pembaruan transaksi dan pengumuman akan muncul instan.');
+      setBrowserPushEnabled(true);
+      setPushEnabled(true);
+      setFeedback('Notifikasi push aktif. Pengumuman dan notifikasi dari admin akan muncul otomatis.');
+    } else if (perm === 'denied') {
+      setPushEnabled(false);
+      setFeedback('Izin notifikasi diblokir browser. Aktifkan izin notifikasi di pengaturan browser Anda.');
+    } else {
+      setPushEnabled(false);
     }
   };
 
@@ -464,51 +481,92 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
           {/* Appearance & Accessibility Toggles */}
           <div className="space-y-3">
             <h3 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-              Kenyamanan Tampilan & Kemudahan Lansia
+              Kenyamanan Tampilan &amp; Kemudahan Lansia
             </h3>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
               <button
                 type="button"
                 onClick={onToggleDarkMode}
-                className="min-h-[52px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 flex items-center justify-between text-sm font-semibold cursor-pointer"
+                aria-pressed={darkMode}
+                className={`w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                  darkMode
+                    ? 'border-emerald-700 bg-emerald-700 hover:bg-emerald-800 text-white'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
               >
-                <span className="flex items-center gap-2.5">
-                  {darkMode ? <Sun className="w-4 h-4 text-amber-400" /> : <Moon className="w-4 h-4" />}
-                  <span>{darkMode ? 'Mode Gelap Aktif' : 'Mode Terang Aktif'}</span>
+                <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  {darkMode ? (
+                    <Sun className="w-4 h-4 shrink-0 text-white" />
+                  ) : (
+                    <Moon className="w-4 h-4 shrink-0 text-slate-600 dark:text-slate-300" />
+                  )}
+                  <span className="truncate">Mode Gelap</span>
                 </span>
-                <span className="text-xs text-emerald-700 dark:text-emerald-400">Ubah</span>
+                <span
+                  className={`text-[11px] sm:text-xs font-bold shrink-0 ${
+                    darkMode ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {darkMode ? 'Aktif' : 'Nonaktif'}
+                </span>
               </button>
 
               <button
                 type="button"
                 onClick={onToggleElderlyMode}
                 aria-pressed={elderlyMode}
-                className={`min-h-[52px] px-4 rounded-xl border flex items-center justify-between text-sm font-semibold transition-colors cursor-pointer ${
+                className={`w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
                   elderlyMode
-                    ? 'border-emerald-600 bg-emerald-50 dark:bg-emerald-950/40 text-emerald-800 dark:text-emerald-200'
-                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70'
+                    ? 'border-emerald-700 bg-emerald-700 hover:bg-emerald-800 text-white'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
                 }`}
               >
-                <span className="flex items-center gap-2.5">
-                  <Accessibility className="w-4 h-4" />
-                  <span>Mode Ramah Lansia</span>
+                <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <Accessibility
+                    className={`w-4 h-4 shrink-0 ${
+                      elderlyMode ? 'text-white' : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  />
+                  <span className="truncate">Mode Ramah Lansia</span>
                 </span>
-                <span className="text-xs">{elderlyMode ? 'Aktif' : 'Nonaktif'}</span>
+                <span
+                  className={`text-[11px] sm:text-xs font-bold shrink-0 ${
+                    elderlyMode ? 'text-emerald-100' : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {elderlyMode ? 'Aktif' : 'Nonaktif'}
+                </span>
               </button>
-            </div>
 
-            <div className="flex flex-wrap gap-2.5 pt-1">
               <button
                 type="button"
                 onClick={() => void handleEnablePush()}
-                className="min-h-[44px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold inline-flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                aria-pressed={pushStatus === 'granted' && pushEnabled}
+                className={`w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer ${
+                  pushStatus === 'granted' && pushEnabled
+                    ? 'border-emerald-700 bg-emerald-700 hover:bg-emerald-800 text-white'
+                    : 'border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800'
+                }`}
               >
-                <Bell className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                <span>
-                  {pushStatus === 'granted'
-                    ? 'Notifikasi Push Aktif'
-                    : 'Aktifkan Notifikasi Push'}
+                <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <Bell
+                    className={`w-4 h-4 shrink-0 ${
+                      pushStatus === 'granted' && pushEnabled
+                        ? 'text-white'
+                        : 'text-slate-600 dark:text-slate-300'
+                    }`}
+                  />
+                  <span className="truncate">Push Notifikasi</span>
+                </span>
+                <span
+                  className={`text-[11px] sm:text-xs font-bold shrink-0 ${
+                    pushStatus === 'granted' && pushEnabled
+                      ? 'text-emerald-100'
+                      : 'text-slate-500 dark:text-slate-400'
+                  }`}
+                >
+                  {pushStatus === 'granted' && pushEnabled ? 'Aktif' : 'Nonaktif'}
                 </span>
               </button>
 
@@ -518,12 +576,19 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                   onClose();
                   onOpenTutorial();
                 }}
-                className="min-h-[44px] px-4 rounded-xl border border-slate-200 dark:border-slate-700 text-xs font-semibold inline-flex items-center gap-2 hover:bg-slate-50 dark:hover:bg-slate-800 cursor-pointer"
+                className="w-full min-h-[46px] sm:min-h-[50px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/70 text-slate-800 dark:text-slate-100 hover:bg-slate-100 dark:hover:bg-slate-800 flex items-center justify-between gap-2 text-xs sm:text-sm font-semibold transition-colors cursor-pointer"
               >
-                <BookOpen className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
-                <span>Ulangi Tutorial Interaktif</span>
+                <span className="flex items-center gap-2 sm:gap-2.5 min-w-0">
+                  <BookOpen className="w-4 h-4 shrink-0 text-emerald-700 dark:text-emerald-400" />
+                  <span className="truncate">Ulangi Tutorial</span>
+                </span>
+                <span className="text-[11px] sm:text-xs font-bold text-emerald-700 dark:text-emerald-400 shrink-0">
+                  Buka
+                </span>
               </button>
+            </div>
 
+            <div className="flex flex-wrap gap-2.5">
               <PWAInstallButton compact />
             </div>
           </div>

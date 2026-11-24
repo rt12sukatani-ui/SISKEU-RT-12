@@ -283,17 +283,36 @@ export function downloadMonthlyReportCSV(
   URL.revokeObjectURL(url);
 }
 
+export const PUSH_ENABLED_STORAGE_KEY = 'kaswarga_push_enabled';
+
+export function isBrowserPushEnabled(): boolean {
+  if (typeof window === 'undefined' || !('Notification' in window)) return false;
+  if (Notification.permission !== 'granted') return false;
+  return window.localStorage.getItem(PUSH_ENABLED_STORAGE_KEY) !== 'false';
+}
+
+export function setBrowserPushEnabled(enabled: boolean): void {
+  if (typeof window === 'undefined') return;
+  window.localStorage.setItem(PUSH_ENABLED_STORAGE_KEY, enabled ? 'true' : 'false');
+}
+
 export async function requestBrowserPushPermission(): Promise<NotificationPermission | 'unsupported'> {
   if (typeof window === 'undefined' || !('Notification' in window)) {
     return 'unsupported';
   }
-  if (Notification.permission === 'granted') return 'granted';
-  return await Notification.requestPermission();
+  if (Notification.permission === 'granted') {
+    setBrowserPushEnabled(true);
+    return 'granted';
+  }
+  const result = await Notification.requestPermission();
+  if (result === 'granted') {
+    setBrowserPushEnabled(true);
+  }
+  return result;
 }
 
 export function sendBrowserPush(title: string, body: string): void {
-  if (typeof window === 'undefined' || !('Notification' in window)) return;
-  if (Notification.permission !== 'granted') return;
+  if (!isBrowserPushEnabled()) return;
   try {
     new Notification(title, {
       body,
