@@ -495,25 +495,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                     {rtSettings.bankName || 'Kas RT'} {rtSettings.bankAccountNumber || ''} an. {rtSettings.bankAccountHolder}
                   </span>
                 </p>
-                {rtSettings.bankAccountNumber && (
-                  <button
-                    type="button"
-                    onClick={() => void handleCopyAccount()}
-                    className="min-h-[36px] px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 transition-colors cursor-pointer"
-                  >
-                    {copiedBank ? (
-                      <>
-                        <Check className="w-3.5 h-3.5 text-emerald-600" />
-                        <span>Disalin</span>
-                      </>
-                    ) : (
-                      <>
-                        <Copy className="w-3.5 h-3.5" />
-                        <span>Salin Rekening</span>
-                      </>
-                    )}
-                  </button>
-                )}
               </div>
             )}
           </div>

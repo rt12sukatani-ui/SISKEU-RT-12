@@ -413,7 +413,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             {myDuesSummary.status === 'lunas'
               ? myPaidCoverage.streakMonthsCount > 1
                 ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
-                : `Iuran ${formatMonthLabel(currentMonth)}: Lunas (${formatRupiah(myDuesSummary.verifiedPaid)})`
+                : `Iuran ${formatMonthLabel(currentMonth)}: Lunas`
               : myDuesSummary.status === 'kurang_bayar'
               ? `Iuran ${formatMonthLabel(currentMonth)}: Kurang Bayar (${formatRupiah(myDuesSummary.shortfall)})`
               : myDuesSummary.status === 'menunggu'

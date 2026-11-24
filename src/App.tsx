@@ -234,7 +234,7 @@ function checkRegistryVerification(
     return {
       ok: false,
       reason:
-        'Database Warga (tab "database_warga") di Google Spreadsheet masih kosong. Minta Ketua RT mengisi data warga atau inisialisasi admin pertama.',
+        'Database Warga (tab "database_warga") masih kosong. Minta Ketua RT mengisi data warga',
     };
   }
 
@@ -243,7 +243,7 @@ function checkRegistryVerification(
     return {
       ok: false,
       reason:
-        'Data akun Anda tidak ditemukan atau sudah dihapus dari Database Warga (tab "database_warga") di Google Spreadsheet.',
+        'Data akun Anda tidak ditemukan atau sudah dihapus dari Database Warga (tab "database_warga").',
     };
   }
 

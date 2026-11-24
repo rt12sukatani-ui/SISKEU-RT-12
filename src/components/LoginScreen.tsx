@@ -549,12 +549,6 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
                 )}
               </button>
 
-              {!sheetInfo && !isConnectingSheet && activeErrorText && (
-                <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 px-3 py-2 text-xs font-medium text-red-700 dark:text-red-300">
-                  {activeErrorText}
-                </div>
-              )}
-
               {showSetupGuide && (
                 <div className="rounded-xl bg-white/80 dark:bg-slate-900/80 border border-emerald-200/80 dark:border-emerald-900/80 p-3 space-y-2 text-[11px] text-slate-700 dark:text-slate-300">
                   <button

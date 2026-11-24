@@ -408,7 +408,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
     <div
       role="dialog"
       aria-modal="true"
-      aria-label="Kelola Database Warga RT"
+      aria-label="Kelola Database"
       onClick={onClose}
       className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
     >
