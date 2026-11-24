@@ -11,6 +11,7 @@ import {
 } from 'lucide-react';
 import { compressBannerSlideImage } from '../lib/crypto';
 import type { BannerSlide } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface StagedSlide {
   localId: string;
@@ -52,6 +53,7 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
   const [editTitle, setEditTitle] = useState('');
   const [editSubtitle, setEditSubtitle] = useState('');
   const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -154,9 +156,9 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
       role="dialog"
       aria-modal="true"
       aria-label="Kelola Slide Foto Halaman Utama"
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-xs sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/65 backdrop-blur-xs sm:p-4 overscroll-contain"
     >
-      <div className="w-full sm:max-w-2xl max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
+      <div className="w-full sm:max-w-2xl max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden">
         <div className="px-4 sm:px-6 py-4 border-b border-slate-200 dark:border-slate-800 flex items-center justify-between gap-3">
           <div className="flex items-center gap-2.5 min-w-0">
             <ImagePlus className="w-5 h-5 text-emerald-700 dark:text-emerald-400 shrink-0" />
@@ -179,7 +181,7 @@ export const BannerSlidesManagerModal: React.FC<BannerSlidesManagerModalProps> =
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
           {errorMsg && (
             <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-xs font-semibold text-red-700 dark:text-red-300">
               {errorMsg}

@@ -22,6 +22,7 @@ import {
   getResidentMonthDuesSummary,
   getResidentPaidMonthsCoverage,
 } from '../utils/format';
+import { DownwardSelect } from './DownwardSelect';
 
 interface RecapItemDef {
   key: string;
@@ -356,12 +357,12 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             aria-label="Pilih bulan laporan"
             value={selectedMonth}
             onChange={(e) => setSelectedMonth(e.target.value)}
-            className="col-span-2 sm:w-auto min-h-[44px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm font-semibold text-slate-900 dark:text-slate-100"
+            className="col-span-2 sm:w-auto min-h-[44px] px-3.5 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
           />
           <button
             type="button"
             onClick={() => downloadMonthlyReportCSV(selectedMonth, monthTransactions, rtSettings.rtName)}
-            className="min-h-[44px] px-3.5 sm:px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
+            className="col-span-2 sm:w-auto min-h-[44px] px-3.5 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
           >
             <Download className="w-4 h-4 shrink-0" />
             <span>Unduh CSV</span>
@@ -369,7 +370,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           <button
             type="button"
             onClick={() => window.print()}
-            className="min-h-[44px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 whitespace-nowrap transition-colors cursor-pointer"
+            className="col-span-2 sm:w-auto min-h-[44px] px-3.5 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
           >
             <Printer className="w-4 h-4 shrink-0" />
             <span>Cetak / PDF</span>
@@ -384,7 +385,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Pemasukan Terverifikasi
             </p>
-            <ArrowDownLeft className="w-4 h-4 text-emerald-700 dark:text-emerald-400" />
+            <ArrowDownLeft className="w-4 h-4 text-emerald-600 dark:text-emerald-400" />
           </div>
           <p className="mt-2.5 font-mono-num text-2xl sm:text-3xl font-extrabold text-emerald-700 dark:text-emerald-400 tabular-nums">
             {formatRupiah(monthIncome)}
@@ -395,7 +396,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">
               Pengeluaran Operasional
             </p>
-            <ArrowUpRight className="w-4 h-4 text-slate-500 dark:text-slate-400" />
+            <ArrowUpRight className="w-4 h-4 text-red-600 dark:text-red-400" />
           </div>
           <p className="mt-2.5 font-mono-num text-2xl sm:text-3xl font-extrabold text-slate-900 dark:text-slate-100 tabular-nums">
             {formatRupiah(monthExpense)}
@@ -434,43 +435,41 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
               />
             </div>
 
-            <select
+            <DownwardSelect
               value={recapCategory}
-              onChange={(e) => setRecapCategory(e.target.value)}
-              aria-label="Filter kategori rekap"
+              onChange={setRecapCategory}
+              ariaLabel="Filter kategori rekap"
+              options={[{ value: 'all', label: 'Semua kategori' }]}
+              groups={[
+                ...INCOME_RECAP_GROUPS.map((group) => ({
+                  label: `Pemasukan · ${group.groupLabel}`,
+                  options: group.items.map((item) => ({
+                    value: item.key,
+                    label: item.label,
+                  })),
+                })),
+                ...EXPENSE_RECAP_GROUPS.map((group) => ({
+                  label: `Pengeluaran · ${group.groupLabel}`,
+                  options: group.items.map((item) => ({
+                    value: item.key,
+                    label: item.label,
+                  })),
+                })),
+              ]}
               className="w-full lg:w-60 min-h-[42px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950 text-xs sm:text-sm text-slate-800 dark:text-slate-100"
-            >
-              <option value="all">Semua kategori</option>
-              {INCOME_RECAP_GROUPS.map((group) => (
-                <optgroup key={`inc-${group.groupLabel}`} label={`Pemasukan · ${group.groupLabel}`}>
-                  {group.items.map((item) => (
-                    <option key={item.key} value={item.key}>
-                      {item.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-              {EXPENSE_RECAP_GROUPS.map((group) => (
-                <optgroup key={`exp-${group.groupLabel}`} label={`Pengeluaran · ${group.groupLabel}`}>
-                  {group.items.map((item) => (
-                    <option key={item.key} value={item.key}>
-                      {item.label}
-                    </option>
-                  ))}
-                </optgroup>
-              ))}
-            </select>
+            />
 
-            <select
+            <DownwardSelect
               value={recapMethod}
-              onChange={(e) => setRecapMethod(e.target.value as 'all' | 'transfer' | 'tunai')}
-              aria-label="Filter metode pembayaran rekap"
+              onChange={(val) => setRecapMethod(val as 'all' | 'transfer' | 'tunai')}
+              ariaLabel="Filter metode pembayaran rekap"
+              options={[
+                { value: 'all', label: 'Semua metode' },
+                { value: 'transfer', label: 'Transfer Bank' },
+                { value: 'tunai', label: 'Tunai' },
+              ]}
               className="w-full lg:w-44 min-h-[42px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950 text-xs sm:text-sm text-slate-800 dark:text-slate-100"
-            >
-              <option value="all">Semua metode</option>
-              <option value="transfer">Transfer Bank</option>
-              <option value="tunai">Tunai</option>
-            </select>
+            />
 
             <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 shrink-0">
               {(
@@ -499,7 +498,11 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
               <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
-                Rekap Transaksi Pemasukan &amp; Pengeluaran
+                {recapFlow === 'income'
+                  ? 'Rekap Transaksi Pemasukan'
+                  : recapFlow === 'expense'
+                  ? 'Rekap Transaksi Pengeluaran'
+                  : 'Rekap Transaksi Pengeluaran & Pemasukan'}
               </h2>
               {hasRecapFilters && (
                 <button
@@ -534,7 +537,7 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         ) : (
           <>
             {/* Desktop Table */}
-            <div className="hidden md:block overflow-x-auto">
+            <div className="hidden md:block overflow-x-auto no-scrollbar">
               <table className="w-full text-left border-collapse">
                 <thead>
                   <tr className="border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-slate-950/40">

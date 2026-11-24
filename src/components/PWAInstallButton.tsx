@@ -1,10 +1,12 @@
 import React, { useState } from 'react';
 import { Download, Share, X } from 'lucide-react';
 import { usePWAInstall } from '../hooks/usePWAInstall';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = false }) => {
   const { isInstallable, isInstalled, isIOS, install } = usePWAInstall();
   const [showIOSGuide, setShowIOSGuide] = useState(false);
+  useBodyScrollLock(showIOSGuide);
 
   if (isInstalled) {
     return null;
@@ -40,7 +42,7 @@ export const PWAInstallButton: React.FC<{ compact?: boolean }> = ({ compact = fa
         </button>
 
         {showIOSGuide && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4">
+          <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-xs p-4 overscroll-contain">
             <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 shadow-xl">
               <div className="flex items-center justify-between gap-4">
                 <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">

@@ -1,5 +1,6 @@
 import React from 'react';
 import { AlertTriangle, FileSpreadsheet, X } from 'lucide-react';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 export interface ConfirmActionModalProps {
   isOpen: boolean;
@@ -26,6 +27,7 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
   onConfirm,
   onCancel,
 }) => {
+  useBodyScrollLock(isOpen);
   if (!isOpen) return null;
 
   return (
@@ -36,7 +38,7 @@ export const ConfirmActionModal: React.FC<ConfirmActionModalProps> = ({
       onClick={() => {
         if (!busy) onCancel();
       }}
-      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
+      className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
     >
       <div
         onClick={(e) => e.stopPropagation()}

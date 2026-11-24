@@ -10,6 +10,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AppTab } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 
 interface OnboardingTutorialProps {
   isOpen: boolean;
@@ -56,6 +57,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
   onNavigate,
 }) => {
   const [stepIndex, setStepIndex] = useState(0);
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -88,7 +90,7 @@ export const OnboardingTutorial: React.FC<OnboardingTutorialProps> = ({
       aria-modal="true"
       aria-labelledby="tutorial-title"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs p-0 sm:p-4 overscroll-contain"
     >
       <div
         onClick={(e) => e.stopPropagation()}

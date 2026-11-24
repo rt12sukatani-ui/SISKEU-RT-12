@@ -39,6 +39,8 @@ import {
   previewPaymentPeriodCoverage,
   TRANSACTION_CATEGORY_GROUPS,
 } from '../utils/format';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { DownwardSelect } from './DownwardSelect';
 
 interface CashflowAndDuesViewProps {
   profile: ResidentPublic;
@@ -192,6 +194,8 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   const [adminMonth, setAdminMonth] = useState(getCurrentYearMonth());
   const [adminMethod, setAdminMethod] = useState<PaymentMethod>('tunai');
   const [adminNotes, setAdminNotes] = useState('');
+
+  useBodyScrollLock(showDuesForm || Boolean(previewImage) || Boolean(rejectingTx));
 
   const pendingList = transactions.filter((t) => t.status === 'pending');
 
@@ -367,7 +371,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               setShowDuesForm(true);
               setShowAdminEntryForm(false);
             }}
-            className="min-h-[48px] px-4 sm:px-5 rounded-xl bg-emerald-700 hover:bg-emerald-800 text-white font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
+            className="flex-1 min-h-[48px] px-4 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
           >
             <Wallet className="w-4 h-4 shrink-0" />
             <span>Bayar Iuran</span>
@@ -412,7 +416,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           <p className="text-base sm:text-lg font-extrabold text-slate-900 dark:text-slate-100">
             {myDuesSummary.status === 'lunas'
               ? myPaidCoverage.streakMonthsCount > 1
-                ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
+                ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas  ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
                 : `Iuran ${formatMonthLabel(currentMonth)}: Lunas`
               : myDuesSummary.status === 'kurang_bayar'
               ? `Iuran ${formatMonthLabel(currentMonth)}: Kurang Bayar (${formatRupiah(myDuesSummary.shortfall)})`
@@ -501,11 +505,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               onCloseInitialPaymentModal?.();
             }
           }}
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
         >
           <div
             onClick={(e) => e.stopPropagation()}
-            className="w-full sm:max-w-2xl max-h-[92vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+            className="w-full sm:max-w-2xl max-h-[92dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
           >
             <div className="sm:hidden pt-3 pb-1 flex justify-center shrink-0">
               <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
@@ -536,7 +540,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
             <form
               onSubmit={(e) => void handleDuesSubmit(e)}
-              className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5"
+              className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-safe space-y-5"
             >
               {formError && (
                 <div className="rounded-xl bg-red-50 dark:bg-red-950/50 border border-red-200 dark:border-red-800 p-3.5 text-sm text-red-700 dark:text-red-300">
@@ -578,10 +582,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 Periode Pembayaran
               </label>
-              <select
-                value={periodMonths}
-                onChange={(e) => {
-                  const nextPeriod = Number(e.target.value) || 1;
+              <DownwardSelect
+                value={String(periodMonths)}
+                ariaLabel="Periode Pembayaran"
+                onChange={(val) => {
+                  const nextPeriod = Number(val) || 1;
                   setPeriodMonths(nextPeriod);
                   const nextTarget = calculatePeriodDuesTarget(
                     profile,
@@ -591,22 +596,24 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                   );
                   setAmount(formatNominalInput(nextTarget.totalAmount));
                 }}
+                options={Array.from({ length: 12 }, (_, idx) => {
+                  const mCount = idx + 1;
+                  return {
+                    value: String(mCount),
+                    label:
+                      mCount === 1
+                        ? '1 Bulan'
+                        : mCount === 3
+                        ? '3 Bulan (Triwulan)'
+                        : mCount === 6
+                        ? '6 Bulan (1 Semester)'
+                        : mCount === 12
+                        ? '12 Bulan (1 Tahun)'
+                        : `${mCount} Bulan`,
+                  };
+                })}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
-              >
-                {Array.from({ length: 12 }, (_, idx) => idx + 1).map((mCount) => (
-                  <option key={mCount} value={mCount}>
-                    {mCount === 1
-                      ? '1 Bulan'
-                      : mCount === 3
-                      ? '3 Bulan (Triwulan)'
-                      : mCount === 6
-                      ? '6 Bulan (1 Semester)'
-                      : mCount === 12
-                      ? '12 Bulan (1 Tahun)'
-                      : `${mCount} Bulan`}
-                  </option>
-                ))}
-              </select>
+              />
             </div>
 
             <div>
@@ -630,14 +637,16 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
                 Metode Pembayaran
               </label>
-              <select
+              <DownwardSelect
                 value={paymentMethod}
-                onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
+                ariaLabel="Metode Pembayaran"
+                onChange={(val) => setPaymentMethod(val as PaymentMethod)}
+                options={[
+                  { value: 'transfer', label: 'Transfer' },
+                  { value: 'tunai', label: 'Tunai' },
+                ]}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
-              >
-                <option value="transfer">Transfer</option>
-                <option value="tunai">Tunai</option>
-              </select>
+              />
             </div>
           </div>
 
@@ -782,36 +791,36 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1.5">Jenis</label>
-              <select
+              <DownwardSelect
                 value={adminType}
-                onChange={(e) => {
-                  const val = e.target.value as 'expense' | 'income';
-                  setAdminType(val);
-                  setAdminCategory(val === 'expense' ? 'kebersihan_lingkungan' : 'iuran_rt');
+                ariaLabel="Jenis Transaksi"
+                onChange={(val) => {
+                  const nextType = val as 'expense' | 'income';
+                  setAdminType(nextType);
+                  setAdminCategory(nextType === 'expense' ? 'kebersihan_lingkungan' : 'iuran_rt');
                 }}
+                options={[
+                  { value: 'expense', label: 'Pengeluaran Kas' },
+                  { value: 'income', label: 'Penerimaan Kas' },
+                ]}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              >
-                <option value="expense">Pengeluaran Kas</option>
-                <option value="income">Penerimaan Kas</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1.5">Kategori</label>
-              <select
+              <DownwardSelect
                 value={adminCategory}
-                onChange={(e) => setAdminCategory(e.target.value as TransactionCategory)}
+                ariaLabel="Kategori Transaksi"
+                onChange={(val) => setAdminCategory(val as TransactionCategory)}
+                groups={TRANSACTION_CATEGORY_GROUPS[adminType].map((group) => ({
+                  label: group.groupLabel,
+                  options: group.items.map((item) => ({
+                    value: item.id,
+                    label: item.label,
+                  })),
+                }))}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              >
-                {TRANSACTION_CATEGORY_GROUPS[adminType].map((group) => (
-                  <optgroup key={group.groupLabel} label={group.groupLabel}>
-                    {group.items.map((item) => (
-                      <option key={item.id} value={item.id}>
-                        {item.label}
-                      </option>
-                    ))}
-                  </optgroup>
-                ))}
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1.5">Bulan Buku</label>
@@ -855,14 +864,16 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1.5">Metode</label>
-              <select
+              <DownwardSelect
                 value={adminMethod}
-                onChange={(e) => setAdminMethod(e.target.value as PaymentMethod)}
+                ariaLabel="Metode Transaksi"
+                onChange={(val) => setAdminMethod(val as PaymentMethod)}
+                options={[
+                  { value: 'tunai', label: 'Tunai' },
+                  { value: 'transfer', label: 'Transfer' },
+                ]}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              >
-                <option value="tunai">Tunai</option>
-                <option value="transfer">Transfer</option>
-              </select>
+              />
             </div>
             <div className="sm:col-span-2">
               <label className="block text-sm font-semibold mb-1.5">Catatan (Opsional)</label>
@@ -1151,8 +1162,8 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                     <div
                       className={`w-10 h-10 rounded-xl flex items-center justify-center shrink-0 ${
                         isIncome
-                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                          : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                          ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                          : 'bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400'
                       }`}
                     >
                       {isIncome ? (
@@ -1267,7 +1278,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
           role="dialog"
           aria-modal="true"
           aria-label="Pratinjau foto bukti pembayaran"
-          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4"
+          className="fixed inset-0 z-[60] flex items-center justify-center bg-black/75 backdrop-blur-xs p-4 overscroll-contain"
           onClick={() => setPreviewImage(null)}
         >
           <div
@@ -1300,7 +1311,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
         <div
           role="dialog"
           aria-modal="true"
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
         >
           <div className="max-w-md w-full rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-6 space-y-4 shadow-2xl">
             <h3 className="text-lg font-bold text-slate-900 dark:text-slate-100">

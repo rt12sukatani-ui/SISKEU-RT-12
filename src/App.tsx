@@ -371,6 +371,22 @@ export default function App() {
     localStorage.setItem('kaswarga_elderly_mode', String(elderlyMode));
   }, [elderlyMode]);
 
+  const scrollPageToTop = useCallback(() => {
+    const html = document.documentElement;
+    const prevScrollBehavior = html.style.scrollBehavior;
+    html.style.scrollBehavior = 'auto';
+    window.scrollTo(0, 0);
+    html.scrollTop = 0;
+    document.body.scrollTop = 0;
+    window.requestAnimationFrame(() => {
+      html.style.scrollBehavior = prevScrollBehavior;
+    });
+  }, []);
+
+  useEffect(() => {
+    scrollPageToTop();
+  }, [activeTab, scrollPageToTop]);
+
   const showToast = useCallback((title: string, body: string, urgent = false) => {
     setLiveToast({ title, body, urgent });
     sendBrowserPush(title, body);
@@ -1392,7 +1408,7 @@ export default function App() {
       initialNotificationIdsRef.current = null;
       showToast(
         'Selamat Datang',
-        'Anda Berhasil Masuk dan Selamat menggunakan aplikasi'
+        'Anda Berhasil Masuk aplikasi'
       );
     } catch (err) {
       setLoginError(
@@ -3289,7 +3305,7 @@ export default function App() {
 
   if (!authReady) {
     return (
-      <div className="min-h-screen flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 p-6">
+      <div className="min-h-dvh flex items-center justify-center bg-slate-50 dark:bg-slate-950 text-slate-700 dark:text-slate-300 p-6 overflow-x-clip">
         <div className="text-center space-y-3">
           <div className="w-12 h-12 mx-auto rounded-2xl bg-emerald-700 text-white flex items-center justify-center font-display font-extrabold text-base">
             RT
@@ -3369,13 +3385,14 @@ export default function App() {
           ).length;
 
           return (
-            <div className="min-h-screen bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-24 lg:pb-12">
+            <div className="min-h-dvh bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 pb-20 lg:pb-8 overflow-x-clip">
               <HeaderNav
                 activeTab={activeTab}
                 onNavigate={(tab) => {
                   setActiveTab(tab);
                   setOpenPaymentModalOnKas(false);
                   setKasInitialFilterTab('all');
+                  scrollPageToTop();
                 }}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
@@ -3626,6 +3643,7 @@ export default function App() {
                   setActiveTab(tab);
                   setOpenPaymentModalOnKas(false);
                   setKasInitialFilterTab('all');
+                  scrollPageToTop();
                 }}
                 activeEmergencyCount={activeEmergencyCount}
               />

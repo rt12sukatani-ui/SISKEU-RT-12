@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Megaphone, Pencil, Plus, Search, Send, Trash2, X } from 'lucide-react';
 import type { Announcement, AnnouncementCategory } from '../types';
 import { formatTimestamp } from '../utils/format';
+import { DownwardSelect } from './DownwardSelect';
 
 interface AnnouncementsViewProps {
   canManageAnnouncements: boolean;
@@ -157,28 +158,32 @@ export const AnnouncementsView: React.FC<AnnouncementsViewProps> = ({
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
             <div>
               <label className="block text-sm font-semibold mb-1.5">Kategori</label>
-              <select
+              <DownwardSelect
                 value={category}
-                onChange={(e) => setCategory(e.target.value as AnnouncementCategory)}
+                onChange={(val) => setCategory(val as AnnouncementCategory)}
+                ariaLabel="Kategori pengumuman"
+                options={[
+                  { value: 'penting', label: 'Info Penting' },
+                  { value: 'keuangan', label: 'Keuangan & Iuran' },
+                  { value: 'kegiatan', label: 'Kegiatan Warga' },
+                  { value: 'keamanan', label: 'Keamanan Lingkungan' },
+                  { value: 'kesehatan', label: 'Kesehatan & Posyandu' },
+                ]}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              >
-                <option value="penting">Info Penting</option>
-                <option value="keuangan">Keuangan & Iuran</option>
-                <option value="kegiatan">Kegiatan Warga</option>
-                <option value="keamanan">Keamanan Lingkungan</option>
-                <option value="kesehatan">Kesehatan & Posyandu</option>
-              </select>
+              />
             </div>
             <div>
               <label className="block text-sm font-semibold mb-1.5">Tingkat Prioritas</label>
-              <select
+              <DownwardSelect
                 value={priority}
-                onChange={(e) => setPriority(e.target.value as 'normal' | 'urgent')}
+                onChange={(val) => setPriority(val as 'normal' | 'urgent')}
+                ariaLabel="Tingkat prioritas pengumuman"
+                options={[
+                  { value: 'normal', label: 'Normal' },
+                  { value: 'urgent', label: 'Mendesak (Kirim Notifikasi Prioritas)' },
+                ]}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-              >
-                <option value="normal">Normal</option>
-                <option value="urgent">Mendesak (Kirim Notifikasi Prioritas)</option>
-              </select>
+              />
             </div>
           </div>
 

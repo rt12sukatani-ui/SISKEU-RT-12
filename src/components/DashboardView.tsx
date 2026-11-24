@@ -331,7 +331,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-1.5 text-xs text-emerald-200">
-                <ArrowDownLeft className="w-3.5 h-3.5 shrink-0" />
+                <ArrowDownLeft className="w-3.5 h-3.5 shrink-0 text-emerald-400" />
                 <span>Pemasukan Lain</span>
               </div>
               <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
@@ -340,7 +340,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             </div>
             <div>
               <div className="flex items-center gap-1.5 text-xs text-emerald-200">
-                <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
+                <ArrowUpRight className="w-3.5 h-3.5 shrink-0 text-red-400" />
                 <span>Pengeluaran</span>
               </div>
               <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
@@ -498,7 +498,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   ? onViewMyDues || (() => onNavigate('kas'))
                   : onQuickPayDues
               }
-              className="flex-1 min-h-[48px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
+              className="flex-1 min-h-[48px] px-4 rounded-xl bg-transparent border border-slate-300 text-slate-700 hover:bg-emerald-700 hover:border-emerald-700 hover:text-white active:scale-[0.99] font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
             >
               <Wallet className="w-4 h-4 shrink-0" />
               <span>
@@ -668,8 +668,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                       <div
                         className={`w-9 h-9 rounded-xl flex items-center justify-center shrink-0 ${
                           isIncome
-                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400'
-                            : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'
+                            ? 'bg-emerald-50 dark:bg-emerald-950/60 text-emerald-600 dark:text-emerald-400'
+                            : 'bg-red-50 dark:bg-red-950/60 text-red-600 dark:text-red-400'
                         }`}
                       >
                         {isIncome ? (

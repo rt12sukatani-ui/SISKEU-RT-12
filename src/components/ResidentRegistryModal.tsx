@@ -38,6 +38,8 @@ import {
   PENGURUS_POSITION_LABELS,
   RBAC_PERMISSION_META,
 } from '../utils/rbac';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { DownwardSelect } from './DownwardSelect';
 
 interface ResidentRegistryModalProps {
   isOpen: boolean;
@@ -119,6 +121,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
   sheetInfo,
   onSetVerificationStatus,
 }) => {
+  useBodyScrollLock(isOpen);
   const [fullName, setFullName] = useState('');
   const [houseBlock, setHouseBlock] = useState('');
   const [role, setRole] = useState<LoginRole>('warga');
@@ -410,11 +413,11 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
       aria-modal="true"
       aria-label="Kelola Database"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-2xl max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+        className="w-full sm:max-w-2xl max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
       >
         <div className="sm:hidden pt-3 pb-1 flex justify-center">
           <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
@@ -446,7 +449,7 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-safe space-y-5">
           {/* Stats */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-3">
@@ -584,45 +587,51 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div>
                 <label className="block text-xs font-semibold mb-1">Role Akun</label>
-                <select
+                <DownwardSelect
                   value={canManageRbac ? role : 'warga'}
                   disabled={!canManageRbac}
-                  onChange={(e) => {
-                    const next = e.target.value as LoginRole;
+                  ariaLabel="Role Akun"
+                  onChange={(val) => {
+                    const next = val as LoginRole;
                     setRole(next);
                     if (next === 'pengurus') setResidentStatus('pengurus');
                     else if (residentStatus === 'pengurus') setResidentStatus('tetap');
                   }}
+                  options={[
+                    { value: 'warga', label: 'Warga' },
+                    ...(canManageRbac ? [{ value: 'pengurus', label: 'Pengurus' }] : []),
+                  ]}
                   className="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm disabled:opacity-60"
-                >
-                  <option value="warga">Warga</option>
-                  {canManageRbac && <option value="pengurus">Pengurus</option>}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Status Hunian</label>
-                <select
+                <DownwardSelect
                   value={residentStatus}
-                  onChange={(e) => setResidentStatus(e.target.value as ResidentStatus)}
+                  ariaLabel="Status Hunian"
+                  onChange={(val) => setResidentStatus(val as ResidentStatus)}
+                  options={[
+                    { value: 'tetap', label: 'Warga Tetap' },
+                    { value: 'kontrak', label: 'Warga Kontrak' },
+                    ...(canManageRbac && role === 'pengurus'
+                      ? [{ value: 'pengurus', label: 'Pengurus' }]
+                      : []),
+                  ]}
                   className="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="tetap">Warga Tetap</option>
-                  <option value="kontrak">Warga Kontrak</option>
-                  {canManageRbac && role === 'pengurus' && (
-                    <option value="pengurus">Pengurus</option>
-                  )}
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1">Status Keluarga</label>
-                <select
+                <DownwardSelect
                   value={familyStatus}
-                  onChange={(e) => setFamilyStatus(e.target.value as FamilyStatus)}
+                  ariaLabel="Status Keluarga"
+                  onChange={(val) => setFamilyStatus(val as FamilyStatus)}
+                  options={[
+                    { value: 'umum', label: 'Umum (Suami Istri)' },
+                    { value: 'khusus', label: 'Khusus (Ortu Tunggal)' },
+                  ]}
                   className="w-full min-h-[42px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-sm"
-                >
-                  <option value="umum">Umum (Suami Istri)</option>
-                  <option value="khusus">Khusus (Ortu Tunggal)</option>
-                </select>
+                />
               </div>
             </div>
 
@@ -640,17 +649,16 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                     <label className="block text-xs font-semibold mb-1 text-emerald-800 dark:text-emerald-300">
                       Jabatan Pengurus (RBAC)
                     </label>
-                    <select
+                    <DownwardSelect
                       value={pengurusPosition}
-                      onChange={(e) => handlePositionChange(e.target.value as PengurusPosition)}
+                      ariaLabel="Jabatan Pengurus"
+                      onChange={(val) => handlePositionChange(val as PengurusPosition)}
+                      options={POSITION_OPTIONS.map((pos) => ({
+                        value: pos,
+                        label: PENGURUS_POSITION_LABELS[pos],
+                      }))}
                       className="w-full min-h-[40px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-xs font-semibold"
-                    >
-                      {POSITION_OPTIONS.map((pos) => (
-                        <option key={pos} value={pos}>
-                          {PENGURUS_POSITION_LABELS[pos]}
-                        </option>
-                      ))}
-                    </select>
+                    />
                   </div>
                   <p className="text-[11px] text-slate-600 dark:text-slate-400 sm:pt-5 leading-relaxed">
                     {PENGURUS_POSITION_DESCRIPTIONS[pengurusPosition]}
@@ -1040,35 +1048,39 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                               <label className="block text-[11px] font-semibold mb-1">
                                 Status Hunian
                               </label>
-                              <select
+                              <DownwardSelect
                                 value={entry.role === 'pengurus' ? 'pengurus' : editResidentStatus}
                                 disabled={entry.role === 'pengurus'}
-                                onChange={(e) =>
-                                  setEditResidentStatus(e.target.value as ResidentStatus)
+                                ariaLabel="Edit Status Hunian"
+                                onChange={(val) =>
+                                  setEditResidentStatus(val as ResidentStatus)
                                 }
+                                options={[
+                                  { value: 'tetap', label: 'Warga Tetap' },
+                                  { value: 'kontrak', label: 'Warga Kontrak' },
+                                  ...(entry.role === 'pengurus'
+                                    ? [{ value: 'pengurus', label: 'Pengurus' }]
+                                    : []),
+                                ]}
                                 className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs disabled:opacity-60"
-                              >
-                                <option value="tetap">Warga Tetap</option>
-                                <option value="kontrak">Warga Kontrak</option>
-                                {entry.role === 'pengurus' && (
-                                  <option value="pengurus">Pengurus</option>
-                                )}
-                              </select>
+                              />
                             </div>
                             <div>
                               <label className="block text-[11px] font-semibold mb-1">
                                 Status Keluarga (Tarif)
                               </label>
-                              <select
+                              <DownwardSelect
                                 value={editFamilyStatus}
-                                onChange={(e) =>
-                                  setEditFamilyStatus(e.target.value as FamilyStatus)
+                                ariaLabel="Edit Status Keluarga"
+                                onChange={(val) =>
+                                  setEditFamilyStatus(val as FamilyStatus)
                                 }
+                                options={[
+                                  { value: 'umum', label: 'Umum (Suami Istri)' },
+                                  { value: 'khusus', label: 'Khusus (Ortu Tunggal)' },
+                                ]}
                                 className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs"
-                              >
-                                <option value="umum">Umum (Suami Istri)</option>
-                                <option value="khusus">Khusus (Ortu Tunggal)</option>
-                              </select>
+                              />
                             </div>
                           </div>
                           <div className="flex justify-end gap-2">
@@ -1097,10 +1109,11 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                             <div>
                               <label className="block text-[11px] font-semibold mb-1">Role Akun</label>
-                              <select
+                              <DownwardSelect
                                 value={editRole}
-                                onChange={(e) => {
-                                  const nextRole = e.target.value as LoginRole;
+                                ariaLabel="Edit Role Akun"
+                                onChange={(val) => {
+                                  const nextRole = val as LoginRole;
                                   setEditRole(nextRole);
                                   if (nextRole === 'pengurus' && editPermissions.length === 0) {
                                     setEditPermissions([
@@ -1108,11 +1121,12 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                                     ]);
                                   }
                                 }}
+                                options={[
+                                  { value: 'warga', label: 'Warga Biasa' },
+                                  { value: 'pengurus', label: 'Pengurus RT' },
+                                ]}
                                 className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold"
-                              >
-                                <option value="warga">Warga Biasa</option>
-                                <option value="pengurus">Pengurus RT</option>
-                              </select>
+                              />
                             </div>
 
                             {editRole === 'pengurus' && (
@@ -1120,23 +1134,22 @@ export const ResidentRegistryModal: React.FC<ResidentRegistryModalProps> = ({
                                 <label className="block text-[11px] font-semibold mb-1">
                                   Jabatan Pengurus
                                 </label>
-                                <select
+                                <DownwardSelect
                                   value={editPosition}
-                                  onChange={(e) => {
-                                    const nextPos = e.target.value as PengurusPosition;
+                                  ariaLabel="Edit Jabatan Pengurus"
+                                  onChange={(val) => {
+                                    const nextPos = val as PengurusPosition;
                                     setEditPosition(nextPos);
                                     setEditPermissions([
                                       ...DEFAULT_PERMISSIONS_BY_POSITION[nextPos],
                                     ]);
                                   }}
+                                  options={POSITION_OPTIONS.map((p) => ({
+                                    value: p,
+                                    label: PENGURUS_POSITION_LABELS[p],
+                                  }))}
                                   className="w-full min-h-[38px] px-2.5 rounded-lg border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold"
-                                >
-                                  {POSITION_OPTIONS.map((p) => (
-                                    <option key={p} value={p}>
-                                      {PENGURUS_POSITION_LABELS[p]}
-                                    </option>
-                                  ))}
-                                </select>
+                                />
                               </div>
                             )}
                           </div>

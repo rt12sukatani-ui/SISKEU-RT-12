@@ -8,6 +8,7 @@ import {
   X,
 } from 'lucide-react';
 import type { AppTab, UserNotification } from '../types';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { formatTimestamp } from '../utils/format';
 
 interface HeaderNavProps {
@@ -42,6 +43,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
 }) => {
   const [notifOpen, setNotifOpen] = useState(false);
   const unreadCount = notifications.filter((n) => !n.isRead).length;
+  useBodyScrollLock(notifOpen);
 
   return (
     <>
@@ -120,7 +122,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
           aria-modal="true"
           aria-label="Daftar Notifikasi"
           onClick={() => setNotifOpen(false)}
-          className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-end bg-black/50 backdrop-blur-xs sm:p-4"
+          className="fixed inset-0 z-50 flex items-end sm:items-start sm:justify-end bg-black/50 backdrop-blur-xs sm:p-4 overscroll-contain"
         >
           <div
             onClick={(e) => e.stopPropagation()}
@@ -161,7 +163,7 @@ export const HeaderNav: React.FC<HeaderNavProps> = ({
               </div>
             </div>
 
-            <div className="flex-1 overflow-y-auto pb-safe divide-y divide-slate-100 dark:divide-slate-800">
+            <div className="flex-1 overflow-y-auto overscroll-contain pb-safe divide-y divide-slate-100 dark:divide-slate-800">
               {notifications.length === 0 ? (
                 <div className="p-10 text-center text-sm text-slate-500 dark:text-slate-400">
                   Belum ada notifikasi baru saat ini.

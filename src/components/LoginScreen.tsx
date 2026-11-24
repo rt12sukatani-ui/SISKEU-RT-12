@@ -32,6 +32,7 @@ import type {
   SheetDbInfo,
 } from '../types';
 import { PENGURUS_POSITION_LABELS } from '../utils/rbac';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface RegisteredAccountNotice {
@@ -178,6 +179,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   };
 
   const shouldReduceMotion = useReducedMotion();
+  useBodyScrollLock(Boolean(loginPopupData));
 
   const handleSwitchMode = (mode: 'login' | 'register') => {
     setAuthMode(mode);
@@ -309,7 +311,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
   const showBootstrapFirstAdmin = Boolean(sheetInfo && isDatabaseEmpty && !isConnectingSheet);
 
   return (
-    <div className="min-h-screen w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col">
+    <div className="min-h-dvh w-full bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 flex flex-col overflow-x-clip">
       <header className="w-full border-b border-slate-200/80 dark:border-slate-800/80 bg-white/95 dark:bg-slate-900/95 backdrop-blur-md sticky top-0 z-20">
         <div className="w-full px-3 sm:px-6 lg:px-8 h-14 sm:h-16 flex items-center justify-between gap-2 sm:gap-4">
           <div className="flex items-center gap-2.5 sm:gap-3 min-w-0">
@@ -900,7 +902,7 @@ export const LoginScreen: React.FC<LoginScreenProps> = ({
       </main>
 
       {loginPopupData && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/55 backdrop-blur-xs p-4 overscroll-contain">
           <div className="w-full max-w-sm rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-5 shadow-xl space-y-4">
             <div className="flex items-start justify-between gap-3">
               <div>

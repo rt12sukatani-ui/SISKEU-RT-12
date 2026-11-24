@@ -48,6 +48,8 @@ import {
   requestBrowserPushPermission,
 } from '../utils/format';
 import { PENGURUS_POSITION_DESCRIPTIONS, RBAC_PERMISSION_META } from '../utils/rbac';
+import { useBodyScrollLock } from '../hooks/useBodyScrollLock';
+import { DownwardSelect } from './DownwardSelect';
 import { PWAInstallButton } from './PWAInstallButton';
 
 interface ProfileSettingsModalProps {
@@ -187,6 +189,8 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
       setEditingSlideId(null);
     }
   }, [isOpen, profile, rtSettings]);
+
+  useBodyScrollLock(isOpen);
 
   if (!isOpen) return null;
 
@@ -382,11 +386,11 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
       aria-modal="true"
       aria-label="Pengaturan Akun dan Tampilan"
       onClick={onClose}
-      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4"
+      className="fixed inset-0 z-50 flex items-end sm:items-center justify-center bg-black/60 backdrop-blur-xs sm:p-4 overscroll-contain"
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="w-full sm:max-w-xl max-h-[90vh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
+        className="w-full sm:max-w-xl max-h-[90dvh] flex flex-col rounded-t-3xl sm:rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 shadow-2xl overflow-hidden"
       >
         <div className="sm:hidden pt-3 pb-1 flex justify-center">
           <span className="w-10 h-1.5 rounded-full bg-slate-300 dark:bg-slate-700" />
@@ -414,7 +418,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
           </button>
         </div>
 
-        <div className="flex-1 overflow-y-auto p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
+        <div className="flex-1 overflow-y-auto overscroll-contain p-4 sm:p-6 pb-safe space-y-5 sm:space-y-6">
           {feedback && (
             <div className="rounded-2xl bg-emerald-50 dark:bg-emerald-950/40 border border-emerald-200 dark:border-emerald-800 p-3.5 text-xs font-semibold text-emerald-800 dark:text-emerald-200">
               {feedback}
@@ -558,25 +562,29 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
                 <label className="block text-xs font-semibold mb-1.5">Status Hunian</label>
-                <select
+                <DownwardSelect
                   value={residentStatus}
-                  onChange={(e) => setResidentStatus(e.target.value as ResidentStatus)}
+                  onChange={(val) => setResidentStatus(val as ResidentStatus)}
+                  ariaLabel="Status Hunian"
+                  options={[
+                    { value: 'tetap', label: 'Warga Tetap' },
+                    { value: 'kontrak', label: 'Warga Kontrak/Sewa' },
+                  ]}
                   className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                >
-                  <option value="tetap">Warga Tetap</option>
-                  <option value="kontrak">Warga Kontrak/Sewa</option>
-                </select>
+                />
               </div>
               <div>
                 <label className="block text-xs font-semibold mb-1.5">Status Keluarga (Tarif Iuran)</label>
-                <select
+                <DownwardSelect
                   value={familyStatus}
-                  onChange={(e) => setFamilyStatus(e.target.value as FamilyStatus)}
+                  onChange={(val) => setFamilyStatus(val as FamilyStatus)}
+                  ariaLabel="Status Keluarga (Tarif Iuran)"
+                  options={[
+                    { value: 'umum', label: 'Umum (Suami Istri — Rp 120.000)' },
+                    { value: 'khusus', label: 'Khusus (Ortu Tunggal — Rp 60.000)' },
+                  ]}
                   className="w-full min-h-[44px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
-                >
-                  <option value="umum">Umum (Suami Istri — Rp 120.000)</option>
-                  <option value="khusus">Khusus (Ortu Tunggal — Rp 60.000)</option>
-                </select>
+                />
               </div>
             </div>
 
