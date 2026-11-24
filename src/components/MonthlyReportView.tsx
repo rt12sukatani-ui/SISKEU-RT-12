@@ -4,24 +4,139 @@ import {
   ArrowUpRight,
   BellRing,
   CheckCircle2,
-  Database,
   Download,
   Printer,
+  RotateCcw,
   Search,
   Users,
   XCircle,
 } from 'lucide-react';
 import type { KasTransaction, ResidentPublic, RtSettings, TransactionCategory } from '../types';
 import {
-  CATEGORY_LABELS,
   downloadMonthlyReportCSV,
   FAMILY_STATUS_LABELS,
   formatMonthLabel,
   formatRupiah,
+  getCategoryLabel,
   getCurrentYearMonth,
   getResidentMonthDuesSummary,
   getResidentPaidMonthsCoverage,
 } from '../utils/format';
+
+interface RecapItemDef {
+  key: string;
+  label: string;
+  categories: TransactionCategory[];
+}
+
+interface RecapGroupDef {
+  groupLabel: string;
+  items: RecapItemDef[];
+}
+
+const INCOME_RECAP_GROUPS: RecapGroupDef[] = [
+  {
+    groupLabel: 'Rutin · Wajib',
+    items: [
+      { key: 'iuran_rt', label: 'IURAN RT', categories: ['iuran_rt', 'iuran_bulanan'] },
+    ],
+  },
+  {
+    groupLabel: 'Rutin · Tertentu / Spesifik',
+    items: [
+      { key: 'iuran_17an_rt', label: 'IURAN 17AN RT', categories: ['iuran_17an_rt'] },
+      { key: 'iuran_17an_rw', label: 'IURAN 17AN RW', categories: ['iuran_17an_rw'] },
+      { key: 'iuran_pkk', label: 'IURAN PKK', categories: ['iuran_pkk'] },
+      { key: 'arisan', label: 'ARISAN', categories: ['arisan'] },
+    ],
+  },
+  {
+    groupLabel: 'Non-Rutin',
+    items: [
+      { key: 'bantuan_pemerintah', label: 'BANTUAN PEMERINTAH', categories: ['bantuan_pemerintah'] },
+      { key: 'sumbangan_donasi', label: 'SUMBANGAN/DONASI', categories: ['sumbangan_donasi', 'donasi'] },
+      { key: 'hasil_usaha_kemitraan', label: 'HASIL USAHA/KEMITRAAN', categories: ['hasil_usaha_kemitraan'] },
+      { key: 'pdl_bunga_bank', label: 'PENERIMAAN LAINNYA (PDL): BUNGA BANK', categories: ['pdl_bunga_bank'] },
+    ],
+  },
+];
+
+const EXPENSE_RECAP_GROUPS: RecapGroupDef[] = [
+  {
+    groupLabel: 'Rutin · Pengelola: Pengurus RT',
+    items: [
+      { key: 'kebersihan_lingkungan', label: 'KEBERSIHAN DAN LINGKUNGAN', categories: ['kebersihan_lingkungan', 'kebersihan'] },
+      { key: 'keamanan_ketertiban', label: 'KEAMANAN DAN KETERTIBAN', categories: ['keamanan_ketertiban', 'keamanan'] },
+      { key: 'konsumsi', label: 'KONSUMSI (Gula, Teh, Kopi)', categories: ['konsumsi'] },
+      { key: 'pdam', label: 'PDAM', categories: ['pdam'] },
+      { key: 'listrik', label: 'LISTRIK', categories: ['listrik'] },
+      { key: 'internet', label: 'INTERNET', categories: ['internet'] },
+      { key: 'iuran_rw', label: 'IURAN RW', categories: ['iuran_rw'] },
+      { key: 'pengeluaran_iuran_17an_rw', label: 'IURAN 17AN RW', categories: ['pengeluaran_iuran_17an_rw'] },
+      { key: 'inventaris', label: 'INVENTARIS', categories: ['inventaris'] },
+      { key: 'fogging', label: 'FOGGING', categories: ['fogging'] },
+    ],
+  },
+  {
+    groupLabel: 'Insidentil · Pengelola: Pengurus RT',
+    items: [
+      { key: 'perbaikan_joglo', label: 'PERBAIKAN JOGLO', categories: ['perbaikan_joglo'] },
+      { key: 'pemeliharaan_taman', label: 'PEMELIHARAAN TAMAN', categories: ['pemeliharaan_taman'] },
+      { key: 'pemeliharaan_taman_toga', label: 'PEMELIHARAAN TAMAN TOGA', categories: ['pemeliharaan_taman_toga'] },
+      { key: 'perbaikan_balai_rt', label: 'PERBAIKAN BALAI RT', categories: ['perbaikan_balai_rt', 'perbaikan'] },
+    ],
+  },
+  {
+    groupLabel: 'Insidentil · Pengelola: Panitia / Koordinator',
+    items: [
+      { key: 'panitia_dasolin', label: 'DASOLIN', categories: ['panitia_dasolin'] },
+      { key: 'panitia_17an_rt', label: '17AN RT', categories: ['panitia_17an_rt'] },
+      { key: 'panitia_17an_rw', label: '17AN RW', categories: ['panitia_17an_rw'] },
+      { key: 'panitia_pkk', label: 'PKK', categories: ['panitia_pkk'] },
+      { key: 'panitia_arisan', label: 'ARISAN', categories: ['panitia_arisan'] },
+    ],
+  },
+];
+
+function parseTxDate(ts: unknown): Date | null {
+  if (!ts) return null;
+  let date: Date;
+  if (
+    typeof ts === 'object' &&
+    ts !== null &&
+    'toDate' in ts &&
+    typeof (ts as { toDate: () => Date }).toDate === 'function'
+  ) {
+    date = (ts as { toDate: () => Date }).toDate();
+  } else if (typeof ts === 'string' || typeof ts === 'number') {
+    date = new Date(ts);
+  } else if (ts instanceof Date) {
+    date = ts;
+  } else {
+    return null;
+  }
+  return Number.isNaN(date.getTime()) ? null : date;
+}
+
+function formatTxDate(ts: unknown): string {
+  const date = parseTxDate(ts);
+  if (!date) return '-';
+  return new Intl.DateTimeFormat('id-ID', {
+    day: '2-digit',
+    month: 'short',
+    year: 'numeric',
+  }).format(date);
+}
+
+function formatTxTime(ts: unknown): string {
+  const date = parseTxDate(ts);
+  if (!date) return '-';
+  return new Intl.DateTimeFormat('id-ID', {
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).format(date);
+}
 
 interface MonthlyReportViewProps {
   canManageReports: boolean;
@@ -43,6 +158,10 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
   onOpenResidentRegistry,
 }) => {
   const [selectedMonth, setSelectedMonth] = useState(getCurrentYearMonth());
+  const [recapSearch, setRecapSearch] = useState('');
+  const [recapCategory, setRecapCategory] = useState<string>('all');
+  const [recapMethod, setRecapMethod] = useState<'all' | 'transfer' | 'tunai'>('all');
+  const [recapFlow, setRecapFlow] = useState<'all' | 'income' | 'expense'>('all');
   const [residentFilter, setResidentFilter] = useState<'all' | 'lunas' | 'unpaid'>('all');
   const [residentSearch, setResidentSearch] = useState('');
   const [sendingReminders, setSendingReminders] = useState(false);
@@ -68,15 +187,105 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
 
   const monthNet = monthIncome - monthExpense;
 
-  const expenseBreakdown = useMemo(() => {
-    const map = new Map<TransactionCategory, number>();
+  const incomeByCategoryMap = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const tx of approvedMonthTx) {
+      if (tx.type === 'income') {
+        map.set(tx.category, (map.get(tx.category) || 0) + Number(tx.amount || 0));
+      }
+    }
+    return map;
+  }, [approvedMonthTx]);
+
+  const expenseByCategoryMap = useMemo(() => {
+    const map = new Map<string, number>();
     for (const tx of approvedMonthTx) {
       if (tx.type === 'expense') {
         map.set(tx.category, (map.get(tx.category) || 0) + Number(tx.amount || 0));
       }
     }
-    return Array.from(map.entries()).sort((a, b) => b[1] - a[1]);
+    return map;
   }, [approvedMonthTx]);
+
+  const unmappedIncomeCategories = useMemo(() => {
+    const mapped = new Set<string>(
+      INCOME_RECAP_GROUPS.flatMap((g) => g.items.flatMap((i) => i.categories))
+    );
+    return Array.from(incomeByCategoryMap.entries()).filter(
+      ([cat, total]) => !mapped.has(cat) && total > 0
+    );
+  }, [incomeByCategoryMap]);
+
+  const unmappedExpenseCategories = useMemo(() => {
+    const mapped = new Set<string>(
+      EXPENSE_RECAP_GROUPS.flatMap((g) => g.items.flatMap((i) => i.categories))
+    );
+    return Array.from(expenseByCategoryMap.entries()).filter(
+      ([cat, total]) => !mapped.has(cat) && total > 0
+    );
+  }, [expenseByCategoryMap]);
+
+  const categoryFilterMap = useMemo(() => {
+    const map = new Map<string, TransactionCategory[]>();
+    for (const g of [...INCOME_RECAP_GROUPS, ...EXPENSE_RECAP_GROUPS]) {
+      for (const item of g.items) {
+        map.set(item.key, item.categories);
+      }
+    }
+    return map;
+  }, []);
+
+  const filteredRecapTransactions = useMemo(() => {
+    const q = recapSearch.trim().toLowerCase();
+    const matchedCats = recapCategory === 'all' ? null : categoryFilterMap.get(recapCategory);
+    return approvedMonthTx.filter((tx) => {
+      if (recapFlow !== 'all' && tx.type !== recapFlow) return false;
+      if (recapMethod !== 'all' && tx.paymentMethod !== recapMethod) return false;
+      if (recapCategory !== 'all') {
+        if (matchedCats) {
+          if (!matchedCats.includes(tx.category)) return false;
+        } else if (tx.category !== recapCategory) {
+          return false;
+        }
+      }
+      if (q) {
+        const hay = `${tx.title} ${tx.residentName} ${tx.houseBlock} ${getCategoryLabel(
+          tx.category
+        )} ${tx.notes || ''}`.toLowerCase();
+        if (!hay.includes(q)) return false;
+      }
+      return true;
+    });
+  }, [approvedMonthTx, recapSearch, recapCategory, recapMethod, recapFlow, categoryFilterMap]);
+
+  const filteredRecapIncome = useMemo(
+    () =>
+      filteredRecapTransactions
+        .filter((t) => t.type === 'income')
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0),
+    [filteredRecapTransactions]
+  );
+
+  const filteredRecapExpense = useMemo(
+    () =>
+      filteredRecapTransactions
+        .filter((t) => t.type === 'expense')
+        .reduce((sum, t) => sum + Number(t.amount || 0), 0),
+    [filteredRecapTransactions]
+  );
+
+  const hasRecapFilters =
+    Boolean(recapSearch.trim()) ||
+    recapCategory !== 'all' ||
+    recapMethod !== 'all' ||
+    recapFlow !== 'all';
+
+  const handleResetRecapFilters = () => {
+    setRecapSearch('');
+    setRecapCategory('all');
+    setRecapMethod('all');
+    setRecapFlow('all');
+  };
 
   const residentSummaries = useMemo(
     () =>
@@ -209,49 +418,220 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
-        {/* Expense Breakdown */}
-        <section className="lg:col-span-5 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-6">
-          <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            Rincian Pengeluaran per Pos
-          </h2>
-          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-            Distribusi penggunaan dana kas RT bulan {formatMonthLabel(selectedMonth)}
-          </p>
+      {/* Rekap Pemasukan & Pengeluaran (Tabel Interaktif & Filter) */}
+      <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+        <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 space-y-3">
+          <div className="flex flex-col lg:flex-row lg:items-center gap-2.5">
+            <div className="relative flex-1 min-w-0">
+              <Search className="w-4 h-4 text-slate-400 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
+              <input
+                type="search"
+                value={recapSearch}
+                onChange={(e) => setRecapSearch(e.target.value)}
+                placeholder="Cari uraian, warga, atau kategori..."
+                aria-label="Cari rekap pemasukan dan pengeluaran"
+                className="w-full min-h-[42px] pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950 text-xs sm:text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
+              />
+            </div>
 
-          <div className="mt-5 space-y-4">
-            {expenseBreakdown.length === 0 ? (
-              <p className="text-sm text-slate-500 dark:text-slate-400 py-6 text-center">
-                Belum ada pengeluaran tercatat pada bulan ini.
-              </p>
-            ) : (
-              expenseBreakdown.map(([cat, total]) => {
-                const pct = monthExpense > 0 ? Math.round((total / monthExpense) * 100) : 0;
+            <select
+              value={recapCategory}
+              onChange={(e) => setRecapCategory(e.target.value)}
+              aria-label="Filter kategori rekap"
+              className="w-full lg:w-60 min-h-[42px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950 text-xs sm:text-sm text-slate-800 dark:text-slate-100"
+            >
+              <option value="all">Semua kategori</option>
+              {INCOME_RECAP_GROUPS.map((group) => (
+                <optgroup key={`inc-${group.groupLabel}`} label={`Pemasukan · ${group.groupLabel}`}>
+                  {group.items.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+              {EXPENSE_RECAP_GROUPS.map((group) => (
+                <optgroup key={`exp-${group.groupLabel}`} label={`Pengeluaran · ${group.groupLabel}`}>
+                  {group.items.map((item) => (
+                    <option key={item.key} value={item.key}>
+                      {item.label}
+                    </option>
+                  ))}
+                </optgroup>
+              ))}
+            </select>
+
+            <select
+              value={recapMethod}
+              onChange={(e) => setRecapMethod(e.target.value as 'all' | 'transfer' | 'tunai')}
+              aria-label="Filter metode pembayaran rekap"
+              className="w-full lg:w-44 min-h-[42px] px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-slate-50/70 dark:bg-slate-950 text-xs sm:text-sm text-slate-800 dark:text-slate-100"
+            >
+              <option value="all">Semua metode</option>
+              <option value="transfer">Transfer Bank</option>
+              <option value="tunai">Tunai</option>
+            </select>
+
+            <div className="grid grid-cols-3 sm:flex items-center gap-1 p-1 rounded-xl bg-slate-100 dark:bg-slate-800/80 shrink-0">
+              {(
+                [
+                  { id: 'all', label: 'Semua' },
+                  { id: 'income', label: 'Masuk' },
+                  { id: 'expense', label: 'Keluar' },
+                ] as const
+              ).map((tab) => (
+                <button
+                  key={tab.id}
+                  type="button"
+                  onClick={() => setRecapFlow(tab.id)}
+                  className={`min-h-[34px] px-3 rounded-lg text-xs font-semibold transition-colors whitespace-nowrap cursor-pointer ${
+                    recapFlow === tab.id
+                      ? 'bg-white dark:bg-slate-900 text-slate-900 dark:text-white shadow-xs'
+                      : 'text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-200'
+                  }`}
+                >
+                  {tab.label}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                Rekap Transaksi Pemasukan &amp; Pengeluaran
+              </h2>
+              {hasRecapFilters && (
+                <button
+                  type="button"
+                  onClick={handleResetRecapFilters}
+                  className="min-h-[32px] px-2.5 rounded-lg text-xs font-semibold text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 cursor-pointer print:hidden"
+                >
+                  <RotateCcw className="w-3.5 h-3.5" />
+                  <span>Reset</span>
+                </button>
+              )}
+            </div>
+
+            <div className="flex flex-wrap items-center gap-3 text-xs font-mono-num tabular-nums">
+              <span className="text-slate-500 dark:text-slate-400 font-sans font-semibold">
+                {filteredRecapTransactions.length} baris
+              </span>
+              <span className="font-bold text-emerald-700 dark:text-emerald-400">
+                +{formatRupiah(filteredRecapIncome)}
+              </span>
+              <span className="font-bold text-red-600 dark:text-red-400">
+                -{formatRupiah(filteredRecapExpense)}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {filteredRecapTransactions.length === 0 ? (
+          <div className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
+            Tidak ada transaksi terverifikasi sesuai filter pada bulan {formatMonthLabel(selectedMonth)}.
+          </div>
+        ) : (
+          <>
+            {/* Desktop Table */}
+            <div className="hidden md:block overflow-x-auto">
+              <table className="w-full text-left border-collapse">
+                <thead>
+                  <tr className="border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-500 dark:text-slate-400 bg-slate-50/60 dark:bg-slate-950/40">
+                    <th className="py-3 pl-6 pr-3 whitespace-nowrap">Tanggal</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Jam</th>
+                    <th className="py-3 px-3">Uraian</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Kategori</th>
+                    <th className="py-3 px-3 whitespace-nowrap">Jenis Pembayaran</th>
+                    <th className="py-3 pl-3 pr-6 text-right whitespace-nowrap">Jumlah</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100 dark:divide-slate-800 text-sm">
+                  {filteredRecapTransactions.map((tx) => {
+                    const isIncome = tx.type === 'income';
+                    return (
+                      <tr
+                        key={tx.id}
+                        className="hover:bg-slate-50/70 dark:hover:bg-slate-800/30 transition-colors"
+                      >
+                        <td className="py-3.5 pl-6 pr-3 text-xs text-slate-500 dark:text-slate-400 font-mono-num whitespace-nowrap">
+                          {formatTxDate(tx.createdAt)}
+                        </td>
+                        <td className="py-3.5 px-3 text-xs text-slate-500 dark:text-slate-400 font-mono-num whitespace-nowrap">
+                          {formatTxTime(tx.createdAt)}
+                        </td>
+                        <td className="py-3.5 px-3 min-w-[220px]">
+                          <p className="font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+                            {tx.title}
+                          </p>
+                          <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                            {tx.residentName} · {tx.houseBlock}
+                            {tx.notes ? ` · ${tx.notes}` : ''}
+                          </p>
+                        </td>
+                        <td className="py-3.5 px-3 text-xs font-semibold text-slate-700 dark:text-slate-300 whitespace-nowrap">
+                          {getCategoryLabel(tx.category)}
+                        </td>
+                        <td className="py-3.5 px-3 text-xs text-slate-600 dark:text-slate-300 whitespace-nowrap">
+                          {tx.paymentMethod === 'transfer' ? 'Transfer Bank' : 'Tunai'}
+                        </td>
+                        <td
+                          className={`py-3.5 pl-3 pr-6 text-right font-mono-num font-bold tabular-nums whitespace-nowrap ${
+                            isIncome
+                              ? 'text-emerald-700 dark:text-emerald-400'
+                              : 'text-red-600 dark:text-red-400'
+                          }`}
+                        >
+                          {isIncome ? '+' : '-'}
+                          {formatRupiah(tx.amount)}
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile List */}
+            <div className="md:hidden divide-y divide-slate-100 dark:divide-slate-800">
+              {filteredRecapTransactions.map((tx) => {
+                const isIncome = tx.type === 'income';
                 return (
-                  <div key={cat}>
-                    <div className="flex items-center justify-between text-sm">
-                      <span className="font-semibold text-slate-800 dark:text-slate-200">
-                        {CATEGORY_LABELS[cat]}
-                      </span>
-                      <span className="font-mono-num font-bold text-slate-900 dark:text-slate-100 tabular-nums">
-                        {formatRupiah(total)} ({pct}%)
-                      </span>
+                  <div key={tx.id} className="px-4 py-3.5 space-y-1.5">
+                    <div className="flex items-start justify-between gap-3">
+                      <div className="min-w-0">
+                        <p className="text-sm font-semibold text-slate-900 dark:text-slate-100 leading-snug">
+                          {tx.title}
+                        </p>
+                        <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
+                          {formatTxDate(tx.createdAt)} · {formatTxTime(tx.createdAt)} ·{' '}
+                          {tx.paymentMethod === 'transfer' ? 'Transfer Bank' : 'Tunai'}
+                        </p>
+                      </div>
+                      <p
+                        className={`font-mono-num text-sm font-bold tabular-nums shrink-0 ${
+                          isIncome
+                            ? 'text-emerald-700 dark:text-emerald-400'
+                            : 'text-red-600 dark:text-red-400'
+                        }`}
+                      >
+                        {isIncome ? '+' : '-'}
+                        {formatRupiah(tx.amount)}
+                      </p>
                     </div>
-                    <div className="mt-2 h-2 w-full rounded-full bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                      <div
-                        className="h-full bg-emerald-700 dark:bg-emerald-500 rounded-full transition-all duration-300"
-                        style={{ width: `${pct}%` }}
-                      />
-                    </div>
+                    <p className="text-xs text-slate-600 dark:text-slate-300">
+                      {getCategoryLabel(tx.category)} · {tx.residentName} ({tx.houseBlock})
+                    </p>
                   </div>
                 );
-              })
-            )}
-          </div>
-        </section>
+              })}
+            </div>
+          </>
+        )}
+      </section>
 
-        {/* Resident Dues Transparency List & Auto Reminder */}
-        <section className="lg:col-span-7 rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
+      {/* Resident Dues Transparency List & Auto Reminder */}
+      <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
           <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div className="flex items-center gap-2.5">
               <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center shrink-0">
@@ -265,16 +645,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             </div>
 
             <div className="flex flex-wrap items-center gap-2 print:hidden">
-              {canManageResidents && onOpenResidentRegistry && (
-                <button
-                  type="button"
-                  onClick={onOpenResidentRegistry}
-                  className="min-h-[44px] px-3.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-xs font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-100 dark:hover:bg-slate-800 inline-flex items-center gap-1.5 whitespace-nowrap transition-colors cursor-pointer"
-                >
-                  <Database className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                  <span>Database Warga</span>
-                </button>
-              )}
               {canManageReports && unpaidResidents.length > 0 && (
                 <button
                   type="button"
@@ -404,7 +774,6 @@ export const MonthlyReportView: React.FC<MonthlyReportViewProps> = ({
             )}
           </div>
         </section>
-      </div>
     </div>
   );
 };

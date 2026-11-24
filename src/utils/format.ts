@@ -63,6 +63,19 @@ export function formatRupiah(amount: number): string {
   }).format(amount || 0);
 }
 
+export function formatNominalInput(value: string | number): string {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return '';
+  const normalized = digits.replace(/^0+(?=\d)/, '');
+  return normalized.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+}
+
+export function parseNominalInput(value: string | number): number {
+  const digits = String(value ?? '').replace(/\D/g, '');
+  if (!digits) return 0;
+  return Number(digits) || 0;
+}
+
 export function getCurrentYearMonth(): string {
   const now = new Date();
   const y = now.getFullYear();
@@ -99,7 +112,113 @@ export function formatTimestamp(ts: unknown): string {
   }).format(date);
 }
 
+export interface TransactionCategoryOption {
+  id: TransactionCategory;
+  label: string;
+}
+
+export interface TransactionCategoryGroup {
+  groupLabel: string;
+  items: TransactionCategoryOption[];
+}
+
+export const TRANSACTION_CATEGORY_GROUPS: Record<'income' | 'expense', TransactionCategoryGroup[]> = {
+  income: [
+    {
+      groupLabel: 'RUTIN · WAJIB',
+      items: [{ id: 'iuran_rt', label: 'Iuran RT' }],
+    },
+    {
+      groupLabel: 'RUTIN · TERTENTU/SPESIFIK',
+      items: [
+        { id: 'iuran_17an_rt', label: 'Iuran 17an RT' },
+        { id: 'iuran_17an_rw', label: 'Iuran 17an RW' },
+        { id: 'iuran_pkk', label: 'Iuran PKK' },
+        { id: 'arisan', label: 'Arisan' },
+      ],
+    },
+    {
+      groupLabel: 'NON-RUTIN',
+      items: [
+        { id: 'bantuan_pemerintah', label: 'Bantuan Pemerintah' },
+        { id: 'sumbangan_donasi', label: 'Sumbangan / Donasi' },
+        { id: 'hasil_usaha_kemitraan', label: 'Hasil Usaha / Kemitraan' },
+        { id: 'pdl_bunga_bank', label: 'Penerimaan Lainnya (PDL): Bunga Bank' },
+      ],
+    },
+  ],
+  expense: [
+    {
+      groupLabel: 'RUTIN · PENGELOLA: PENGURUS RT',
+      items: [
+        { id: 'kebersihan_lingkungan', label: 'Kebersihan dan Lingkungan' },
+        { id: 'keamanan_ketertiban', label: 'Keamanan dan Ketertiban' },
+        { id: 'konsumsi', label: 'Konsumsi (Gula, Teh, Kopi)' },
+        { id: 'pdam', label: 'PDAM' },
+        { id: 'listrik', label: 'Listrik' },
+        { id: 'internet', label: 'Internet' },
+        { id: 'iuran_rw', label: 'Iuran RW' },
+        { id: 'pengeluaran_iuran_17an_rw', label: 'Iuran 17an RW' },
+        { id: 'inventaris', label: 'Inventaris' },
+        { id: 'fogging', label: 'Fogging' },
+      ],
+    },
+    {
+      groupLabel: 'INSIDENTIL · PENGELOLA: PENGURUS RT',
+      items: [
+        { id: 'perbaikan_joglo', label: 'Perbaikan Joglo' },
+        { id: 'pemeliharaan_taman', label: 'Pemeliharaan Taman' },
+        { id: 'pemeliharaan_taman_toga', label: 'Pemeliharaan Taman Toga' },
+        { id: 'perbaikan_balai_rt', label: 'Perbaikan Balai RT' },
+      ],
+    },
+    {
+      groupLabel: 'INSIDENTIL · PENGELOLA: PANITIA/KOORDINATOR',
+      items: [
+        { id: 'panitia_dasolin', label: 'Dasolin' },
+        { id: 'panitia_17an_rt', label: '17an RT' },
+        { id: 'panitia_17an_rw', label: '17an RW' },
+        { id: 'panitia_pkk', label: 'PKK' },
+        { id: 'panitia_arisan', label: 'Arisan' },
+      ],
+    },
+  ],
+};
+
 export const CATEGORY_LABELS: Record<TransactionCategory, string> = {
+  // Penerimaan
+  iuran_rt: 'Iuran RT',
+  iuran_17an_rt: 'Iuran 17an RT',
+  iuran_17an_rw: 'Iuran 17an RW',
+  iuran_pkk: 'Iuran PKK',
+  arisan: 'Arisan',
+  bantuan_pemerintah: 'Bantuan Pemerintah',
+  sumbangan_donasi: 'Sumbangan / Donasi',
+  hasil_usaha_kemitraan: 'Hasil Usaha / Kemitraan',
+  pdl_bunga_bank: 'Penerimaan Lainnya (PDL): Bunga Bank',
+  // Pengeluaran Rutin
+  kebersihan_lingkungan: 'Kebersihan dan Lingkungan',
+  keamanan_ketertiban: 'Keamanan dan Ketertiban',
+  konsumsi: 'Konsumsi (Gula, Teh, Kopi)',
+  pdam: 'PDAM',
+  listrik: 'Listrik',
+  internet: 'Internet',
+  iuran_rw: 'Iuran RW',
+  pengeluaran_iuran_17an_rw: 'Iuran 17an RW',
+  inventaris: 'Inventaris',
+  fogging: 'Fogging',
+  // Pengeluaran Insidentil - Pengurus RT
+  perbaikan_joglo: 'Perbaikan Joglo',
+  pemeliharaan_taman: 'Pemeliharaan Taman',
+  pemeliharaan_taman_toga: 'Pemeliharaan Taman Toga',
+  perbaikan_balai_rt: 'Perbaikan Balai RT',
+  // Pengeluaran Insidentil - Panitia/Koordinator
+  panitia_dasolin: 'Dasolin (Panitia)',
+  panitia_17an_rt: '17an RT (Panitia)',
+  panitia_17an_rw: '17an RW (Panitia)',
+  panitia_pkk: 'PKK (Panitia)',
+  panitia_arisan: 'Arisan (Panitia)',
+  // Legacy
   iuran_bulanan: 'Iuran Bulanan',
   donasi: 'Donasi Warga',
   kebersihan: 'Kebersihan & Sampah',
@@ -108,6 +227,10 @@ export const CATEGORY_LABELS: Record<TransactionCategory, string> = {
   perbaikan: 'Perbaikan Fasilitas',
   lainnya: 'Lainnya',
 };
+
+export function getCategoryLabel(category: string): string {
+  return CATEGORY_LABELS[category as TransactionCategory] || category;
+}
 
 export function downloadMonthlyReportCSV(
   yearMonth: string,
@@ -133,7 +256,7 @@ export function downloadMonthlyReportCSV(
     formatTimestamp(tx.createdAt),
     tx.billingMonth,
     tx.type === 'income' ? 'Pemasukan' : 'Pengeluaran',
-    CATEGORY_LABELS[tx.category] || tx.category,
+    getCategoryLabel(tx.category),
     `"${(tx.title || '').replace(/"/g, '""')}"`,
     `"${(tx.residentName || '').replace(/"/g, '""')}"`,
     `"${(tx.houseBlock || '').replace(/"/g, '""')}"`,

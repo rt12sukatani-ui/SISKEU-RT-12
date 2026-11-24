@@ -38,11 +38,13 @@ import type {
 import {
   FAMILY_STATUS_LABELS,
   formatMonthLabel,
+  formatNominalInput,
   formatRupiah,
   getCurrentYearMonth,
   getEffectiveFamilyStatusChangeMonth,
   getRequiredTariff,
   parseFamilyStatusLog,
+  parseNominalInput,
   requestBrowserPushPermission,
 } from '../utils/format';
 import { PENGURUS_POSITION_DESCRIPTIONS, RBAC_PERMISSION_META } from '../utils/rbac';
@@ -137,7 +139,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
   const [rtName, setRtName] = useState(rtSettings.rtName);
   const [rwName, setRwName] = useState(rtSettings.rwName);
   const [kelurahan, setKelurahan] = useState(rtSettings.kelurahan);
-  const [duesAmount, setDuesAmount] = useState(String(rtSettings.monthlyDuesAmount));
+  const [duesAmount, setDuesAmount] = useState(formatNominalInput(rtSettings.monthlyDuesAmount));
   const [dueDay, setDueDay] = useState(String(rtSettings.dueDayOfMonth));
   const [bankName, setBankName] = useState(rtSettings.bankName || '');
   const [bankNumber, setBankNumber] = useState(rtSettings.bankAccountNumber || '');
@@ -173,7 +175,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
       setRtName(rtSettings.rtName);
       setRwName(rtSettings.rwName);
       setKelurahan(rtSettings.kelurahan);
-      setDuesAmount(String(rtSettings.monthlyDuesAmount));
+      setDuesAmount(formatNominalInput(rtSettings.monthlyDuesAmount));
       setDueDay(String(rtSettings.dueDayOfMonth));
       setBankName(rtSettings.bankName || '');
       setBankNumber(rtSettings.bankAccountNumber || '');
@@ -240,7 +242,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
         rtName: rtName.trim() || 'RT 12',
         rwName: rwName.trim() || 'RW 20',
         kelurahan: kelurahan.trim() || 'Kelurahan Sukatani',
-        monthlyDuesAmount: Math.max(0, Number(duesAmount) || 150000),
+        monthlyDuesAmount: Math.max(0, parseNominalInput(duesAmount) || 150000),
         dueDayOfMonth: Math.min(28, Math.max(1, Number(dueDay) || 10)),
         bankName: bankName.trim(),
         bankAccountNumber: bankNumber.trim(),
@@ -696,9 +698,10 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
                 <div>
                   <label className="block text-xs font-semibold mb-1">Nominal Iuran Bulanan (Rp)</label>
                   <input
-                    type="number"
+                    type="text"
+                    inputMode="numeric"
                     value={duesAmount}
-                    onChange={(e) => setDuesAmount(e.target.value)}
+                    onChange={(e) => setDuesAmount(formatNominalInput(e.target.value))}
                     className="w-full min-h-[44px] px-3 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-mono-num"
                   />
                 </div>
@@ -717,7 +720,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1">Bank RT</label>
+                  <label className="block text-xs font-semibold mb-1">Bank</label>
                   <input
                     type="text"
                     value={bankName}
@@ -747,7 +750,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-xs font-semibold mb-1">No. Darurat Pos RT</label>
+                  <label className="block text-xs font-semibold mb-1">No. Darurat</label>
                   <input
                     type="tel"
                     value={phoneRT}
@@ -1018,7 +1021,7 @@ export const ProfileSettingsModal: React.FC<ProfileSettingsModalProps> = ({
             </div>
           )}
 
-          {(sheetInfo || rbac.isFullAdmin) && (
+          {rbac.isPengurus && (sheetInfo || rbac.isFullAdmin) && (
             <div className="pt-5 border-t border-slate-100 dark:border-slate-800 space-y-3">
               <div className="rounded-2xl bg-slate-50 dark:bg-slate-950/60 border border-slate-200 dark:border-slate-800 p-4 space-y-3">
                 <div className="flex items-start justify-between gap-3">

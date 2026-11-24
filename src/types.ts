@@ -12,6 +12,41 @@ export type RbacPermission =
 export type FamilyStatus = 'umum' | 'khusus';
 export type TransactionType = 'income' | 'expense';
 export type TransactionCategory =
+  // Penerimaan - Rutin - Wajib
+  | 'iuran_rt'
+  // Penerimaan - Rutin - Tertentu/Spesifik
+  | 'iuran_17an_rt'
+  | 'iuran_17an_rw'
+  | 'iuran_pkk'
+  | 'arisan'
+  // Penerimaan - Non-Rutin
+  | 'bantuan_pemerintah'
+  | 'sumbangan_donasi'
+  | 'hasil_usaha_kemitraan'
+  | 'pdl_bunga_bank'
+  // Pengeluaran - Rutin - Pengelola: Pengurus RT
+  | 'kebersihan_lingkungan'
+  | 'keamanan_ketertiban'
+  | 'konsumsi'
+  | 'pdam'
+  | 'listrik'
+  | 'internet'
+  | 'iuran_rw'
+  | 'pengeluaran_iuran_17an_rw'
+  | 'inventaris'
+  | 'fogging'
+  // Pengeluaran - Insidentil - Pengelola: Pengurus RT
+  | 'perbaikan_joglo'
+  | 'pemeliharaan_taman'
+  | 'pemeliharaan_taman_toga'
+  | 'perbaikan_balai_rt'
+  // Pengeluaran - Insidentil - Pengelola: Panitia/Koordinator
+  | 'panitia_dasolin'
+  | 'panitia_17an_rt'
+  | 'panitia_17an_rw'
+  | 'panitia_pkk'
+  | 'panitia_arisan'
+  // Legacy / kompatibilitas transaksi lama & iuran bulanan warga
   | 'iuran_bulanan'
   | 'donasi'
   | 'kebersihan'
@@ -19,7 +54,7 @@ export type TransactionCategory =
   | 'sosial'
   | 'perbaikan'
   | 'lainnya';
-export type PaymentMethod = 'transfer' | 'qris' | 'tunai';
+export type PaymentMethod = 'transfer' | 'tunai';
 export type TransactionStatus = 'pending' | 'approved' | 'rejected' | 'kurang_bayar';
 export type AnnouncementCategory = 'penting' | 'keuangan' | 'kegiatan' | 'keamanan' | 'kesehatan';
 export type EmergencyType = 'medis' | 'keamanan' | 'kebakaran' | 'bencana';

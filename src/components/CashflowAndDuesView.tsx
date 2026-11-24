@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
 import {
   ArrowDownLeft,
   ArrowUpRight,
@@ -25,26 +25,32 @@ import type {
 import {
   calculatePeriodDuesTarget,
   calculateResidentLedger,
-  CATEGORY_LABELS,
   FAMILY_STATUS_LABELS,
   formatMonthLabel,
+  formatNominalInput,
   formatRupiah,
   formatTimestamp,
+  getCategoryLabel,
   getCurrentYearMonth,
   getRequiredTariff,
   getResidentMonthDuesSummary,
   getResidentPaidMonthsCoverage,
+  parseNominalInput,
   previewPaymentPeriodCoverage,
+  TRANSACTION_CATEGORY_GROUPS,
 } from '../utils/format';
 
 interface CashflowAndDuesViewProps {
   profile: ResidentPublic;
   residents: ResidentPublic[];
+  isPengurus: boolean;
   canManageKas: boolean;
   isOnline: boolean;
   rtSettings: RtSettings;
   transactions: KasTransaction[];
   openPaymentModalInitially?: boolean;
+  initialFilterTab?: 'all' | 'pending' | 'kurang_bayar' | 'mine' | 'expense';
+  focusTransactionsKey?: number;
   onCloseInitialPaymentModal?: () => void;
   onSubmitDues: (data: {
     title: string;
@@ -73,11 +79,14 @@ interface CashflowAndDuesViewProps {
 export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   profile,
   residents,
+  isPengurus,
   canManageKas,
   isOnline,
   rtSettings,
   transactions,
   openPaymentModalInitially = false,
+  initialFilterTab = 'all',
+  focusTransactionsKey = 0,
   onCloseInitialPaymentModal,
   onSubmitDues,
   onAdminCreateTransaction,
@@ -94,9 +103,35 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
     ? myPaidCoverage.nextUnpaidMonth
     : currentMonth;
 
-  const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'kurang_bayar' | 'mine' | 'expense'>('all');
+  const resolvedInitialTab = !isPengurus && (initialFilterTab === 'mine' || initialFilterTab === 'expense')
+    ? 'all'
+    : initialFilterTab;
+  const [filterTab, setFilterTab] = useState<'all' | 'pending' | 'kurang_bayar' | 'mine' | 'expense'>(
+    resolvedInitialTab
+  );
   const [searchQuery, setSearchQuery] = useState('');
   const [copiedBank, setCopiedBank] = useState(false);
+  const transactionsSectionRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const nextTab =
+      !isPengurus && (initialFilterTab === 'mine' || initialFilterTab === 'expense')
+        ? 'all'
+        : initialFilterTab;
+    setFilterTab(nextTab);
+  }, [initialFilterTab, isPengurus, focusTransactionsKey]);
+
+  useEffect(() => {
+    if (focusTransactionsKey > 0 && !openPaymentModalInitially) {
+      const timer = window.setTimeout(() => {
+        transactionsSectionRef.current?.scrollIntoView({
+          behavior: 'smooth',
+          block: 'start',
+        });
+      }, 120);
+      return () => window.clearTimeout(timer);
+    }
+  }, [focusTransactionsKey, openPaymentModalInitially]);
 
   const [showDuesForm, setShowDuesForm] = useState(openPaymentModalInitially);
   const [showAdminEntryForm, setShowAdminEntryForm] = useState(false);
@@ -107,7 +142,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   const [periodMonths, setPeriodMonths] = useState<number>(1);
   const selectedMonthSummary = getResidentMonthDuesSummary(profile, transactions, billingMonth);
   const periodTarget = calculatePeriodDuesTarget(profile, transactions, billingMonth, periodMonths);
-  const [amount, setAmount] = useState(String(periodTarget.totalAmount));
+  const [amount, setAmount] = useState(formatNominalInput(periodTarget.totalAmount));
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('transfer');
 
   useEffect(() => {
@@ -118,7 +153,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       const nextTarget = calculatePeriodDuesTarget(profile, transactions, nextStart, 1);
       setBillingMonth(nextStart);
       setPeriodMonths(1);
-      setAmount(String(nextTarget.totalAmount));
+      setAmount(formatNominalInput(nextTarget.totalAmount));
       setShowDuesForm(true);
     }
   }, [openPaymentModalInitially, myPaidCoverage.isReferenceMonthPaid, myPaidCoverage.nextUnpaidMonth, currentMonth, profile, transactions]);
@@ -128,7 +163,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       setBillingMonth(defaultStartMonth);
       setPeriodMonths(1);
       const nextTarget = calculatePeriodDuesTarget(profile, transactions, defaultStartMonth, 1);
-      setAmount(String(nextTarget.totalAmount));
+      setAmount(formatNominalInput(nextTarget.totalAmount));
     }
   }, [defaultStartMonth, profile, transactions, showDuesForm]);
 
@@ -136,7 +171,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
     profile,
     transactions,
     billingMonth,
-    Number(amount) || 0
+    parseNominalInput(amount)
   );
 
   const [proofImageData, setProofImageData] = useState('');
@@ -151,7 +186,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
   // Admin cashflow entry form
   const [adminType, setAdminType] = useState<'expense' | 'income'>('expense');
-  const [adminCategory, setAdminCategory] = useState<TransactionCategory>('kebersihan');
+  const [adminCategory, setAdminCategory] = useState<TransactionCategory>('kebersihan_lingkungan');
   const [adminTitle, setAdminTitle] = useState('');
   const [adminAmount, setAdminAmount] = useState('');
   const [adminMonth, setAdminMonth] = useState(getCurrentYearMonth());
@@ -159,6 +194,13 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
   const [adminNotes, setAdminNotes] = useState('');
 
   const pendingList = transactions.filter((t) => t.status === 'pending');
+
+  // Khusus warga: tampilan transaksi hanya menampilkan transaksi pribadi
+  const baseTransactions = isPengurus
+    ? transactions
+    : transactions.filter((t) => t.residentUid === profile.uid);
+
+  const visiblePendingList = baseTransactions.filter((t) => t.status === 'pending');
 
   const isMonthStillUnderpaid = (tx: KasTransaction) => {
     if (tx.type !== 'income' || tx.category !== 'iuran_bulanan' || tx.status === 'rejected') {
@@ -178,10 +220,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
     return ledger.status === 'kurang_bayar';
   };
 
-  const underpaidList = transactions.filter((t) => isMonthStillUnderpaid(t));
+  const underpaidList = baseTransactions.filter((t) => isMonthStillUnderpaid(t));
 
   const normalizedSearch = searchQuery.trim().toLowerCase();
-  const filteredTransactions = transactions.filter((tx) => {
+  const filteredTransactions = baseTransactions.filter((tx) => {
+    if (!isPengurus && tx.residentUid !== profile.uid) return false;
     if (filterTab === 'pending' && tx.status !== 'pending') return false;
     if (filterTab === 'kurang_bayar' && !isMonthStillUnderpaid(tx)) {
       return false;
@@ -190,7 +233,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
     if (filterTab === 'expense' && tx.type !== 'expense') return false;
 
     if (normalizedSearch) {
-      const hay = `${tx.title} ${tx.residentName} ${tx.houseBlock} ${CATEGORY_LABELS[tx.category]}`.toLowerCase();
+      const hay = `${tx.title} ${tx.residentName} ${tx.houseBlock} ${getCategoryLabel(tx.category)}`.toLowerCase();
       return hay.includes(normalizedSearch);
     }
     return true;
@@ -226,13 +269,13 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
     setFormError(null);
     setFormSuccess(null);
 
-    const numAmount = Number(amount);
-    if (!numAmount || numAmount <= 0) {
-      setFormError('Masukkan nominal iuran yang valid.');
+    const numAmount = parseNominalInput(amount);
+    if (!numAmount || numAmount < 1000) {
+      setFormError('Masukkan nominal iuran minimal Rp 1.000.');
       return;
     }
     if (paymentMethod !== 'tunai' && !proofImageData) {
-      setFormError('Mohon unggah foto bukti transfer/QRIS agar admin dapat memverifikasi.');
+      setFormError('Mohon unggah foto bukti pembayaran agar admin dapat memverifikasi.');
       return;
     }
 
@@ -276,7 +319,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
   const handleAdminEntrySubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const numAmount = Number(adminAmount);
+    const numAmount = parseNominalInput(adminAmount);
     if (!adminTitle.trim() || !numAmount || numAmount <= 0) return;
 
     setSubmitting(true);
@@ -320,7 +363,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               const nextTarget = calculatePeriodDuesTarget(profile, transactions, defaultStartMonth, 1);
               setBillingMonth(defaultStartMonth);
               setPeriodMonths(1);
-              setAmount(String(nextTarget.totalAmount));
+              setAmount(formatNominalInput(nextTarget.totalAmount));
               setShowDuesForm(true);
               setShowAdminEntryForm(false);
             }}
@@ -340,7 +383,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               className="min-h-[48px] px-3.5 sm:px-4 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 text-slate-800 dark:text-slate-100 hover:bg-slate-50 dark:hover:bg-slate-800 font-semibold text-xs sm:text-sm inline-flex items-center justify-center gap-2 transition-colors whitespace-nowrap cursor-pointer"
             >
               <Plus className="w-4 h-4 shrink-0" />
-              <span>Catat Kas (Admin)</span>
+              <span>Catat Transaksi</span>
             </button>
           )}
         </div>
@@ -372,7 +415,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 ? `Iuran ${formatMonthLabel(currentMonth)}: Lunas · ${myPaidCoverage.streakMonthsCount} Bulan Terbayar`
                 : `Iuran ${formatMonthLabel(currentMonth)}: Lunas (${formatRupiah(myDuesSummary.verifiedPaid)})`
               : myDuesSummary.status === 'kurang_bayar'
-              ? `Iuran ${formatMonthLabel(currentMonth)}: Kurang Bayar (kurang ${formatRupiah(myDuesSummary.shortfall)})`
+              ? `Iuran ${formatMonthLabel(currentMonth)}: Kurang Bayar (${formatRupiah(myDuesSummary.shortfall)})`
               : myDuesSummary.status === 'menunggu'
               ? `Iuran ${formatMonthLabel(currentMonth)}: Menunggu Verifikasi (${formatRupiah(myDuesSummary.pendingPaid)})`
               : `Iuran ${formatMonthLabel(currentMonth)}: Belum Bayar (${formatRupiah(myRequiredTariff)})`}
@@ -434,7 +477,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
               onClick={() => {
                 setBillingMonth(currentMonth);
                 setPeriodMonths(1);
-                setAmount(String(myDuesSummary.shortfall > 0 ? myDuesSummary.shortfall : myRequiredTariff));
+                setAmount(formatNominalInput(myDuesSummary.shortfall > 0 ? myDuesSummary.shortfall : myRequiredTariff));
                 setShowDuesForm(true);
                 setShowAdminEntryForm(false);
               }}
@@ -524,7 +567,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                     nextMonth,
                     periodMonths
                   );
-                  setAmount(String(nextTarget.totalAmount));
+                  setAmount(formatNominalInput(nextTarget.totalAmount));
                 }}
                 required
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
@@ -546,7 +589,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                     billingMonth,
                     nextPeriod
                   );
-                  setAmount(String(nextTarget.totalAmount));
+                  setAmount(formatNominalInput(nextTarget.totalAmount));
                 }}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
               >
@@ -573,11 +616,11 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                   : `${FAMILY_STATUS_LABELS[selectedMonthSummary.familyStatus]}`}
               </label>
               <input
-                type="number"
-                min={1000}
-                step={1000}
+                type="text"
+                inputMode="numeric"
                 value={amount}
-                onChange={(e) => setAmount(e.target.value)}
+                onChange={(e) => setAmount(formatNominalInput(e.target.value))}
+                placeholder="Contoh: 120.000"
                 required
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm font-mono-num"
               />
@@ -592,8 +635,8 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 onChange={(e) => setPaymentMethod(e.target.value as PaymentMethod)}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-slate-900 dark:text-slate-100 text-sm"
               >
-                <option value="transfer">Transfer Bank</option>
-                <option value="tunai">Tunai ke Pengurus</option>
+                <option value="transfer">Transfer</option>
+                <option value="tunai">Tunai</option>
               </select>
             </div>
           </div>
@@ -610,14 +653,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 Total: {formatRupiah(periodTarget.totalAmount)}
               </span>
             </div>
-            {Number(amount) > 0 && paymentPreview.coveredCount === 0 && paymentPreview.shortfallInStartMonth > 0 && (
+            {parseNominalInput(amount) > 0 && paymentPreview.coveredCount === 0 && paymentPreview.shortfallInStartMonth > 0 && (
               <p className="font-semibold text-amber-700 dark:text-amber-400">
-                Nominal ({formatRupiah(Number(amount))}) masih kurang {formatRupiah(paymentPreview.shortfallInStartMonth)} untuk melunasi {formatMonthLabel(billingMonth)}. Status akan tercatat Kurang Bayar hingga dilunasi.
+                Nominal ({formatRupiah(parseNominalInput(amount))}) masih kurang {formatRupiah(paymentPreview.shortfallInStartMonth)} untuk melunasi {formatMonthLabel(billingMonth)}. Status akan tercatat Kurang Bayar hingga dilunasi.
               </p>
             )}
-            {Number(amount) > 0 && paymentPreview.coveredCount >= 1 && paymentPreview.endMonth && (
+            {parseNominalInput(amount) > 0 && paymentPreview.coveredCount >= 1 && paymentPreview.endMonth && (
               <p className="font-semibold text-emerald-700 dark:text-emerald-400">
-                Nominal {formatRupiah(Number(amount))} melunasi {paymentPreview.coveredCount} bulan (
+                Nominal {formatRupiah(parseNominalInput(amount))} melunasi {paymentPreview.coveredCount} bulan (
                 {paymentPreview.coveredCount === 1
                   ? formatMonthLabel(billingMonth)
                   : `${formatMonthLabel(billingMonth)} – ${formatMonthLabel(paymentPreview.endMonth)}`}
@@ -631,7 +674,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
 
           <div>
             <label className="block text-sm font-semibold text-slate-800 dark:text-slate-200 mb-1.5">
-              Unggah Foto Bukti Transfer / Kwitansi
+              Unggah Foto Bukti Pembayaran / Kwitansi
             </label>
             <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4">
               <div className="grid grid-cols-2 sm:flex sm:flex-wrap items-center gap-2.5 w-full sm:w-auto">
@@ -725,7 +768,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
         >
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-slate-900 dark:text-slate-100">
-              Catat Transaksi Kas RT (Khusus Admin)
+              Catat Transaksi RT
             </h2>
             <button
               type="button"
@@ -744,12 +787,12 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 onChange={(e) => {
                   const val = e.target.value as 'expense' | 'income';
                   setAdminType(val);
-                  setAdminCategory(val === 'expense' ? 'kebersihan' : 'donasi');
+                  setAdminCategory(val === 'expense' ? 'kebersihan_lingkungan' : 'iuran_rt');
                 }}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
               >
                 <option value="expense">Pengeluaran Kas</option>
-                <option value="income">Pemasukan Lain / Donasi</option>
+                <option value="income">Penerimaan Kas</option>
               </select>
             </div>
             <div>
@@ -759,10 +802,14 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 onChange={(e) => setAdminCategory(e.target.value as TransactionCategory)}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
               >
-                {Object.entries(CATEGORY_LABELS).map(([k, label]) => (
-                  <option key={k} value={k}>
-                    {label}
-                  </option>
+                {TRANSACTION_CATEGORY_GROUPS[adminType].map((group) => (
+                  <optgroup key={group.groupLabel} label={group.groupLabel}>
+                    {group.items.map((item) => (
+                      <option key={item.id} value={item.id}>
+                        {item.label}
+                      </option>
+                    ))}
+                  </optgroup>
                 ))}
               </select>
             </div>
@@ -794,11 +841,12 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             <div>
               <label className="block text-sm font-semibold mb-1.5">Nominal (Rp)</label>
               <input
-                type="number"
+                type="text"
+                inputMode="numeric"
                 required
-                min={1000}
+                placeholder="Contoh: 10.000"
                 value={adminAmount}
-                onChange={(e) => setAdminAmount(e.target.value)}
+                onChange={(e) => setAdminAmount(formatNominalInput(e.target.value))}
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm font-mono-num"
               />
             </div>
@@ -813,8 +861,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                 className="w-full min-h-[48px] px-3.5 rounded-xl border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-950 text-sm"
               >
                 <option value="tunai">Tunai</option>
-                <option value="transfer">Transfer Bank</option>
-                <option value="qris">QRIS</option>
+                <option value="transfer">Transfer</option>
               </select>
             </div>
             <div className="sm:col-span-2">
@@ -994,16 +1041,24 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
       )}
 
       {/* Search + Segmented Filter Bar */}
-      <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-3">
+      <div
+        ref={transactionsSectionRef}
+        className="flex flex-col lg:flex-row lg:items-center justify-between gap-3 scroll-mt-20"
+      >
         <div className="flex items-center gap-1.5 p-1.5 bg-slate-100 dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-800 w-full lg:w-fit overflow-x-auto no-scrollbar">
-          {(
-            [
-              { id: 'all', label: 'Semua Transaksi' },
-              { id: 'pending', label: `Menunggu (${pendingList.length})` },
-              { id: 'kurang_bayar', label: `Kurang Bayar (${underpaidList.length})` },
-              { id: 'mine', label: 'Iuran Saya' },
-              { id: 'expense', label: 'Pengeluaran Kas' },
-            ] as const
+          {(isPengurus
+            ? ([
+                { id: 'all', label: 'Semua Transaksi' },
+                { id: 'pending', label: `Menunggu (${visiblePendingList.length})` },
+                { id: 'kurang_bayar', label: `Kurang Bayar (${underpaidList.length})` },
+                { id: 'mine', label: 'Iuran Saya' },
+                { id: 'expense', label: 'Pengeluaran Kas' },
+              ] as const)
+            : ([
+                { id: 'all', label: 'Transaksi Saya' },
+                { id: 'pending', label: `Menunggu (${visiblePendingList.length})` },
+                { id: 'kurang_bayar', label: `Kurang Bayar (${underpaidList.length})` },
+              ] as const)
           ).map((tab) => (
             <button
               key={tab.id}
@@ -1026,7 +1081,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
             type="search"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Cari warga, blok, transaksi..."
+            placeholder={isPengurus ? 'Cari warga, blok, transaksi...' : 'Cari transaksi iuran saya...'}
             aria-label="Cari transaksi kas"
             className="w-full min-h-[44px] pl-10 pr-3.5 rounded-xl border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-900 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400"
           />
@@ -1111,7 +1166,7 @@ export const CashflowAndDuesView: React.FC<CashflowAndDuesViewProps> = ({
                         {tx.title}
                       </p>
                       <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-                        {tx.residentName} · {tx.houseBlock} · {CATEGORY_LABELS[tx.category]} ·{' '}
+                        {tx.residentName} · {tx.houseBlock} · {getCategoryLabel(tx.category)} ·{' '}
                         {tx.paymentMethod.toUpperCase()} · {formatTimestamp(tx.createdAt)}
                       </p>
                       {txUnderpaid && txLedger && txLedger.shortfall > 0 && (

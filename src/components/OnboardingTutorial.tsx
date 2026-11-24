@@ -36,7 +36,7 @@ const TUTORIAL_STEPS: {
   {
     title: '2. Bayar Iuran',
     description:
-      'Masuk ke menu Kas & Iuran untuk mengirim iuran bulanan. Cukup pilih bulan, ambil atau unggah foto bukti transfer/QRIS, lalu kirim. Bendahara RT akan memverifikasi secara langsung.',
+      'Masuk ke menu Kas & Iuran untuk mengirim iuran bulanan. Cukup pilih bulan, ambil atau unggah foto bukti pembayaran, lalu kirim. Bendahara RT akan memverifikasi secara langsung.',
     tip: 'Jika sedang tidak ada internet, data disimpan sementara dan dikirim otomatis saat online.',
     targetTab: 'kas',
     icon: CheckCircle2,

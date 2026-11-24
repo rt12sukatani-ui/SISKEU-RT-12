@@ -1199,7 +1199,15 @@ export async function fetchAllSheetTables(
         category: (pick(r, 'kategori', 'category') ||
           'iuran_bulanan') as TransactionCategory,
         title: pick(r, 'judul', 'title'),
-        amount: Number(pick(r, 'nominal', 'amount')) || 0,
+        amount: (() => {
+          const raw = String(pick(r, 'nominal', 'amount') || '').trim();
+          if (!raw) return 0;
+          if (/^\d+$/.test(raw)) return Number(raw) || 0;
+          if (/^(?:Rp\s*)?\d{1,3}(?:\.\d{3})+(?:,\d+)?$/i.test(raw)) {
+            return Number(raw.replace(/[^\d,]/g, '').replace(',', '.')) || 0;
+          }
+          return Number(raw) || 0;
+        })(),
         billingMonth: pick(r, 'bulan_tagihan', 'billingMonth'),
         residentUid: pick(r, 'uid_warga', 'residentUid'),
         residentName: pick(r, 'nama_warga', 'residentName'),

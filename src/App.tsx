@@ -322,6 +322,10 @@ export default function App() {
 
   const [activeTab, setActiveTab] = useState<AppTab>('beranda');
   const [openPaymentModalOnKas, setOpenPaymentModalOnKas] = useState(false);
+  const [kasInitialFilterTab, setKasInitialFilterTab] = useState<
+    'all' | 'pending' | 'kurang_bayar' | 'mine' | 'expense'
+  >('all');
+  const [focusKasTransactionsKey, setFocusKasTransactionsKey] = useState(0);
   const [tutorialOpen, setTutorialOpen] = useState(false);
   const [showNewUserBanner, setShowNewUserBanner] = useState(false);
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -1388,8 +1392,8 @@ export default function App() {
       });
       initialNotificationIdsRef.current = null;
       showToast(
-        'Terverifikasi & Terhubung ke Spreadsheet',
-        `Selamat datang ${userProf.displayName}. Data terhubung otomatis ke "${activeSheetInfo.spreadsheetTitle}".`
+        'Selamat Datang',
+        'Anda Berhasil Masuk dan Selamat menggunakan aplikasi'
       );
     } catch (err) {
       setLoginError(
@@ -1908,6 +1912,10 @@ export default function App() {
         setShowNewUserBanner(true);
       }
       initialNotificationIdsRef.current = null;
+      showToast(
+        'Selamat Datang',
+        'Anda Berhasil Masuk dan Selamat menggunakan aplikasi'
+      );
     } catch (err) {
       if (err instanceof SheetsAuthExpiredError) {
         handleExpiredToken();
@@ -3368,6 +3376,7 @@ export default function App() {
                 onNavigate={(tab) => {
                   setActiveTab(tab);
                   setOpenPaymentModalOnKas(false);
+                  setKasInitialFilterTab('all');
                 }}
                 notifications={notifications}
                 onMarkNotificationRead={handleMarkNotificationRead}
@@ -3550,12 +3559,20 @@ export default function App() {
                       rtSettings={rtSettings}
                       transactions={mergedTransactions}
                       residents={residents}
+                      registryEntries={registryEntries}
                       announcements={announcements}
                       emergencies={mergedEmergencies}
                       onNavigate={setActiveTab}
                       onOpenTutorial={() => setTutorialOpen(true)}
                       onQuickPayDues={() => {
+                        setKasInitialFilterTab('all');
                         setOpenPaymentModalOnKas(true);
+                        setActiveTab('kas');
+                      }}
+                      onViewMyDues={() => {
+                        setOpenPaymentModalOnKas(false);
+                        setKasInitialFilterTab(rbac.isPengurus ? 'mine' : 'all');
+                        setFocusKasTransactionsKey((k) => k + 1);
                         setActiveTab('kas');
                       }}
                     />
@@ -3565,11 +3582,14 @@ export default function App() {
                     <CashflowAndDuesView
                       profile={profile}
                       residents={residents}
+                      isPengurus={rbac.isPengurus}
                       canManageKas={rbac.canManageKas}
                       isOnline={isOnline}
                       rtSettings={rtSettings}
                       transactions={mergedTransactions}
                       openPaymentModalInitially={openPaymentModalOnKas}
+                      initialFilterTab={kasInitialFilterTab}
+                      focusTransactionsKey={focusKasTransactionsKey}
                       onCloseInitialPaymentModal={() => setOpenPaymentModalOnKas(false)}
                       onSubmitDues={handleSubmitDues}
                       onAdminCreateTransaction={handleAdminCreateTransaction}
@@ -3623,6 +3643,7 @@ export default function App() {
                 onNavigate={(tab) => {
                   setActiveTab(tab);
                   setOpenPaymentModalOnKas(false);
+                  setKasInitialFilterTab('all');
                 }}
                 activeEmergencyCount={activeEmergencyCount}
               />

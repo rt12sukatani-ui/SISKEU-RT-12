@@ -26,15 +26,16 @@ import type {
   KasTransaction,
   RbacContext,
   ResidentPublic,
+  ResidentRegistryEntry,
   RtSettings,
 } from '../types';
 import {
   calculateResidentLedger,
-  CATEGORY_LABELS,
   FAMILY_STATUS_LABELS,
   formatMonthLabel,
   formatRupiah,
   formatTimestamp,
+  getCategoryLabel,
   getCurrentYearMonth,
   getResidentMonthDuesSummary,
   getResidentPaidMonthsCoverage,
@@ -47,11 +48,13 @@ interface DashboardViewProps {
   rtSettings: RtSettings;
   transactions: KasTransaction[];
   residents: ResidentPublic[];
+  registryEntries?: ResidentRegistryEntry[];
   announcements: Announcement[];
   emergencies: EmergencyAlert[];
   onNavigate: (tab: AppTab) => void;
   onOpenTutorial: () => void;
   onQuickPayDues: () => void;
+  onViewMyDues?: () => void;
 }
 
 export const DashboardView: React.FC<DashboardViewProps> = ({
@@ -60,11 +63,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   rtSettings,
   transactions,
   residents,
+  registryEntries = [],
   announcements,
   emergencies,
   onNavigate,
   onOpenTutorial,
   onQuickPayDues,
+  onViewMyDues,
 }) => {
   const [copiedBank, setCopiedBank] = useState(false);
   const [now, setNow] = useState<Date>(() => new Date());
@@ -141,6 +146,8 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
   const myDuesSummary = getResidentMonthDuesSummary(profile, transactions, currentMonth);
   const myPaidCoverage = getResidentPaidMonthsCoverage(profile, transactions, currentMonth);
+  const isMyDuesSettled =
+    myDuesSummary.status === 'lunas' || myPaidCoverage.isReferenceMonthPaid;
   const myPendingPreview =
     myDuesSummary.status === 'menunggu'
       ? previewPaymentPeriodCoverage(
@@ -153,11 +160,30 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
   const myFamilyLabel = FAMILY_STATUS_LABELS[myDuesSummary.familyStatus];
 
   const residentMap = new Map(residents.map((r) => [r.uid, r]));
-  const paidResidentsCount = residents.filter(
+  const paidResidentsCount = (() => {
+    const paidUids = new Set<string>();
+    for (const r of residents) {
+      const summary = getResidentMonthDuesSummary(r, transactions, currentMonth);
+      if (summary.status === 'lunas' || summary.paidThisMonth > 0) {
+        paidUids.add(r.uid);
+      }
+    }
+    for (const t of currentMonthApprovedTx) {
+      if (t.type === 'income' && t.category === 'iuran_bulanan' && t.residentUid) {
+        paidUids.add(t.residentUid);
+      }
+    }
+    return paidUids.size;
+  })();
+  const totalResidentsCount =
+    registryEntries.length > 0 ? registryEntries.length : residents.length;
+  const lunasResidentsCount = residents.filter(
     (r) => getResidentMonthDuesSummary(r, transactions, currentMonth).status === 'lunas'
   ).length;
-  const totalResidentsCount = Math.max(residents.length, 1);
-  const paymentProgressPct = Math.min(100, Math.round((paidResidentsCount / totalResidentsCount) * 100));
+  const paymentProgressPct =
+    totalResidentsCount > 0
+      ? Math.min(100, Math.round((lunasResidentsCount / totalResidentsCount) * 100))
+      : 0;
 
   const activeEmergencies = emergencies.filter((e) => e.status !== 'resolved');
   const recentTx = transactions.slice(0, 5);
@@ -300,11 +326,15 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
             <span className="block mb-3 text-sm font-semibold text-white">Total:</span>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
             <div>
-              <div className="flex items-center gap-1.5 text-xs text-emerald-200">
-                <Wallet className="w-3.5 h-3.5 shrink-0" />
-                <span>Iuran Bulan Ini</span>
-              </div>
-              <p className="mt-1 font-mono-num text-base sm:text-lg font-bold tabular-nums">
+            <div className="flex items-center gap-1.5 text-xs text-emerald-200">
+              <Wallet className="w-3.5 h-3.5 shrink-0" />
+              <span>
+                {`Iuran RT ${new Date(`${currentMonth}-01`)
+                  .toLocaleDateString('id-ID', { month: 'short', year: '2-digit' })
+                  .toUpperCase()}`}
+              </span>
+            </div>
+              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
                 {formatRupiah(totalMonthlyDues)}
               </p>
             </div>
@@ -313,7 +343,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <ArrowDownLeft className="w-3.5 h-3.5 shrink-0" />
                 <span>Pemasukan Lain</span>
               </div>
-              <p className="mt-1 font-mono-num text-base sm:text-lg font-bold tabular-nums">
+              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
                 {formatRupiah(totalIncome)}
               </p>
             </div>
@@ -322,13 +352,13 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                 <ArrowUpRight className="w-3.5 h-3.5 shrink-0" />
                 <span>Pengeluaran</span>
               </div>
-              <p className="mt-1 font-mono-num text-base sm:text-lg font-bold tabular-nums">
+              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums">
                 {formatRupiah(totalExpense)}
               </p>
             </div>
             <div>
-              <p className="text-xs text-emerald-200">Partisipasi</p>
-              <p className="mt-1 font-mono-num text-base sm:text-lg font-bold tabular-nums">
+              <p className="text-xs text-emerald-200 text-right">Partisipasi</p>
+              <p className="mt-1 font-mono-num text-sm font-bold tabular-nums text-right">
                 {paidResidentsCount}/{totalResidentsCount} KK
               </p>
             </div>
@@ -491,15 +521,19 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="mt-5 flex flex-wrap gap-3">
             <button
               type="button"
-              onClick={onQuickPayDues}
+              onClick={
+                isMyDuesSettled
+                  ? onViewMyDues || (() => onNavigate('kas'))
+                  : onQuickPayDues
+              }
               className="flex-1 min-h-[48px] px-4 rounded-xl bg-emerald-700 hover:bg-emerald-800 active:scale-[0.99] text-white font-semibold text-sm inline-flex items-center justify-center gap-2 transition-all whitespace-nowrap cursor-pointer"
             >
               <Wallet className="w-4 h-4 shrink-0" />
               <span>
-                {myDuesSummary.status === 'kurang_bayar'
-                  ? 'Lunasi Kekurangan'
-                  : myDuesSummary.status === 'lunas' || myDuesSummary.status === 'menunggu'
+                {isMyDuesSettled
                   ? 'Lihat Iuran Saya'
+                  : myDuesSummary.status === 'kurang_bayar'
+                  ? 'Lunasi Kekurangan'
                   : 'Bayar Iuran'}
               </span>
             </button>
@@ -516,10 +550,10 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
       </div>
 
       {/* Elderly-Friendly Quick Menu Grid */}
-      <section aria-label="Menu Cepat Warga">
+      <section aria-label="Menu Cepat">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-3">
           <h2 className="text-base font-bold text-slate-900 dark:text-slate-100">
-            Menu Cepat Warga
+            Menu Cepat
           </h2>
           {rbac.canManageKas && pendingVerificationCount > 0 && (
             <button
@@ -534,62 +568,111 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           )}
         </div>
 
-        <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 sm:gap-4">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-3 sm:gap-4 items-stretch">
+          {/* Unified Horizontal Pengumuman Card */}
           <button
             type="button"
-            onClick={onQuickPayDues}
-            className="group min-h-[104px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
+            onClick={() => onNavigate('pengumuman')}
+            className="lg:col-span-7 group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex items-center justify-between gap-3.5 sm:gap-4 cursor-pointer"
           >
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <Wallet className="w-5 h-5" />
-            </div>
-            <div className="mt-3">
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Bayar Iuran</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Unggah foto bukti</p>
+            <div className="flex items-center gap-3.5 sm:gap-4 min-w-0 flex-1">
+              <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform shrink-0">
+                <Megaphone className="w-5 h-5" />
+              </div>
+
+              <div className="min-w-0 flex-1">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                  <h2 className="text-sm font-bold text-slate-900 dark:text-slate-100">
+                    Pengumuman
+                  </h2>
+                  {latestAnnouncements[0] && (
+                    <span
+                      className={`text-[11px] ${
+                        latestAnnouncements[0].priority === 'urgent'
+                          ? 'font-bold text-red-600 dark:text-red-400'
+                          : 'font-semibold text-emerald-700 dark:text-emerald-400'
+                      }`}
+                    >
+                      · {latestAnnouncements[0].priority === 'urgent' ? 'Mendesak' : 'Info Warga'} ·{' '}
+                      {formatTimestamp(latestAnnouncements[0].createdAt)}
+                    </span>
+                  )}
+                </div>
+
+                {latestAnnouncements.length === 0 ? (
+                  <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                    Tidak ada pengumuman.
+                  </p>
+                ) : (
+                  <>
+                    <p className="mt-0.5 text-xs sm:text-sm font-semibold text-slate-800 dark:text-slate-200 truncate">
+                      {latestAnnouncements[0].title}
+                    </p>
+                    <p className="text-xs text-slate-500 dark:text-slate-400 line-clamp-1">
+                      {latestAnnouncements[0].body}
+                    </p>
+                  </>
+                )}
+              </div>
             </div>
           </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('laporan')}
-            className="group min-h-[104px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <FileBarChart2 className="w-5 h-5" />
-            </div>
-            <div className="mt-3">
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Laporan Kas</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Rekap bulanan otomatis</p>
-            </div>
-          </button>
+          {/* Compact Group: Laporan Kas, Lapor Darurat SOS, Profil Kesehatan */}
+          <div className="lg:col-span-5 grid grid-cols-3 gap-2.5 sm:gap-3">
+            <button
+              type="button"
+              onClick={() => onNavigate('laporan')}
+              className="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <FileBarChart2 className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                  Laporan Kas
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  Rekap bulanan
+                </p>
+              </div>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('darurat')}
-            className="group min-h-[104px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-red-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform">
-              <ShieldAlert className="w-5 h-5" />
-            </div>
-            <div className="mt-3">
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Lapor Darurat SOS</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Bantuan cepat</p>
-            </div>
-          </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('darurat')}
+              className="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-red-600 text-white flex items-center justify-center group-hover:scale-105 transition-transform">
+                <ShieldAlert className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                  Darurat SOS
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  Bantuan cepat
+                </p>
+              </div>
+            </button>
 
-          <button
-            type="button"
-            onClick={() => onNavigate('darurat')}
-            className="group min-h-[104px] rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-4 sm:p-5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
-          >
-            <div className="w-10 h-10 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
-              <HeartPulse className="w-5 h-5" />
-            </div>
-            <div className="mt-3">
-              <p className="text-sm font-bold text-slate-900 dark:text-slate-100">Profil Kesehatan</p>
-              <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">Terenkripsi & siaga medis</p>
-            </div>
-          </button>
+            <button
+              type="button"
+              onClick={() => onNavigate('darurat')}
+              className="group rounded-2xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 p-3 sm:p-3.5 text-left hover:border-emerald-500 dark:hover:border-emerald-500 transition-all flex flex-col justify-between cursor-pointer"
+            >
+              <div className="w-9 h-9 rounded-xl bg-emerald-50 dark:bg-emerald-950/60 text-emerald-700 dark:text-emerald-400 flex items-center justify-center group-hover:scale-105 transition-transform">
+                <HeartPulse className="w-4 h-4 sm:w-5 sm:h-5" />
+              </div>
+              <div className="mt-2.5 min-w-0">
+                <p className="text-xs sm:text-sm font-bold text-slate-900 dark:text-slate-100 leading-tight truncate">
+                  Kesehatan
+                </p>
+                <p className="text-[11px] text-slate-500 dark:text-slate-400 mt-0.5 truncate">
+                  Siaga medis
+                </p>
+              </div>
+            </button>
+          </div>
         </div>
       </section>
 
@@ -663,7 +746,7 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                           {tx.title}
                         </p>
                         <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 truncate">
-                          {tx.residentName} · {tx.houseBlock} · {CATEGORY_LABELS[tx.category]} ·{' '}
+                          {tx.residentName} · {tx.houseBlock} · {getCategoryLabel(tx.category)} ·{' '}
                           {tx.status === 'rejected'
                             ? 'Ditolak'
                             : tx.status === 'pending'
@@ -793,58 +876,6 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
                   Jatuh tempo
                 </span>
               </div>
-            </div>
-          </section>
-
-          <section className="rounded-3xl bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-800 overflow-hidden">
-            <div className="px-4 sm:px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
-              <h2 className="text-base font-bold text-slate-900 dark:text-slate-100 flex items-center gap-2">
-                <Megaphone className="w-4 h-4 text-emerald-700 dark:text-emerald-400 shrink-0" />
-                <span>Pengumuman Lingkungan</span>
-              </h2>
-              <button
-                type="button"
-                onClick={() => onNavigate('pengumuman')}
-                className="text-xs font-semibold text-emerald-700 dark:text-emerald-400 hover:underline min-h-[44px] inline-flex items-center gap-1 cursor-pointer"
-              >
-                <span>Semua Kabar</span>
-                <ChevronRight className="w-3.5 h-3.5" />
-              </button>
-            </div>
-            <div className="divide-y divide-slate-100 dark:divide-slate-800">
-              {latestAnnouncements.length === 0 ? (
-                <p className="p-8 text-center text-sm text-slate-500 dark:text-slate-400">
-                  Belum ada pengumuman terbaru dari pengurus RT.
-                </p>
-              ) : (
-                latestAnnouncements.map((item) => (
-                  <button
-                    key={item.id}
-                    type="button"
-                    onClick={() => onNavigate('pengumuman')}
-                    className="w-full text-left px-4 sm:px-6 py-4 hover:bg-slate-50/80 dark:hover:bg-slate-800/40 transition-colors cursor-pointer"
-                  >
-                    <div className="flex items-center justify-between gap-2 text-xs text-slate-500 dark:text-slate-400">
-                      <span
-                        className={
-                          item.priority === 'urgent'
-                            ? 'font-bold text-red-600 dark:text-red-400'
-                            : 'font-semibold text-emerald-700 dark:text-emerald-400'
-                        }
-                      >
-                        {item.priority === 'urgent' ? 'Mendesak' : 'Info Warga'} · {item.category}
-                      </span>
-                      <span className="tabular-nums">{formatTimestamp(item.createdAt)}</span>
-                    </div>
-                    <p className="mt-1.5 text-sm font-bold text-slate-900 dark:text-slate-100">
-                      {item.title}
-                    </p>
-                    <p className="mt-1 text-xs text-slate-600 dark:text-slate-300 line-clamp-2 leading-relaxed">
-                      {item.body}
-                    </p>
-                  </button>
-                ))
-              )}
             </div>
           </section>
         </div>
